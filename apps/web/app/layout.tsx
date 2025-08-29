@@ -20,7 +20,7 @@ const workSans = Work_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Clerk Next.js Quickstart",
+  title: "AI Code Review | Eliminate bugs before they ship. Automatically.",
   description: "AI Code Review Platform",
 };
 
@@ -30,10 +30,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        cssLayerName: "clerk",
+      }}>
       <html lang="en">
         <body
-          className={`${workSans.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}>
+          className={`${workSans.variable} ${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}>
           {children}
         </body>
       </html>
