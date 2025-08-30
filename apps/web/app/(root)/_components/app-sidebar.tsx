@@ -3,10 +3,8 @@
 import { UserButton } from "@clerk/nextjs";
 import { ScanTextIcon, StarsIcon } from "lucide-react";
 import Link from "next/link";
-import React, { useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import React from "react";
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
-import AppMenuItem from "./app-menu-item";
 import ThemeToggle from "@/components/shared/theme-toggle";
 import {
   Sidebar,
