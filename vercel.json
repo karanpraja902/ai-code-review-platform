@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm turbo run build --filter=ai-code-review-api",
+  "outputDirectory": "apps/api/dist",
+  "installCommand": "pnpm install",
+  "framework": null
+}
