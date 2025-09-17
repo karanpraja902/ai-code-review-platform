@@ -5,6 +5,7 @@ import { SignInButton, SignUpButton, SignedOut } from "@clerk/nextjs";
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
 import ThemeToggle from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 
 export default function Navbar() {
   return (
@@ -13,31 +14,31 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 text-2xl font-semibold text-white">
+          className="flex items-center gap-2 text-xl font-semibold text-white">
           <AI Code ReviewLogo />
           <span className="sr-only sm:not-sr-only">AI Code Review</span>
         </Link>
 
         {/* Right section (icons + auth buttons) */}
         <div className="flex items-center gap-2 sm:gap-4">
-          <ThemeToggle className="hover:bg-neutral-700" />
+          {/* <ThemeToggle className="hover:bg-neutral-700" /> */}
 
           {/* Clerk Authentication */}
           <SignedOut>
             <SignInButton>
               <Button
                 variant={"ghost"}
-                className="cursor-pointer text-primary hover:text-primary">
-                Sign In
+                className="cursor-pointer border bg-white text-black hover:text-white/80">
+                Launch Agent <ArrowUpRight />
               </Button>
             </SignInButton>
-            <SignUpButton>
+            {/* <SignUpButton>
               <Button
                 variant={"outline"}
                 className="rounded-full cursor-pointer border-primary text-primary hover:text-primary bg-transparent">
                 Sign Up
               </Button>
-            </SignUpButton>
+            </SignUpButton> */}
           </SignedOut>
         </div>
       </div>
