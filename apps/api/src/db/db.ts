@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import { env } from "../config/env.js";
 
-const MONGODB_URI = env.AI CODE REVIEW_DB;
+const MONGODB_URI = process.env.AI CODE REVIEW_DB;
 
 const connectDB = async () => {
     try {
