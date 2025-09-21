@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   ai-code-review-api:
     # For local development, use build
