@@ -27,9 +27,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AI Code Review | AI GitHub Repository Analyzer",
+  title: "AI Code Review | AI Code Reviewer",
   description:
-    "AI Code Review helps you analyze GitHub repositories with AI. Gain instant insights, detect issues, and improve code quality with intelligent analysis.",
+    "AI Code Review Platform helps you analyze code with AI. Gain instant insights, detect issues, and improve code quality with intelligent analysis.",
 };
 
 export default function RootLayout({
