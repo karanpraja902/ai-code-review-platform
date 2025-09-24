@@ -67,7 +67,7 @@ const AppSidebar = () => {
                     "font-semibold",
                     open ? "not-sr-only" : "sr-only"
                   )}>
-                  AI Code Review
+                  AI Code Review Platform
                 </span>
               </Link>
             </SidebarMenuButton>
