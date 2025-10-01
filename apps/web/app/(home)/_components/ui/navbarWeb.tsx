@@ -16,7 +16,7 @@ export default function Navbar() {
           href="/"
           className="flex items-center gap-2 text-xl font-semibold text-white">
           <AI Code ReviewLogo />
-          <span className="sr-only sm:not-sr-only">AI CODE REVIEW</span>
+          <span className="not-sr-only">AI CODE REVIEW</span>
         </Link>
 
         {/* Right section (icons + auth buttons) */}
