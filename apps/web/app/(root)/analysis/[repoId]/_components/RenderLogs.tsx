@@ -348,7 +348,8 @@ const RenderLogs = ({
   };
 
   const processedLogs = useMemo(() => {
-    let filteredLogs = logs;
+    // First filter out INFO logs from all logs
+    let filteredLogs = logs.filter(log => log.type !== "INFO");
 
     // Apply file filter if selected
     if (selectedFileFilter) {
@@ -357,7 +358,7 @@ const RenderLogs = ({
       let currentFileContext: string | undefined = undefined;
       let ungroupedLogs: LogItem[] = [];
 
-      logs.forEach((log) => {
+      filteredLogs.forEach((log) => {
         // Check if this is a READ_FILE tool call that starts a new file context
          if (log.type === "TOOL_CALL") {
            const result = parseToolCall(log.messages.join("\n"));
@@ -512,16 +513,28 @@ const RenderLogs = ({
               <div className="w-full flex flex-col items-start gap-3.5">
                 {processedLogs.map((log, i) => (
                   <React.Fragment key={i}>
-                    {log.type === "LLM_RESPONSE" && log.segments ? (
-                      <div className="w-full p-3 break-words text-sm m-0">
-                        <RenderLLMSegments segments={log.segments} repoId={repoId} analysisId={analysisId} isLoadedFromDb={isLoadedFromDb} />
-                      </div>
-                    ) : log.type === "TOOL_CALL" ? (
-                      <div className="w-full whitespace-pre-wrap text-sm m-0">
-                        <RenderToolCall log={log} />
-                      </div>
+                    {log.type === "TOOL_CALL" ? (
+                      (() => {
+                        // Only render READ_FILE_RESULT tool calls in main area
+                        // Other tool calls are handled within READ_FILE_RESULT accordions
+                        const result = parseToolCall(log.messages.join("\n"));
+                        if (result?.type === "READ_FILE_RESULT" && result?.result) {
+                          return (
+                            <div className="w-full whitespace-pre-wrap text-sm m-0">
+                              <RenderToolCall 
+                                log={log} 
+                                allLogs={processedLogs}
+                                repoId={repoId}
+                                analysisId={analysisId}
+                                isLoadedFromDb={isLoadedFromDb}
+                              />
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()
                     ) : log.type === "INITIALISATION" ? (
-                      <div className="w-full px-2 whitespace-pre-wrap dark:text-neutral-200 text-neutral-800 text-sm leading-7 m-0">
+                      <div className="w-full px-2 mb-6 whitespace-pre-wrap dark:text-neutral-200 text-neutral-800 text-sm leading-7 m-0">
                         <Accordion
                           type="single"
                           collapsible
