@@ -29,7 +29,7 @@ export default function EarlyAccessPage() {
       setRequesting(true);
       const res = await requestEarlyAccess();
       if (res?.success) {
-        toast.success("Early access requested. Check your email to confirm.");
+        toast.success("Early access requested. You will get access in 24 hrs.");
       } else {
         toast.error(res?.error || "Failed to request early access");
       }
