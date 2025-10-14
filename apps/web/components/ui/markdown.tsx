@@ -796,7 +796,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isUserMess
       },
       heading(children, level) {
         const key = generateStableKey(String(children).slice(0, 50), elementIndices.current.heading++);
-        const HeadingTag = `h${level}` as keyof React.JSX.IntrinsicElements;
+        const headingTag = `h${level}`;
         const sizeClasses =
           {
             1: 'text-2xl md:text-3xl font-extrabold mt-4 mb-4',
@@ -807,10 +807,13 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isUserMess
             6: 'text-xs md:text-sm font-medium mt-4 mb-2',
           }[level] || '';
 
-        return (
-          <HeadingTag key={key} className={`${sizeClasses} text-foreground tracking-tight`}>
-            {children}
-          </HeadingTag>
+        return React.createElement(
+          headingTag,
+          {
+            key,
+            className: `${sizeClasses} text-foreground tracking-tight`,
+          },
+          children
         );
       },
       list(children, ordered) {
