@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IUser extends Document {
   _id: string;
@@ -10,13 +10,15 @@ export interface IUser extends Document {
   organizationId?: string;
   teams?: Array<{
     _id: string;
-    role: 'admin' | 'member';
+    role: "admin" | "member";
   }>;
   password?: string;
   subscriptionPlanId: mongoose.Schema.Types.ObjectId;
-  subscriptionStatus?: 'active' | 'inactive' | 'cancelled' | 'free';
+  subscriptionStatus?: "active" | "inactive" | "cancelled" | "free";
   subscriptionStartDate?: Date;
   subscriptionEndDate?: Date;
+  earlyAccess?: boolean;
+  earlyAccessRequestedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,16 +52,18 @@ const userSchema = new Schema<IUser>(
       trim: true,
       lowercase: true,
     },
-    teams: [{
-      _id: {
-        type: String,
-        index: true,
+    teams: [
+      {
+        _id: {
+          type: String,
+          index: true,
+        },
+        role: {
+          type: String,
+          enum: ["admin", "member"],
+        },
       },
-      role: {
-        type: String,
-        enum: [ 'admin', 'member'],
-      },
-    }],
+    ],
     organizationId: {
       type: String,
       index: true,
@@ -69,25 +73,33 @@ const userSchema = new Schema<IUser>(
     },
     subscriptionPlanId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'SubscriptionPlan',
+      ref: "SubscriptionPlan",
       required: true,
       index: true,
     },
     subscriptionStatus: {
       type: String,
-      enum: ['active', 'inactive', 'cancelled', 'free'],
-      default: 'free',
+      enum: ["active", "inactive", "cancelled", "free"],
+      default: "free",
     },
     subscriptionStartDate: {
       type: Date,
     },
     subscriptionEndDate: {
       type: Date,
-    }
+    },
+    earlyAccess: {
+      type: Boolean,
+      default: false,
+    },
+    earlyAccessRequestedAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-export default mongoose.models.User || mongoose.model<IUser>('User', userSchema);
+export default mongoose.models.User ||
+  mongoose.model<IUser>("User", userSchema);
