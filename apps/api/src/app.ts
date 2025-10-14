@@ -34,7 +34,13 @@ export function createApp(): Application {
   // Middleware
   app.use(
     cors({
-      origin: [process.env.FRONTEND_URL!, "http://localhost:3000", "https://ai-code-review.vercel.app"], // Specific origin instead of '*'
+      origin: [
+        process.env.FRONTEND_URL!,
+        "http://localhost:3000",
+        "https://ai-code-review.vercel.app",
+        "https://ai-code-review-platform.dev",
+        "https://www.ai-code-review-platform.dev",
+      ], // Specific origin instead of '*'
       credentials: true,
     })
   );
