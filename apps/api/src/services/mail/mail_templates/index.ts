@@ -8,6 +8,7 @@ export { analysisErrorTemplate } from './analysisErrorTemplate.js';
 
 // User management templates
 export { welcomeTemplate } from './welcomeTemplate.js';
+export { earlyAccessTemplate } from './earlyAccessTemplate.js';
 
 // Template type mapping for easy access
 export const templates = {
@@ -15,6 +16,7 @@ export const templates = {
   analysisComplete: 'analysisCompleteTemplate',
   analysisError: 'analysisErrorTemplate',
   welcome: 'welcomeTemplate',
+  earlyAccess: 'earlyAccessTemplate',
 } as const;
 
 export type TemplateType = keyof typeof templates;
