@@ -719,3 +719,133 @@ export function removeLineNumberAnnotations(code: string): string {
 
   return cleanedLines.join('\n');
 }
+
+/**
+ * Interface for thinking block content
+ */
+export interface ThinkingBlock {
+  content: string;
+  startIndex: number;
+  endIndex: number;
+}
+
+/**
+ * Interface for text content with thinking blocks extracted
+ */
+export interface ProcessedTextContent {
+  segments: Array<{
+    type: 'text' | 'thinking';
+    content: string;
+    originalIndex: number;
+  }>;
+  hasThinking: boolean;
+}
+
+/**
+ * Extracts thinking blocks from text content
+ * @param text - The text content to process
+ * @returns Array of thinking blocks found in the text
+ */
+export function extractThinkingBlocks(text: string): ThinkingBlock[] {
+  if (!text || typeof text !== 'string') {
+    return [];
+  }
+
+  const thinkingBlocks: ThinkingBlock[] = [];
+  const regex = /<thinking>([\s\S]*?)<\/thinking>/gi;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match && match[1] !== undefined) {
+      thinkingBlocks.push({
+        content: match[1].trim(),
+        startIndex: match.index,
+        endIndex: match.index + match[0].length,
+      });
+    }
+  }
+
+  return thinkingBlocks;
+}
+
+/**
+ * Processes text content to separate thinking blocks from regular text
+ * @param text - The text content to process
+ * @returns Processed content with thinking blocks separated
+ */
+export function processTextWithThinking(text: string): ProcessedTextContent {
+  if (!text || typeof text !== 'string') {
+    return {
+      segments: [{ type: 'text', content: text || '', originalIndex: 0 }],
+      hasThinking: false,
+    };
+  }
+
+  const thinkingBlocks = extractThinkingBlocks(text);
+  
+  if (thinkingBlocks.length === 0) {
+    return {
+      segments: [{ type: 'text', content: text, originalIndex: 0 }],
+      hasThinking: false,
+    };
+  }
+
+  const segments: ProcessedTextContent['segments'] = [];
+  let currentIndex = 0;
+
+  // Sort thinking blocks by start index to process them in order
+  const sortedBlocks = thinkingBlocks.sort((a, b) => a.startIndex - b.startIndex);
+
+  for (const block of sortedBlocks) {
+    // Add text before thinking block
+    if (currentIndex < block.startIndex) {
+      const textContent = text.slice(currentIndex, block.startIndex).trim();
+      if (textContent) {
+        segments.push({
+          type: 'text',
+          content: textContent,
+          originalIndex: currentIndex,
+        });
+      }
+    }
+
+    // Add thinking block
+    segments.push({
+      type: 'thinking',
+      content: block.content,
+      originalIndex: block.startIndex,
+    });
+
+    currentIndex = block.endIndex;
+  }
+
+  // Add remaining text after last thinking block
+  if (currentIndex < text.length) {
+    const remainingText = text.slice(currentIndex).trim();
+    if (remainingText) {
+      segments.push({
+        type: 'text',
+        content: remainingText,
+        originalIndex: currentIndex,
+      });
+    }
+  }
+
+  return {
+    segments,
+    hasThinking: true,
+  };
+}
+
+/**
+ * Removes thinking blocks from text content
+ * @param text - The text content to clean
+ * @returns Text with thinking blocks removed
+ */
+export function removeThinkingBlocks(text: string): string {
+  if (!text || typeof text !== 'string') {
+    return text;
+  }
+
+  return text.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
+}

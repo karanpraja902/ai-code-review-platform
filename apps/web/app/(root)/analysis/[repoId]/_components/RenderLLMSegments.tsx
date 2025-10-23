@@ -16,7 +16,9 @@ import {
   parsePatchString,
   parseWarningString,
   removeLineNumberAnnotations,
+  processTextWithThinking,
 } from "@/lib/utils";
+import ThinkingBlock from "./ThinkingBlock";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -460,33 +462,52 @@ export const RenderLLMSegments = React.memo(function RenderLLMSegments({
 
   return segments.map((seg, i) => {
     if (seg.kind === "text") {
+      // Process the text content to extract thinking blocks
+      const processedContent = processTextWithThinking(seg.content);
+      
       return (
-        <div
-          key={i}
-          className="w-full dark:text-neutral-200 text-neutral-800 text-sm leading-7 mb-2 whitespace-pre-wrap">
-          <Markdown
-            components={{
-              code(props) {
-                const { children, className, ...rest } = props;
-                const match = /language-(\w+)/.exec(className || "");
-                return match ? (
-                  <SyntaxHighlighter
-                    PreTag="div"
-                    language={match[1]}
-                    style={vscDarkPlus}>
-                    {removeLineNumberAnnotations(String(children).replace(/\n$/, ""))}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code
-                    {...rest}
-                    className={cn("w-full whitespace-pre-wrap", className)}>
-                    {removeLineNumberAnnotations(String(children))}
-                  </code>
-                );
-              },
-            }}>
-            {seg.content}
-          </Markdown>
+        <div key={i} className="w-full mb-2">
+          {processedContent.segments.map((segment, segIndex) => {
+            if (segment.type === 'thinking') {
+              return (
+                <ThinkingBlock
+                  key={`${i}-thinking-${segIndex}`}
+                  content={segment.content}
+                  className="my-4"
+                />
+              );
+            } else {
+              return (
+                <div
+                  key={`${i}-text-${segIndex}`}
+                  className="w-full dark:text-neutral-200 text-neutral-800 text-sm leading-7 mb-2 whitespace-pre-wrap">
+                  <Markdown
+                    components={{
+                      code(props) {
+                        const { children, className, ...rest } = props;
+                        const match = /language-(\w+)/.exec(className || "");
+                        return match ? (
+                          <SyntaxHighlighter
+                            PreTag="div"
+                            language={match[1]}
+                            style={vscDarkPlus}>
+                            {removeLineNumberAnnotations(String(children).replace(/\n$/, ""))}
+                          </SyntaxHighlighter>
+                        ) : (
+                          <code
+                            {...rest}
+                            className={cn("w-full whitespace-pre-wrap", className)}>
+                            {removeLineNumberAnnotations(String(children))}
+                          </code>
+                        );
+                      },
+                    }}>
+                    {segment.content}
+                  </Markdown>
+                </div>
+              );
+            }
+          })}
         </div>
       );
     }
