@@ -24,20 +24,27 @@ interface PageProps {
 const Page = async (props: PageProps) => {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const orgSlug = searchParams?.orgSlug || "all"
+  const orgSlug = searchParams?.orgSlug || "all";
   const query = searchParams?.query || "";
   const scope = (searchParams?.scope as RepoScope) || "team"; // Default to team scope for team routes
   const teamId = searchParams?.teamId;
   const teamSlug = params.teamSlug;
-  
-  logger.info(`Team analysis page loaded with query:`, { query, scope, teamId, teamSlug });
+
+  logger.info(`Team analysis page loaded with query:`, {
+    query,
+    scope,
+    teamId,
+    teamSlug,
+  });
 
   return (
     <div className="h-svh max-w-8xl w-full mx-auto py-5 px-4">
       <div className="h-full p-4">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
           <div>
-            <h2 className="text-2xl font-medium">Team Repositories</h2>
+            <h2 className="text-xl lg:text-2xl font-medium">
+              Team Repositories
+            </h2>
             <p className="text-sm text-gray-500">Team: {teamSlug}</p>
           </div>
 
@@ -52,7 +59,12 @@ const Page = async (props: PageProps) => {
         </div>
 
         <Suspense fallback={<RepositoryListSkeleton />}>
-          <RepositoryList query={query} scope={scope} teamId={teamId} orgSlug={orgSlug} />
+          <RepositoryList
+            query={query}
+            scope={scope}
+            teamId={teamId}
+            orgSlug={orgSlug}
+          />
         </Suspense>
       </div>
     </div>

@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -63,9 +69,11 @@ export function AddRepositoriesModal({ teamSlug }: AddRepositoriesModalProps) {
     try {
       const repoIds = Array.from(selectedRepos);
       const result = await addRepositoriesToTeam(repoIds);
-      
+
       if (result.success) {
-        toast.success(`Successfully added ${result.data?.modifiedCount || selectedRepos.size} repositories to team`);
+        toast.success(
+          `Successfully added ${result.data?.modifiedCount || selectedRepos.size} repositories to team`
+        );
         setSelectedRepos(new Set());
         setOpen(false);
         // Refresh the page to show updated repositories
@@ -86,24 +94,18 @@ export function AddRepositoriesModal({ teamSlug }: AddRepositoriesModalProps) {
       <DialogTrigger asChild>
         <Button className="cursor-pointer text-xs">
           <Plus />
-          <span>Add Repositories</span>
+          <span className="hidden lg:block">Add Repositories</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle>Add Repositories to Team</DialogTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="ml-auto"
-          >
+          <Button variant="outline" size="sm" asChild className="ml-auto">
             <a
               href="https://github.com/apps/ai-code-review-platform/installations/select_target"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
+              className="flex items-center gap-2">
               <ExternalLink className="h-4 w-4" />
               Add from GitHub
             </a>
@@ -131,18 +133,21 @@ export function AddRepositoriesModal({ teamSlug }: AddRepositoriesModalProps) {
               </div>
             ) : repositories.length === 0 ? (
               <div className="flex items-center justify-center p-8 text-gray-500">
-                {searchQuery ? "No repositories found" : "No repositories available"}
+                {searchQuery
+                  ? "No repositories found"
+                  : "No repositories available"}
               </div>
             ) : (
               <div className="p-4 space-y-3">
                 {repositories.map((repo) => (
                   <div
                     key={repo.repositoryId}
-                    className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-neutral-800"
-                  >
+                    className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-neutral-800">
                     <Checkbox
                       checked={selectedRepos.has(repo.repositoryId)}
-                      onCheckedChange={() => handleRepoToggle(repo.repositoryId)}
+                      onCheckedChange={() =>
+                        handleRepoToggle(repo.repositoryId)
+                      }
                     />
                     <div className="flex-1">
                       <div className="font-medium">{repo.fullName}</div>
@@ -181,8 +186,7 @@ export function AddRepositoriesModal({ teamSlug }: AddRepositoriesModalProps) {
               </Button>
               <Button
                 onClick={handleAddRepositories}
-                disabled={selectedRepos.size === 0 || adding}
-              >
+                disabled={selectedRepos.size === 0 || adding}>
                 {adding ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />

@@ -43,30 +43,42 @@ export const MacbookScroll = ({
     offset: ["start start", "end start"],
   });
 
-  const [screenSize, setScreenSize] = useState<'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl' | 'xxxl' | 'xxxxl' | 'xxxxxl' | 'xxxxxxl' | 'xxxxxxxl'>('lg');
+  const [screenSize, setScreenSize] = useState<
+    | "xs"
+    | "sm"
+    | "md"
+    | "lg"
+    | "xl"
+    | "xxl"
+    | "xxxl"
+    | "xxxxl"
+    | "xxxxxl"
+    | "xxxxxxl"
+    | "xxxxxxxl"
+  >("lg");
 
-  console.log(screenSize)
+  console.log(screenSize);
   useEffect(() => {
     const updateScreenSize = () => {
       const width = window.innerWidth;
       if (width < 480) {
-        setScreenSize('xs');        // Extra small phones
+        setScreenSize("xs"); // Extra small phones
       } else if (width < 800) {
-        setScreenSize('sm');        // Small phones
+        setScreenSize("sm"); // Small phones
       } else if (width < 955) {
-        setScreenSize('md');        // Large phones / Small tablets
+        setScreenSize("md"); // Large phones / Small tablets
       } else if (width < 1200) {
-        setScreenSize('lg');        // Tablets / Small laptops
+        setScreenSize("lg"); // Tablets / Small laptops
       } else if (width < 1350) {
-        setScreenSize('xl');        // Laptops
+        setScreenSize("xl"); // Laptops
       } else if (width < 1460) {
-        setScreenSize('xxl');       // Large laptops
+        setScreenSize("xxl"); // Large laptops
       } else if (width < 1600) {
-        setScreenSize('xxxl');      // Small desktops
+        setScreenSize("xxxl"); // Small desktops
       } else if (width < 1820) {
-        setScreenSize('xxxxl');     // Standard desktops
+        setScreenSize("xxxxl"); // Standard desktops
       } else {
-        setScreenSize('xxxxl');  // 4K+ monitors
+        setScreenSize("xxxxl"); // 4K+ monitors
       }
     };
 
@@ -74,31 +86,31 @@ export const MacbookScroll = ({
     updateScreenSize();
 
     // Add resize listener
-    window.addEventListener('resize', updateScreenSize);
+    window.addEventListener("resize", updateScreenSize);
 
     // Cleanup
-    return () => window.removeEventListener('resize', updateScreenSize);
+    return () => window.removeEventListener("resize", updateScreenSize);
   }, []);
 
   // Define scale values for different screen sizes
   const getScaleValues = () => {
     switch (screenSize) {
-      case 'xs':
-        return { scaleXEnd: 1.0, scaleYEnd: 1.30 };   // 0-479px
-      case 'sm':
-        return { scaleXEnd: 1.20, scaleYEnd: 1.50 };   // 480-639px
-      case 'md':
-        return { scaleXEnd: 1.45, scaleYEnd: 1.65 };   // 640-767px
-      case 'lg':
-        return { scaleXEnd: 1.75, scaleYEnd: 1.85 };   // 768-1023px
-      case 'xl':
-        return { scaleXEnd: 2.20, scaleYEnd: 2.20 };   // 1024-1279px
-      case 'xxl':
-        return { scaleXEnd: 2.50, scaleYEnd: 2.50 };  // 1280-1439px
-      case 'xxxl':
-        return { scaleXEnd: 2.70, scaleYEnd: 2.70 };   // 1440-1599px
-      case 'xxxxl':
-        return { scaleXEnd: 2.75, scaleYEnd: 2.75 };   // 1600-1919px
+      case "xs":
+        return { scaleXEnd: 1.0, scaleYEnd: 1.3 }; // 0-479px
+      case "sm":
+        return { scaleXEnd: 1.2, scaleYEnd: 1.5 }; // 480-639px
+      case "md":
+        return { scaleXEnd: 1.45, scaleYEnd: 1.65 }; // 640-767px
+      case "lg":
+        return { scaleXEnd: 1.75, scaleYEnd: 1.85 }; // 768-1023px
+      case "xl":
+        return { scaleXEnd: 2.2, scaleYEnd: 2.2 }; // 1024-1279px
+      case "xxl":
+        return { scaleXEnd: 2.5, scaleYEnd: 2.5 }; // 1280-1439px
+      case "xxxl":
+        return { scaleXEnd: 2.7, scaleYEnd: 2.7 }; // 1440-1599px
+      case "xxxxl":
+        return { scaleXEnd: 2.75, scaleYEnd: 2.75 }; // 1600-1919px
       default:
         return { scaleXEnd: 2.75, scaleYEnd: 2.0 };
     }
@@ -106,16 +118,8 @@ export const MacbookScroll = ({
 
   const { scaleXEnd, scaleYEnd } = getScaleValues();
 
-  const scaleX = useTransform(
-    scrollYProgress,
-    [0, 0.3],
-    [1.2, scaleXEnd]
-  );
-  const scaleY = useTransform(
-    scrollYProgress,
-    [0, 0.3],
-    [0.6, scaleYEnd]
-  );
+  const scaleX = useTransform(scrollYProgress, [0, 0.3], [1.2, scaleXEnd]);
+  const scaleY = useTransform(scrollYProgress, [0, 0.3], [0.6, scaleYEnd]);
   const translate = useTransform(scrollYProgress, [0, 1], [0, 1500]);
   const rotate = useTransform(scrollYProgress, [0.1, 0.12, 0.3], [-28, -28, 0]);
   const textTransform = useTransform(scrollYProgress, [0, 0.3], [0, 100]);
@@ -124,7 +128,7 @@ export const MacbookScroll = ({
   return (
     <div
       ref={ref}
-      className="flex min-h-[200vh] shrink-0 scale-[0.35] transform flex-col items-center justify-start py-0 [perspective:800px] sm:scale-50 md:scale-100 md:py-52">
+      className="flex min-h-[50vh] md:min-h-[200vh] shrink-0 scale-[0.35] transform flex-col items-center justify-start py-0 [perspective:800px] sm:scale-50 md:scale-100 md:py-52">
       {title && (
         <motion.h2
           style={{
