@@ -418,8 +418,36 @@ export const PrData = async (payload: any) => {
           additions: commit.stats?.additions,
           deletions: commit.stats?.deletions,
           total: commit.stats?.total
-        }
+        },
+        files: [] // Initialize empty files array - will be populated later
       }));
+
+      // Fetch individual commit details to get files changed per commit
+      for (let i = 0; i < commits.length; i++) {
+        try {
+          const commitDetail = await octokit.repos.getCommit({
+            owner,
+            repo,
+            ref: commits[i].sha
+          });
+          
+          commits[i].files = commitDetail?.data?.files?.map((file: any) => ({
+            filename: file.filename,
+            status: file.status, // added, modified, removed, renamed
+            additions: file.additions,
+            deletions: file.deletions,
+            changes: file.changes,
+            patch: file.patch, // The actual diff content for this commit
+            blobUrl: file.blob_url,
+            rawUrl: file.raw_url,
+            contentsUrl: file.contents_url,
+            previousFilename: file.previous_filename // for renamed files
+          }));
+        } catch (commitError) {
+          console.warn(`Failed to fetch details for commit ${commits[i].sha}:`, commitError);
+          // Keep empty files array if we can't fetch commit details
+        }
+      }
       
       // Get PR reviews
       const reviewsResponse = await octokit.pulls.listReviews({
@@ -498,18 +526,19 @@ export const PrData = async (payload: any) => {
           deletions: pull_request.deletions,
           commits: pull_request.commits
         },
-        files: filesChanged.map((file: any) => ({
-          filename: file.filename,
-          status: file.status,
-          additions: file.additions,
-          deletions: file.deletions,
-          patch: file.patch // The actual diff
-        })),
+      
         commits: commits.map((commit: any) => ({
           sha: commit.sha,
           message: commit.message,
           author: commit.author.name || commit.author.login,
-          date: commit.author.date
+          date: commit.author.date,
+          files: commit.files.map((file: any) => ({
+            filename: file.filename,
+            status: file.status,
+            additions: file.additions,
+            deletions: file.deletions,
+            patch: file.patch // The actual diff for this specific commit
+          }))
         })),
         fullDiff: diffContent.slice(0, 100000) // Increased limit for comprehensive analysis
       },
@@ -537,7 +566,8 @@ export const PrData = async (payload: any) => {
         hasDocChanges: (filesChanged as any[]).some(f => f.filename.includes('README') || f.filename.includes('.md')),
         hasDependencyChanges: (filesChanged as any[]).some(f => f.filename.includes('package.json') || f.filename.includes('requirements.txt')),
         primaryLanguages: [...new Set((filesChanged as any[]).map(f => f.filename.split('.').pop()).filter(Boolean))].slice(0, 5)
-      }
+      },
+      createdAt: new Date(),
     };
 
     const pr_data = await mongoose.connection.db?.collection('pull_request_datas').insertOne(modelAnalysisData);
