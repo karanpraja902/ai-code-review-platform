@@ -8,13 +8,14 @@ export interface PRCommentContext {
   repo: string;
   pullNumber: number;
   commitSha?: string;
+  filesChanged?: string[]; // optional list of filenames (and previous filenames) from PR
 }
 
 export interface ParsedSuggestion {
   filePath: string;
   lineStart: number;
   lineEnd?: number;
-  suggestionCode: string;
+  suggestionCode?: string;
   originalComment: string;
   severity?: string;
   issueType?: string;
@@ -24,10 +25,49 @@ export class PRCommentService {
   private context: PRCommentContext;
   private octokit: ReturnType<typeof getInstallationOctokit>;
   private postedComments: Set<string> = new Set();
+  private filesInPR?: Set<string>;
 
   constructor(context: PRCommentContext) {
     this.context = context;
     this.octokit = getInstallationOctokit(context.installationId);
+    if (Array.isArray(context.filesChanged) && context.filesChanged.length > 0) {
+      // Normalize and store filenames for quick membership checks
+      this.filesInPR = new Set(
+        context.filesChanged
+          .filter(Boolean)
+          .map((p) => p.trim().replace(/^\.\//, ''))
+      );
+    }
+  }
+
+  /**
+   * Check if a given file path is part of the current PR changes
+   * Includes support for renamed files via previous_filename
+   */
+  private async isFileInPR(filePath: string): Promise<boolean> {
+    try {
+      const normalizedPath = filePath.trim().replace(/^\.\//, '');
+
+      // Prefer provided files list if available
+      console.log("🔍 Files in PR Set: ", Array.from(this.filesInPR || []));
+      console.log(`[PR-${this.context.pullNumber}] 🔎 Checking provided filesChanged list for: "${normalizedPath}"`);
+      const isFileInPR = this.filesInPR?.has(normalizedPath) || false;
+      console.log(`[PR-${this.context.pullNumber}] 🔍 Is file in PR: ${isFileInPR}`);
+      
+      // Additional debug: check if there's a partial match
+      if (!isFileInPR && this.filesInPR) {
+        const matchingFiles = Array.from(this.filesInPR).filter(f => f.includes(normalizedPath) || normalizedPath.includes(f));
+        if (matchingFiles.length > 0) {
+          console.log(`[PR-${this.context.pullNumber}] ⚠️ Found similar files:`, matchingFiles);
+        }
+      }
+      
+      return isFileInPR;
+   
+    } catch (e) {
+      console.error(`[PR-${this.context.pullNumber}] Failed to list PR files for validation:`, e);
+      return false;
+    }
   }
 
   /**
@@ -55,6 +95,14 @@ export class PRCommentService {
         '```suggestion\n' + cleanSuggestionCode + '\n```'
       );
     }
+
+    // Step 4.5: Ensure a blank line between </summary> and the ```suggestion code block inside <details>
+    // Some comments may have the suggestion block immediately after </summary> without a blank line.
+    // Normalize it to have exactly one blank line to render properly in GitHub.
+    processedContent = processedContent.replace(
+      /(<details>[\s\S]*?<summary>[\s\S]*?<\/summary>)(\s*)(```suggestion)/g,
+      '$1\n\n$3'
+    );
     
     // Step 5: Clean up any extra whitespace
     processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
@@ -73,7 +121,7 @@ export class PRCommentService {
       const fileMatch = content.match(/\*\*File\*\*:\s*`([^`]+)`/);
       if (!fileMatch) return null;
       
-      const filePath = fileMatch[1];
+      const filePath = fileMatch[1].trim();
       
       // Extract line numbers
       const lineStartMatch = content.match(/\*\*Line_Start\*\*:\s*(\d+)/);
@@ -84,15 +132,11 @@ export class PRCommentService {
       const lineStart = parseInt(lineStartMatch[1]);
       const lineEnd = lineEndMatch ? parseInt(lineEndMatch[1]) : undefined;
       
-      // Extract suggestion code (raw - will be cleaned later by processCommentForGitHub)
+      // Extract suggestion code if present (raw - will be cleaned later by processCommentForGitHub)
       const suggestionMatch = content.match(/```suggestion\s*\n([\s\S]*?)\n```/);
-      if (!suggestionMatch) return null;
+      const suggestionCode = suggestionMatch ? suggestionMatch[1].trim() : undefined;
       
-      const suggestionCode = suggestionMatch[1].trim();
-      
-      // Extract optional fields
-      const severityMatch = content.match(/\*\*Severity\*\*:\s*([^\n]+)/);
-      const issueTypeMatch = content.match(/##\s*\[([^\]]+)\]:/);
+
       
       return {
         filePath,
@@ -100,8 +144,6 @@ export class PRCommentService {
         lineEnd,
         suggestionCode,
         originalComment: content,
-        severity: severityMatch ? severityMatch[1].trim() : undefined,
-        issueType: issueTypeMatch ? issueTypeMatch[1].trim() : undefined
       };
     } catch (error) {
       console.error('Error parsing suggestion comment:', error);
@@ -119,6 +161,15 @@ export class PRCommentService {
         return false;
       }
 
+      // Validate that the path exists in the PR; otherwise the API returns 422
+      const pathInPR = await this.isFileInPR(suggestion.filePath);
+      if (!pathInPR) {
+        console.warn(
+          `[PR-${this.context.pullNumber}] ⚠️ File path not found in PR changes: ${suggestion.filePath}. Falling back to regular comment.`
+        );
+        return false;
+      }
+
       // Process the comment comprehensively for GitHub posting
       let reviewBody = this.processCommentForGitHub(suggestion.originalComment, suggestion.suggestionCode);
 
@@ -127,6 +178,7 @@ export class PRCommentService {
         const lineRangeInfo = `\n\n*📍 This suggestion applies to lines ${suggestion.lineStart}-${suggestion.lineEnd}*`;
         reviewBody = reviewBody + lineRangeInfo;
       }
+
 
       // Prepare the review comment parameters
       const reviewCommentParams: any = {
@@ -139,6 +191,8 @@ export class PRCommentService {
         side: 'RIGHT',
         line: suggestion.lineEnd || suggestion.lineStart
       };
+
+      console.log("🔄 Review comment params: ", reviewCommentParams);
 
       // If we have both lineStart and lineEnd, and they're different, use multi-line comment
       if (suggestion.lineEnd && suggestion.lineEnd !== suggestion.lineStart) {
@@ -173,10 +227,28 @@ export class PRCommentService {
         return false;
       }
 
+      // Post as a regular issue comment ONLY for summary comments
+      const trimmed = comment.content.trim();
+      if (trimmed.startsWith('## Summary by AI Code Review')) {
+        console.log("🔄 Posting regular summary comment");
+        const response = await this.octokit.issues.createComment({
+          owner: this.context.owner,
+          repo: this.context.repo,
+          issue_number: this.context.pullNumber,
+          body: comment.content
+        });
+
+        this.postedComments.add(commentHash);
+        console.log(`[PR-${this.context.pullNumber}] ✅ Posted summary comment: ${response.data.html_url}`);
+        return true;
+      }
+
       // Check if this is a suggestion comment
       const suggestion = this.parseSuggestionComment(comment.content);
       
+      console.log("🔄 Suggestion: ", suggestion);
       if (suggestion) {
+        console.log("🔄 Posting review comment with suggestion");
         // Try to post as a review comment with suggestion
         const reviewSuccess = await this.postReviewComment(suggestion);
         
@@ -185,22 +257,12 @@ export class PRCommentService {
           return true;
         }
         
-        // If review comment fails, fall back to regular comment
-        console.log(`[PR-${this.context.pullNumber}] Review comment failed, falling back to regular comment`);
+        console.log(`[PR-${this.context.pullNumber}] ❌ Review comment failed`);
+        return false;
       }
 
-      // Post as regular issue comment
-      const response = await this.octokit.issues.createComment({
-        owner: this.context.owner,
-        repo: this.context.repo,
-        issue_number: this.context.pullNumber,
-        body: comment.content
-      });
-
-      this.postedComments.add(commentHash);
-      
-      console.log(`[PR-${this.context.pullNumber}] ✅ Posted comment: ${response.data.html_url}`);
-      return true;
+      console.log(`[PR-${this.context.pullNumber}] ❌ No valid suggestion found in comment; not posting regular comment`);
+      return false;
     } catch (error) {
       console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post comment:`, error);
       return false;

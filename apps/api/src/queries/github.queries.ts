@@ -390,6 +390,8 @@ export const PrData = async (payload: any) => {
         contentsUrl: file.contents_url,
         previousFilename: file.previous_filename // for renamed files
       }));
+
+      console.log("🔍 Files changed in PR: ", filesChanged.map((f: any) => f.filename));
       
       // Get commits in the PR
       const commitsResponse = await octokit.pulls.listCommits({
@@ -570,6 +572,12 @@ export const PrData = async (payload: any) => {
       createdAt: new Date(),
     };
 
+    // Use the filesChanged from pulls.listFiles which is authoritative
+    const filesChangedForAnalysis = Array.from(new Set(
+      filesChanged.map((f: any) => f.filename)
+    ));
+    console.log("🔍 Files changed for analysis: ", filesChangedForAnalysis);
+
     const pr_data = await mongoose.connection.db?.collection('pull_request_datas').insertOne(modelAnalysisData);
     logger.info("PR data inserted into MongoDB", { 
       prNumber: pull_request.number, 
@@ -621,12 +629,14 @@ export const PrData = async (payload: any) => {
 
         // Initialize PR comment service
         const [owner, repo] = repository.full_name.split('/');
+
         const prCommentContext: PRCommentContext = {
           installationId: installation.id,
           owner,
           repo,
           pullNumber: pull_request.number,
-          commitSha: pull_request.head.sha
+          commitSha: pull_request.head.sha,
+          filesChanged: filesChangedForAnalysis
         };
         const prCommentService = new PRCommentService(prCommentContext);
         
@@ -683,7 +693,7 @@ export const PrData = async (payload: any) => {
           repoUrl,
           branchForAnalysis,
           githubInstallation.userId,
-          "gemini-2.0-flash", // model
+          "gemini-2.5-pro", // model
           prAnalysisPrompt,
           "pr_analysis", // analysisType
           callbacks,

@@ -29,7 +29,7 @@ export const executeAnalysis = async (
   repoUrl: string,
   branch: string,
   userId: string,
-  model = "gemini-2.0-flash",
+  model = "gemini-2.5-pro",
   prompt = "Analyze this codebase for security vulnerabilities and code quality",
   analysisType: string,
   callbacks?: StreamingCallbacks,
