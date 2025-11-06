@@ -3,6 +3,8 @@ services:
     # Production-specific overrides
     environment:
       - NODE_ENV=production
+      - COREPACK_ENABLE_DOWNLOAD=0
+
     
     # Production logging configuration
     logging:
@@ -33,9 +35,9 @@ services:
     tmpfs:
       - /tmp
       - /app/apps/api/logs
-      - /home/apiuser/.cache
-      - /home/apiuser/.local
-      - /home/apiuser/.pnpm-state
+      - /home/apiuser/.cache:uid=1001,gid=1001,mode=700
+      - /home/apiuser/.local:uid=1001,gid=1001,mode=700
+      - /home/apiuser/.pnpm-state:uid=1001,gid=1001,mode=700
     
     # Additional security options
     cap_drop:

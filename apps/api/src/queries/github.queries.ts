@@ -804,7 +804,7 @@ export const PrData = async (payload: any) => {
           callbacks,
           {pr_data_id: prDataInsertedId, 
             auth_token: sandbox_token.auth_token,
-            base_url: "https://redbird-polished-whippet.ngrok-free.app",
+            base_url: "https://ai-code-reviewapi.ai-code-review-platform.dev",
             // Pass PR metadata for persistence
             pr_number: pull_request.number,
             pr_url: prUrl,
