@@ -83,7 +83,8 @@ export const executeAnalysis = async (
     // Create analysis record upfront with 'running' status (only if not pre-created)
     if (!preCreatedAnalysisId) {
       try {
-        await Analysis.create({
+        // Base payload for analysis record
+        const createPayload: any = {
           _id,
           analysis_type: analysisType,
           userId,
@@ -93,7 +94,31 @@ export const executeAnalysis = async (
           model,
           prompt,
           status: "running",
-        });
+        };
+
+        // For PR analysis, include PR-specific fields
+        if (analysisType === "pr_analysis") {
+          // Use provided pr_number if available in data
+          if (data && typeof data.pr_number === "number") {
+            createPayload.pr_number = data.pr_number;
+          }
+          // Prefer provided pr_url, else construct from repoUrl + pr_number
+          if (data && typeof data.pr_url === "string" && data.pr_url.length > 0) {
+            createPayload.pr_url = data.pr_url;
+          } else if (createPayload.pr_number && repoUrl) {
+            createPayload.pr_url = `${repoUrl}/pull/${createPayload.pr_number}`;
+          }
+          // Store PR title if provided
+          if (data && typeof data.pr_title === "string" && data.pr_title.length > 0) {
+            createPayload.pr_title = data.pr_title;
+          }
+          // Options field should only be present for PR review context
+          if (data && typeof data.options === "object") {
+            createPayload.options = data.options;
+          }
+        }
+
+        await Analysis.create(createPayload);
         console.log(`📝 Analysis record created with ID: ${_id}`);
       } catch (createError) {
         console.error("❌ Failed to create analysis record:", createError);

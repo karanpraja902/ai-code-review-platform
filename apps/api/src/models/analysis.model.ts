@@ -10,6 +10,12 @@ export interface IAnalysis {
   model: string;
   prompt: string;
   status: 'draft' | 'running' | 'completed' | 'interrupted' | 'error';
+  // PR-specific fields (only present for 'pr_analysis')
+  pr_number?: number;
+  pr_url?: string;
+  pr_title?: string;
+  // Options field only for PR review context
+  options?: Record<string, any>;
   exitCode?: number | null;
   logsCompressed?: Buffer;
   compression?: {
@@ -35,6 +41,12 @@ const AnalysisSchema = new Schema<IAnalysis>(
       enum: ['draft', 'running', 'completed', 'interrupted', 'error'],
       required: true,
     },
+    // Optional PR-specific fields
+    pr_number: { type: Number },
+    pr_url: { type: String },
+    pr_title: { type: String },
+    // Options field used only for PR review context
+    options: { type: Schema.Types.Mixed },
     exitCode: { type: Number },
     logsCompressed: { type: Buffer },
     compression: {
