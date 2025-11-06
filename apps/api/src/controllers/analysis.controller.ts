@@ -357,6 +357,40 @@ export const getRepositoryAnalysis = async (
   }
 };
 
+// Get PR analyses for the authenticated user
+export const getPrAnalyais = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?._id;
+    console.log(userId, "here is the user id")
+
+    if (!userId) {
+      return next(new CustomError("Unauthorized", 401));
+    }
+
+    const docs = await Analysis.find({
+      analysis_type: "pr_analysis",
+      userId: userId,
+    })
+      .sort({ createdAt: -1 })
+      .select("repoUrl model status pr_number pr_url pr_title createdAt");
+
+    return res.status(200).json({
+      success: true,
+      data: docs,
+    });
+  } catch (error: any) {
+    logger.error("Error fetching PR analyses", {
+      error: error instanceof Error ? error.message : error,
+      userId: req.user?._id,
+    });
+    next(new CustomError(error.message || "Failed to fetch PR analyses", 500));
+  }
+};
+
 export const updateAnalysisStatus = async (
   req: Request,
   res: Response,

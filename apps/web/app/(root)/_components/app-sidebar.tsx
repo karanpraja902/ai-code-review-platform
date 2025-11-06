@@ -31,6 +31,11 @@ const items = [
     icon: StarsIcon,
   },
   {
+    title: "Pull Requests",
+    url: "/pr-analysis",
+    icon: ScanTextIcon,
+  },
+  {
     title: "Analysis",
     url: "/analysis",
     icon: ScanTextIcon,

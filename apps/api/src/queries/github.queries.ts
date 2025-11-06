@@ -705,7 +705,7 @@ export const PrData = async (payload: any) => {
           const checkRun = await octokit.checks.create({
             owner,
             repo,
-            name: 'AI Code Review Platform Review',
+            name: 'AI Code Review',
             head_sha: pull_request.head.sha,
             status: 'in_progress',
             started_at: new Date().toISOString(),
@@ -732,7 +732,7 @@ export const PrData = async (payload: any) => {
               repo,
               sha: pull_request.head.sha,
               state: 'pending',
-              context: 'AI Code Review Platform Review',
+              context: 'AI Code Review',
               description: 'AI Code Review Platform is reviewing…',
               target_url: `https://ai-code-reviewai.ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
             });
@@ -792,6 +792,7 @@ export const PrData = async (payload: any) => {
         };
 
         // Start analysis in background (don't await to avoid blocking webhook response)
+        const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
         executeAnalysis(
           githubRepo._id as string,
           repoUrl,
@@ -803,7 +804,11 @@ export const PrData = async (payload: any) => {
           callbacks,
           {pr_data_id: prDataInsertedId, 
             auth_token: sandbox_token.auth_token,
-            base_url: "https://ai-code-reviewapi.ai-code-review-platform.dev"
+            base_url: "https://redbird-polished-whippet.ngrok-free.app",
+            // Pass PR metadata for persistence
+            pr_number: pull_request.number,
+            pr_url: prUrl,
+            pr_title: pull_request.title
           },
           user.email
         ).then(async (result) => {
@@ -850,9 +855,9 @@ export const PrData = async (payload: any) => {
                 repo,
                 sha: pull_request.head.sha,
                 state: 'success',
-                context: 'AI Code Review Platform Review',
+                context: 'AI Code Review',
                 description: 'AI Code Review Platform review completed',
-                target_url: `https://ai-code-reviewai.ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
+                target_url: `https://ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
               });
             } catch (statusErr) {
               logger.warn('Failed to update fallback commit status to success', { error: statusErr instanceof Error ? statusErr.message : statusErr });
@@ -899,9 +904,9 @@ export const PrData = async (payload: any) => {
                 repo,
                 sha: pull_request.head.sha,
                 state: 'failure',
-                context: 'AI Code Review Platform Review',
+                context: 'AI Code Review',
                 description: 'AI Code Review Platform review failed',
-                target_url: `https://ai-code-reviewai.ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
+                target_url: `https://ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
               });
             } catch (statusErr) {
               logger.warn('Failed to update fallback commit status to failure', { error: statusErr instanceof Error ? statusErr.message : statusErr });

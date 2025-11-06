@@ -1,4 +1,4 @@
-name: CodeDetector-API-Deployment
+name: AI Code Review-API-Deployment
 
 on:
   push:
