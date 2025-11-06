@@ -146,6 +146,8 @@ import { commentOnIssueOpened, create_github_installation, delete_github_install
 
   webhooks.on('pull_request.opened', handlePullRequestAnalysis);
   webhooks.on('pull_request.reopened', handlePullRequestAnalysis);
+  // Trigger analysis when new commits are pushed to the PR
+  webhooks.on('pull_request.synchronize', handlePullRequestAnalysis);
   
   // Log all webhook events
   webhooks.onAny(({ name, payload }) => {

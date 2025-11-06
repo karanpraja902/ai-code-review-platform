@@ -488,7 +488,11 @@ export const PrData = async (payload: any) => {
     }
     
     // Streamlined response for model analysis
-    const modelAnalysisData = {
+    // Create a unique key per PR for deduplication and updates
+    const prKey = `${repository.full_name}#${pull_request.number}`;
+    const latestCommitSha = (commits[commits.length - 1]?.sha) || pull_request.head.sha;
+
+    const modelAnalysisData: any = {
       // Essential PR Information
       pr: {
         number: pull_request.number,
@@ -519,6 +523,9 @@ export const PrData = async (payload: any) => {
           sha: pull_request.base.sha
         }
       },
+      // Unique identifiers for dedupe and tracking
+      prKey,
+      latestCommitSha,
       
       // Core Changes Data
       changes: {
@@ -578,11 +585,62 @@ export const PrData = async (payload: any) => {
     ));
     console.log("🔍 Files changed for analysis: ", filesChangedForAnalysis);
 
-    const pr_data = await mongoose.connection.db?.collection('pull_request_datas').insertOne(modelAnalysisData);
-    logger.info("PR data inserted into MongoDB", { 
-      prNumber: pull_request.number, 
-      repository: repository.full_name 
-    });
+    // Before inserting, check if we already have data for this PR and only insert for NEW commits
+    const prCollection = mongoose.connection.db?.collection('pull_request_datas');
+    const latestStored = await prCollection?.find({
+      $or: [
+        { prKey },
+        // Fallback query for legacy entries without prKey
+        { 'pr.number': pull_request.number, 'repository.name': repository.full_name }
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .limit(1)
+    .toArray();
+
+    const previousEntry = latestStored && latestStored[0] ? latestStored[0] : null;
+    const previousCommitShas: string[] = previousEntry?.changes?.commits?.map((c: any) => c.sha) || [];
+
+    // Filter only new commits (not present in previous entry)
+    const newCommitsOnly = commits.filter((c: any) => !previousCommitShas.includes(c.sha));
+    let prDataInsertedId: string | undefined;
+
+    if (newCommitsOnly.length === 0) {
+      logger.info("No new commits detected for PR; skipping insertion", {
+        prNumber: pull_request.number,
+        repository: repository.full_name,
+        latestCommitSha
+      });
+    } else {
+      // Replace commits array with only new commits for this insertion
+      modelAnalysisData.changes.commits = newCommitsOnly.map((commit: any) => ({
+        sha: commit.sha,
+        message: commit.message,
+        author: commit.author.name || commit.author.login,
+        date: commit.author.date,
+        files: commit.files.map((file: any) => ({
+          filename: file.filename,
+          status: file.status,
+          additions: file.additions,
+          deletions: file.deletions,
+          patch: file.patch
+        }))
+      }));
+
+      const insertResult = await prCollection?.insertOne(modelAnalysisData);
+      prDataInsertedId = insertResult?.insertedId?.toString();
+      logger.info("PR data inserted into MongoDB", { 
+        prNumber: pull_request.number, 
+        repository: repository.full_name,
+        insertedId: insertResult?.insertedId,
+        newCommitsCount: newCommitsOnly.length
+      });
+    }
+
+    // Fallback to previous entry id if we didn't insert a new one
+    if (!prDataInsertedId) {
+      prDataInsertedId = previousEntry?._id?.toString();
+    }
 
     const sandbox_token = await mongoose.connection.db?.collection('auth_tokens').findOne({type: "sandbox"})
     if(!sandbox_token?.auth_token) {
@@ -638,6 +696,52 @@ export const PrData = async (payload: any) => {
           commitSha: pull_request.head.sha,
           filesChanged: filesChangedForAnalysis
         };
+
+        // Create/Update GitHub Check Run to reflect AI Code Review Platform review status
+        let checkRunId: number | undefined;
+        let usedStatusFallback = false;
+        try {
+          const detailsUrl = `https://ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`;
+          const checkRun = await octokit.checks.create({
+            owner,
+            repo,
+            name: 'AI Code Review Platform Review',
+            head_sha: pull_request.head.sha,
+            status: 'in_progress',
+            started_at: new Date().toISOString(),
+            external_id: prDataInsertedId || prKey,
+            details_url: detailsUrl,
+            output: {
+              title: 'AI Code Review Platform is reviewing…',
+              summary: `Analyzing PR #${pull_request.number} for issues and suggestions.`,
+              text: 'Streaming analysis in progress. Comments will appear as suggestions on the PR.'
+            }
+          });
+          checkRunId = checkRun.data.id;
+          logger.info('Created AI Code Review Platform check run', { checkRunId, prNumber: pull_request.number, repository: repository.full_name });
+        } catch (checkErr) {
+          logger.warn('Failed to create GitHub Check Run (AI Code Review Platform Review). Ensure app has checks:write permission.', {
+            error: checkErr instanceof Error ? checkErr.message : checkErr,
+            prNumber: pull_request.number,
+            repository: repository.full_name
+          });
+          // Fallback to classic commit status API
+          try {
+            await octokit.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: pull_request.head.sha,
+              state: 'pending',
+              context: 'AI Code Review Platform Review',
+              description: 'AI Code Review Platform is reviewing…',
+              target_url: `https://ai-code-reviewai.ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
+            });
+            usedStatusFallback = true;
+            logger.info('Created fallback commit status for AI Code Review Platform Review', { prNumber: pull_request.number });
+          } catch (statusErr) {
+            logger.warn('Failed to create fallback commit status', { error: statusErr instanceof Error ? statusErr.message : statusErr });
+          }
+        }
         const prCommentService = new PRCommentService(prCommentContext);
         
         // Initialize parser state for streaming response parsing
@@ -697,7 +801,7 @@ export const PrData = async (payload: any) => {
           prAnalysisPrompt,
           "pr_analysis", // analysisType
           callbacks,
-          {pr_data_id: pr_data?.insertedId?.toString(), 
+          {pr_data_id: prDataInsertedId, 
             auth_token: sandbox_token.auth_token,
             base_url: "https://ai-code-reviewapi.ai-code-review-platform.dev"
           },
@@ -718,6 +822,42 @@ export const PrData = async (payload: any) => {
             });
             await prCommentService.postComments(finalComments);
           }
+
+          // Mark GitHub Check Run as completed
+          if (checkRunId) {
+            try {
+              await octokit.checks.update({
+                owner,
+                repo,
+                check_run_id: checkRunId,
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+                conclusion: 'success',
+                output: {
+                  title: 'AI Code Review Platform review completed',
+                  summary: `AI Code Review Platform finished analyzing PR #${pull_request.number}.`,
+                  text: `Posted ${finalComments.length} additional comments.`
+                }
+              });
+              logger.info('Updated AI Code Review Platform check run to completed', { checkRunId, prNumber: pull_request.number });
+            } catch (updateErr) {
+              logger.warn('Failed to update GitHub Check Run to completed', { error: updateErr instanceof Error ? updateErr.message : updateErr, checkRunId });
+            }
+          } else if (usedStatusFallback) {
+            try {
+              await octokit.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: pull_request.head.sha,
+                state: 'success',
+                context: 'AI Code Review Platform Review',
+                description: 'AI Code Review Platform review completed',
+                target_url: `https://ai-code-reviewai.ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
+              });
+            } catch (statusErr) {
+              logger.warn('Failed to update fallback commit status to success', { error: statusErr instanceof Error ? statusErr.message : statusErr });
+            }
+          }
           
           // Post analysis completion comment
           // await prCommentService.postAnalysisCompletedComment(result?.sandboxId || undefined);
@@ -732,6 +872,41 @@ export const PrData = async (payload: any) => {
           
           // Post error comment on PR
           await prCommentService.postAnalysisErrorComment(error.message || 'Unknown error occurred during analysis');
+
+          // Mark GitHub Check Run as failed
+          if (checkRunId) {
+            try {
+              await octokit.checks.update({
+                owner,
+                repo,
+                check_run_id: checkRunId,
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+                conclusion: 'failure',
+                output: {
+                  title: 'AI Code Review Platform review failed',
+                  summary: `Analysis encountered an error for PR #${pull_request.number}.`,
+                  text: error?.message || 'Unknown error.'
+                }
+              });
+            } catch (updateErr) {
+              logger.warn('Failed to update GitHub Check Run to failure', { error: updateErr instanceof Error ? updateErr.message : updateErr, checkRunId });
+            }
+          } else if (usedStatusFallback) {
+            try {
+              await octokit.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: pull_request.head.sha,
+                state: 'failure',
+                context: 'AI Code Review Platform Review',
+                description: 'AI Code Review Platform review failed',
+                target_url: `https://ai-code-reviewai.ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
+              });
+            } catch (statusErr) {
+              logger.warn('Failed to update fallback commit status to failure', { error: statusErr instanceof Error ? statusErr.message : statusErr });
+            }
+          }
         });
 
         logger.info("PR analysis initiated", { 
