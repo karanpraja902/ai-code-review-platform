@@ -391,7 +391,6 @@ export const PrData = async (payload: any) => {
         previousFilename: file.previous_filename // for renamed files
       }));
 
-      console.log("🔍 Files changed in PR: ", filesChanged.map((f: any) => f.filename));
       
       // Get commits in the PR
       const commitsResponse = await octokit.pulls.listCommits({
@@ -579,12 +578,7 @@ export const PrData = async (payload: any) => {
       createdAt: new Date(),
     };
 
-    // Use the filesChanged from pulls.listFiles which is authoritative
-    const filesChangedForAnalysis = Array.from(new Set(
-      filesChanged.map((f: any) => f.filename)
-    ));
-    console.log("🔍 Files changed for analysis: ", filesChangedForAnalysis);
-
+ 
     // Before inserting, check if we already have data for this PR and only insert for NEW commits
     const prCollection = mongoose.connection.db?.collection('pull_request_datas');
     const latestStored = await prCollection?.find({
@@ -613,6 +607,7 @@ export const PrData = async (payload: any) => {
       });
       return
     } else {
+      console.log(newCommitsOnly.map(el => el.message))
       // Replace commits array with only new commits for this insertion
       modelAnalysisData.changes.commits = newCommitsOnly.map((commit: any) => ({
         sha: commit.sha,
@@ -637,6 +632,15 @@ export const PrData = async (payload: any) => {
         newCommitsCount: newCommitsOnly.length
       });
     }
+
+       // Derive files changed for analysis from NEW commits only
+    const filesChangedForAnalysis = Array.from(new Set(
+      (newCommitsOnly || [])
+        .flatMap((commit: any) => (commit.files || [])
+          .flatMap((file: any) => [file.filename, file.previousFilename].filter(Boolean)))
+    ));
+    console.log("🔍 Files changed for analysis (from new commits): ", filesChangedForAnalysis);
+
 
     // Fallback to previous entry id if we didn't insert a new one
     if (!prDataInsertedId) {
@@ -748,8 +752,8 @@ export const PrData = async (payload: any) => {
         // Initialize parser state for streaming response parsing
         const parserState = createParserState();
         
-        // Post initial “Under Review” comment immediately
-        await prCommentService.postAnalysisStartedComment(commits, filesChanged);
+        // Post initial “Under Review” comment immediately with NEW commits/files only
+        await prCommentService.postAnalysisStartedComment(newCommitsOnly, filesChangedForAnalysis);
 
         // Define streaming callbacks for PR analysis
         const callbacks: StreamingCallbacks = {
