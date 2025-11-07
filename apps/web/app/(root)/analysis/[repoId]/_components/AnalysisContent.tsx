@@ -7,22 +7,10 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { statusClasses } from "@/lib/utils/statusClasses";
 import { useAnalysisList } from "@/hooks/useAnalysisList";
 
-const statusColor = (status: AnalysisItem["status"]) => {
-  switch (status) {
-    case "completed":
-      return "bg-green-100 text-green-700 border-green-200";
-    case "interrupted":
-      return "bg-yellow-100 text-yellow-700 border-yellow-200";
-    case "running":
-      return "bg-blue-100 text-blue-700 border-blue-200";
-    case "draft":
-      return "bg-gray-100 text-gray-700 border-gray-200";
-    default:
-      return "bg-red-100 text-red-700 border-red-200";
-  }
-};
+// Use shared status classes across the app
 
 const AnalysisContent = ({
   analysisList: initialAnalysisList,
@@ -123,7 +111,7 @@ const AnalysisContent = ({
                   #{idx + 1}
                 </span>
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded border capitalize flex items-center gap-1 ${statusColor(analysis.status)} ${isNarrow ? "hidden" : "block"}`}>
+                  className={`text-[10px] px-2 py-0.5 rounded border capitalize flex items-center gap-1 ${statusClasses(analysis.status)} ${isNarrow ? "hidden" : "block"}`}>
                   {analysis.status === "running" && (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   )}

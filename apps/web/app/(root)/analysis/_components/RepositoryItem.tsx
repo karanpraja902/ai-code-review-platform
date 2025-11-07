@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import BranchDropdown from "./BranchDropdown";
 import { logger } from "@/lib/logger";
 import { Settings } from "lucide-react";
+import { IconBrandGithub } from "@tabler/icons-react";
 
 interface RepositoryItemProps {
   repo: GithubRepository;
@@ -38,7 +39,8 @@ const RepositoryItem: React.FC<RepositoryItemProps> = ({ repo, teamId }) => {
         href={`/analysis/${encodeURIComponent(repo._id)}${teamId ? `?teamId=${teamId}` : ''}${selectedBranch !== 'main' ? `${teamId ? '&' : '?'}branch=${selectedBranch}` : ''}`} 
         className="flex items-center gap-3 flex-1"
       >
-        <span>{repo.fullName}</span>
+                            <IconBrandGithub className="h-4 w-4 flex-shrink-0" />
+<span>{repo.fullName}</span>
         <Badge
           variant={"outline"}
           className="border-neutral-300 text-neutral-300 text-xs rounded-full">

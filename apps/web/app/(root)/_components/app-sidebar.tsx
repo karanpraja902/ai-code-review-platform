@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
-import { ScanTextIcon, StarsIcon, BotIcon } from "lucide-react";
+import { ScanTextIcon, StarsIcon, BotIcon, GitPullRequest } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
@@ -33,7 +33,7 @@ const items = [
   {
     title: "Pull Requests",
     url: "/pr-analysis",
-    icon: ScanTextIcon,
+    icon: GitPullRequest,
   },
   {
     title: "Analysis",
