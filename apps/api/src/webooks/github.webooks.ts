@@ -190,7 +190,7 @@ import { commentOnIssueOpened, create_github_installation, delete_github_install
       const isBotReply = (
         String(replyAuthorType).toLowerCase() === 'bot' ||
         /\[bot\]$/i.test(replyAuthorLogin) ||
-/\[bot\]$/i.test(replyAuthorLogin)
+        /bot/i.test(replyAuthorLogin)
       );
       if (isBotReply) {
         logger.debug('Reply authored by bot; ignoring.', {

@@ -1,6 +1,6 @@
 import { getInstallationOctokit } from '../../lib/githubApp.js';
 import { logger } from '../../utils/logger.js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export interface AI Code ReviewSuggestionContext {
   filePath?: string;
@@ -12,11 +12,7 @@ export interface AI Code ReviewSuggestionContext {
   issueType?: string;
 }
 
-// Minimal types for Gemini generateContent response
-interface GeminiContentPart { text?: string }
-interface GeminiCandidateContent { parts?: GeminiContentPart[] }
-interface GeminiCandidate { content?: GeminiCandidateContent }
-interface GeminiGenerateContentResponse { candidates?: GeminiCandidate[] }
+// (Removed old Gemini SDK response type shims; the new SDK provides response.text)
 
 /**
  * Heuristically determine if a comment body is a AI Code Review Platform suggestion/comment
@@ -203,22 +199,17 @@ export async function generateReplyWithGemini(prompt: string, model?: string): P
   const apiKey = process.env.GOOGLE_API_KEY;
   const chosenModel = model || process.env.AI CODE REVIEW_GEMINI_MODEL || 'gemini-2.5-pro';
   if (!apiKey) {
-    logger.warn('GOOGLE_API_KEY is not set; cannot call Gemini.');
+    logger.warn('GEMINI_API_KEY is not set; cannot call Gemini.');
     return 'I\'m unable to process your reply right now due to missing configuration. Please try again later.';
   }
   try {
     logger.info('Calling Gemini SDK generateContent', { model: chosenModel, promptLength: prompt.length });
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const modelClient = genAI.getGenerativeModel({ model: chosenModel });
-    const result = await modelClient.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 1024,
-      },
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: chosenModel,
+      contents: prompt,
     });
-    const response = result.response;
-    const text = (typeof response?.text === 'function' ? response.text() : '').trim();
+    const text = String((response as any)?.text || '').trim();
     const firstCandidate = (response as any)?.candidates?.[0];
     const finishReason = firstCandidate?.finishReason;
     const safety = firstCandidate?.safetyRatings;
