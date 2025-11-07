@@ -54,16 +54,17 @@ const AppSidebar = () => {
 
   // Helper function to get current path without team slug
   const getCurrentPathWithoutTeamSlug = (): string => {
-    const pathSegments = pathname.split('/').filter(Boolean) as any;
+    const pathSegments = pathname.split("/").filter(Boolean) as any;
     // If first segment looks like a team slug (not dashboard, analysis, agents, etc.)
-    if (pathSegments.length > 0 && !['dashboard', 'analysis', 'agents', 'repo'].includes(pathSegments[0])) {
-      const pathWithoutSlug = '/' + pathSegments.slice(1).join('/');
-      return pathWithoutSlug || '/dashboard';
+    if (
+      pathSegments.length > 0 &&
+      !["dashboard", "analysis", "agents", "repo"].includes(pathSegments[0])
+    ) {
+      const pathWithoutSlug = "/" + pathSegments.slice(1).join("/");
+      return pathWithoutSlug || "/dashboard";
     }
-    return pathname || '/dashboard';
+    return pathname || "/dashboard";
   };
-
-
 
   return (
     <Sidebar collapsible="icon">
@@ -155,7 +156,8 @@ const AppSidebar = () => {
               <OrganizationSwitcher
                 hidePersonal={false}
                 afterSelectOrganizationUrl={(organization) => {
-                  const currentPathWithoutSlug = getCurrentPathWithoutTeamSlug();
+                  const currentPathWithoutSlug =
+                    getCurrentPathWithoutTeamSlug();
                   return `/${organization.slug}${currentPathWithoutSlug}`;
                 }}
                 afterSelectPersonalUrl={() => {

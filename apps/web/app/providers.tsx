@@ -1,6 +1,7 @@
 import React from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
+import QueryProviders from "@/components/query-providers";
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -10,14 +11,14 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       }}
       localization={{
         formFieldLabel__username: "GitHub Username",
-        formFieldInputPlaceholder__username: "Enter your GitHub username"
+        formFieldInputPlaceholder__username: "Enter your GitHub username",
       }}>
       <ThemeProvider
         enableSystem
         attribute={"class"}
         defaultTheme="dark"
         disableTransitionOnChange>
-        {children}
+        <QueryProviders>{children}</QueryProviders>
       </ThemeProvider>
     </ClerkProvider>
   );
