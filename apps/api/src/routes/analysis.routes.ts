@@ -6,7 +6,7 @@ import {
   getRepositoryAnalysis,
   getRepositoryAnalysisLogs,
   updateAnalysisStatus,
-  getPrAnalyais,
+  getPrAnalysis,
 } from "../controllers/analysis.controller.js";
 import { baseAuth, checkAuth, teamAuth } from "../middlewares/checkAuth.js";
 import { checkAnalysisAccess } from "../middlewares/checkFeatureAccess.js";
@@ -41,7 +41,7 @@ router.post("/:id/stop",
 router.put("/:id/status", baseAuth, updateAnalysisStatus);
 router.get("/:id/logs", baseAuth, getRepositoryAnalysisLogs);
 // Get PR analyses for current user (place before dynamic :github_repositoryId route)
-router.get("/pull_requests", baseAuth, getPrAnalyais);
+router.get("/pull_requests", baseAuth, getPrAnalysis);
 
 // Repository-specific analyses
 router.get("/:github_repositoryId", baseAuth, getRepositoryAnalysis);

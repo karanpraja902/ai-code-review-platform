@@ -358,7 +358,7 @@ export const getRepositoryAnalysis = async (
 };
 
 // Get PR analyses for the authenticated user
-export const getPrAnalyais = async (
+export const getPrAnalysis = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -370,17 +370,52 @@ export const getPrAnalyais = async (
     if (!userId) {
       return next(new CustomError("Unauthorized", 401));
     }
+    // Pagination defaults
+    const pageParam = (req.query.page as string) || "1";
+    const limitParam = (req.query.limit as string) || "10";
+    const page = Math.max(parseInt(pageParam, 10) || 1, 1);
+    const limit = Math.max(parseInt(limitParam, 10) || 10, 1);
 
-    const docs = await Analysis.find({
+    // Search support (query, q, or search)
+    const rawSearch = ((req.query.query || req.query.q || req.query.search) as string) || "";
+    const search = rawSearch.trim();
+
+    // Base filter
+    const filter: any = {
       analysis_type: "pr_analysis",
       userId: userId,
-    })
+    };
+
+    // Build search filter across pr_title, repoUrl, and pr_number
+    if (search.length > 0) {
+      const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const or: any[] = [
+        { pr_title: { $regex: regex } },
+        { repoUrl: { $regex: regex } },
+      ];
+      const num = parseInt(search, 10);
+      if (!isNaN(num)) {
+        or.push({ pr_number: num });
+      }
+      filter.$or = or;
+    }
+
+    const total = await Analysis.countDocuments(filter);
+    const docs = await Analysis.find(filter)
       .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
       .select("repoUrl model status pr_number pr_url pr_title createdAt");
 
     return res.status(200).json({
       success: true,
       data: docs,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(Math.ceil(total / limit), 1),
+      },
     });
   } catch (error: any) {
     logger.error("Error fetching PR analyses", {

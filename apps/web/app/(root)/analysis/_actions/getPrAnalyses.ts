@@ -14,11 +14,34 @@ export interface PrAnalysisItem {
   createdAt?: string;
 }
 
-export const getPrAnalyses = async () => {
+export interface GetPrAnalysesOptions {
+  page?: number;
+  limit?: number;
+  query?: string;
+}
+
+export interface PrAnalysesResponse {
+  success: boolean;
+  data: PrAnalysisItem[];
+  message?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export const getPrAnalyses = async (opts: GetPrAnalysesOptions = {}) => {
   try {
     const { token } = await getAuthToken();
+    const params = new URLSearchParams();
+    if (opts.page && Number.isFinite(opts.page)) params.set("page", String(opts.page));
+    if (opts.limit && Number.isFinite(opts.limit)) params.set("limit", String(opts.limit));
+    if (opts.query && opts.query.trim().length > 0) params.set("search", opts.query.trim());
 
-    const url = `${_config.API_BASE_URL}/api/analysis/pull_requests`;
+    const qs = params.toString();
+    const url = `${_config.API_BASE_URL}/api/analysis/pull_requests${qs ? `?${qs}` : ""}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -33,7 +56,7 @@ export const getPrAnalyses = async () => {
       throw new Error("Failed to fetch PR analyses");
     }
 
-    const data: { success: boolean; data: PrAnalysisItem[]; message?: string } = await response.json();
+    const data: PrAnalysesResponse = await response.json();
     return data;
   } catch (error) {
     logger.error("Error fetching PR analyses", {
