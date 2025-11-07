@@ -108,7 +108,12 @@ export class PRCommentService {
     
     // Step 5: Clean up any extra whitespace
     processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
-    
+    // Step 6: Fix common Markdown table and mermaid/flowchart syntax issues
+    processedContent = this.fixMarkdownTables(processedContent);
+    processedContent = this.fixMermaidBlocks(processedContent);
+    processedContent = this.ensureBalancedCodeFences(processedContent);
+    processedContent = this.fixHtmlDetailsTags(processedContent);
+
     return processedContent;
   }
 
@@ -323,6 +328,114 @@ export class PRCommentService {
   }
 
   /**
+   * Attempt to normalize Markdown tables: ensure header separator, consistent column counts, and pipe boundaries.
+   */
+  private fixMarkdownTables(content: string): string {
+    const lines = content.split('\n');
+    let inCode = false;
+    const result: string[] = [];
+    let tableBuffer: string[] = [];
+
+    const isFence = (l: string) => l.trim().startsWith('```');
+    const isTableRow = (l: string) => {
+      const s = l.trim();
+      if (!s.includes('|')) return false;
+      if (s.startsWith('<details>') || s.startsWith('</details>')) return false;
+      return true;
+    };
+    const splitRow = (row: string) => {
+      let r = row.trim();
+      if (r.startsWith('|')) r = r.slice(1);
+      if (r.endsWith('|')) r = r.slice(0, -1);
+      return r.split('|');
+    };
+    const separatorForCols = (n: number) => '|' + new Array(n).fill(' --- ').join('|') + '|';
+    const isSeparatorRow = (l: string) => {
+      const s = l.trim();
+      if (!s.includes('|')) return false;
+      return s.replace(/[|:\-\s]/g, '').length === 0;
+    };
+    const flushTable = () => {
+      if (tableBuffer.length === 0) return;
+      const header = tableBuffer[0];
+      const colCount = Math.max(...tableBuffer.map((r) => splitRow(r).length));
+      // Ensure we have a separator row
+      if (tableBuffer.length < 2 || !isSeparatorRow(tableBuffer[1])) {
+        tableBuffer.splice(1, 0, separatorForCols(colCount));
+      } else {
+        tableBuffer[1] = separatorForCols(colCount);
+      }
+      const fixed = tableBuffer.map((row, idx) => {
+        if (idx === 1) return separatorForCols(colCount);
+        const cells = splitRow(row).map((c) => c.trim());
+        const padded = cells.slice(0, colCount);
+        while (padded.length < colCount) padded.push('');
+        return '| ' + padded.join(' | ') + ' |';
+      });
+      result.push(...fixed);
+      tableBuffer = [];
+    };
+
+    for (const line of lines) {
+      if (isFence(line)) {
+        if (!inCode) flushTable();
+        inCode = !inCode;
+        result.push(line);
+        continue;
+      }
+      if (inCode) {
+        result.push(line);
+        continue;
+      }
+      if (isTableRow(line)) {
+        tableBuffer.push(line);
+      } else {
+        flushTable();
+        result.push(line);
+      }
+    }
+    flushTable();
+    return result.join('\n');
+  }
+
+  /**
+   * Normalize mermaid/flowchart blocks and common mistakes.
+   */
+  private fixMermaidBlocks(content: string): string {
+    let fixed = content;
+    // Convert incorrectly tagged fences to mermaid
+    fixed = fixed.replace(/```\s*(flowchart|graph)\b/gi, '```mermaid');
+    // Common typo: "flow chart" -> "flowchart"
+    fixed = fixed.replace(/flow\s*chart/gi, 'flowchart');
+    // If a fence contains a flowchart or graph but lacks language, tag as mermaid
+    fixed = fixed.replace(/```\s*\n([\s\S]*?)(flowchart|graph)([\s\S]*?)```/gi, (_m, pre, kw, post) => {
+      return '```mermaid\n' + pre + kw + post + '```';
+    });
+    return fixed;
+  }
+
+  /**
+   * Ensure code fences are balanced (append closing fence if needed).
+   */
+  private ensureBalancedCodeFences(content: string): string {
+    const count = (content.match(/```/g) || []).length;
+    if (count % 2 !== 0) return content + '\n```';
+    return content;
+  }
+
+  /**
+   * Ensure <details> tags are closed if opened.
+   */
+  private fixHtmlDetailsTags(content: string): string {
+    const opens = (content.match(/<details>/g) || []).length;
+    const closes = (content.match(/<\/details>/g) || []).length;
+    if (opens > closes) {
+      return content + '\n</details>';
+    }
+    return content;
+  }
+
+  /**
    * Create a friendly, immediately visible status comment indicating analysis started.
    * Includes collapsible sections for commits and files.
    */
@@ -361,8 +474,9 @@ export class PRCommentService {
         '',
         `<details>\n<summary>Files Changed (${filesCount})</summary>\n\n${fileItems || '- No files found'}\n\n</details>`,
         '',
-        `Step aside — I’m tearing through this PR 😈 -- You keep on building`,
+        `\`Step aside — I’m tearing through this PR 😈 -- You keep on building\``,
         '',
+        '---',
         `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
       ].join('\n');
 
