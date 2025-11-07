@@ -592,10 +592,11 @@ export const PrData = async (payload: any) => {
     .toArray();
 
     const previousEntry = latestStored && latestStored[0] ? latestStored[0] : null;
-    const previousCommitShas: string[] = previousEntry?.changes?.commits?.map((c: any) => c.sha) || [];
+    const lastStoredSha: string | undefined = previousEntry?.latestCommitSha;
 
-    // Filter only new commits (not present in previous entry)
-    const newCommitsOnly = commits.filter((c: any) => !previousCommitShas.includes(c.sha));
+    // Determine new commits by position AFTER last stored latestCommitSha
+    const lastIndex = lastStoredSha ? commits.findIndex((c: any) => c.sha === lastStoredSha) : -1;
+    const newCommitsOnly = lastIndex >= 0 ? commits.slice(lastIndex + 1) : commits;
     let prDataInsertedId: string | undefined;
 
     if (newCommitsOnly.length === 0) {
