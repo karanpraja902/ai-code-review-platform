@@ -1,14 +1,18 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { logger } from "@/lib/logger";
 import { getPrAnalyses } from "../../analysis/_actions/getPrAnalyses";
-import { CircleCheck, CircleX, Ellipsis, ExternalLink, GitPullRequestIcon } from "lucide-react";
+import { CircleCheck, CircleX, Ellipsis, ExternalLink, GitPullRequestIcon, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { statusClasses } from "@/lib/utils/statusClasses";
 import { formatDistanceToNow } from "date-fns";
 import { IconBrandGithub } from "@tabler/icons-react";
+import { Input } from "@/components/ui/input";
+import { useDebouncedCallback } from "use-debounce";
 
-const PrAnalysisList = async () => {
-  let items: Array<{
+const PrAnalysisList = () => {
+  const [items, setItems] = useState<Array<{
     repoUrl: string;
     model: string;
     status: string;
@@ -16,16 +20,44 @@ const PrAnalysisList = async () => {
     pr_url?: string;
     pr_title?: string;
     createdAt?: string;
-  }> = [];
+  }>>([]);
 
-  try {
-    const res = await getPrAnalyses();
-    items = res?.data || [];
-  } catch (error) {
-    logger.error("Failed to fetch PR analyses in PrAnalysisList", {
-      error: error instanceof Error ? error.message : error,
-    });
-  }
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [query, setQuery] = useState("");
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const debouncedSetQuery = useDebouncedCallback((val: string) => {
+    setPage(1); // Reset to first page on new search
+    setQuery(val);
+  }, 400);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await getPrAnalyses({ page, limit, query });
+        setItems(res?.data || []);
+        const p = res?.pagination;
+        setTotalPages(p?.totalPages || 1);
+        setTotal(p?.total || (res?.data ? res.data.length : 0));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        logger.error("Failed to fetch PR analyses in PrAnalysisList", {
+          error: msg,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [page, limit, query]);
 
   const repoName = (url?: string) => {
     if (!url) return "";
@@ -41,6 +73,18 @@ const PrAnalysisList = async () => {
 
   return (
     <div className="w-full">
+      {/* Search bar */}
+      <div className="flex items-center justify-between m-2">
+        <div className="flex items-center gap-2 max-w-sm w-full border shadow-xs rounded-md pl-3">
+          <Search className="size-5" />
+          <Input
+            placeholder="Search PRs, title, repo, number"
+            className="border-none shadow-none"
+            onChange={(e) => debouncedSetQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
       {/* Header */}
       <div className="grid grid-cols-12 px-3 py-2 text-xs text-muted-foreground">
         <div className="col-span-1">#</div>
@@ -52,8 +96,12 @@ const PrAnalysisList = async () => {
       <Separator />
 
       {/* Rows */}
-      <ul className="h-full">
-        {items && items.length > 0 ? (
+      <ul className="min-h-[70vh]">
+        {loading ? (
+          <div className="min-h-[70vh] grid place-items-center text-sm text-neutral-500">
+            Loading...
+          </div>
+        ) : items && items.length > 0 ? (
           items.map((item, idx) => (
             <React.Fragment key={`${item.repoUrl}-${item.pr_number}-${idx}`}>
               <li className="py-4">
@@ -135,11 +183,53 @@ const PrAnalysisList = async () => {
             </React.Fragment>
           ))
         ) : (
-          <li className="h-full grid place-items-center text-base font-medium text-foreground">
-            No PR analyses found
+          <li className="min-h-[70vh] grid place-items-center text-base font-medium text-foreground">
+            {error ? `Error: ${error}` : "No PR analyses found"}
           </li>
         )}
       </ul>
+
+      {/* Pagination controls */}
+      <div className="flex items-center justify-between py-2 px-3 text-xs border-t mt-2">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">Items per page:</span>
+          <select
+            aria-label="Items per page"
+            className="h-7 rounded-md bg-background border px-2"
+            value={limit}
+            onChange={(e) => {
+              setPage(1);
+              setLimit(Number(e.target.value));
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            aria-label="Previous page"
+            className="h-7 w-7 grid place-items-center rounded-md border disabled:opacity-50"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="text-muted-foreground">
+            Page {page} of {Math.max(1, totalPages)}
+          </span>
+          <button
+            aria-label="Next page"
+            className="h-7 w-7 grid place-items-center rounded-md border disabled:opacity-50"
+            onClick={() => setPage((p) => Math.min(totalPages || 1, p + 1))}
+            disabled={page >= (totalPages || 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
