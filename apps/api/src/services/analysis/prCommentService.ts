@@ -395,42 +395,6 @@ export class PRCommentService {
     return result.join('\n');
   }
 
-  /**
-   * Normalize mermaid/flowchart blocks and common mistakes.
-   */
-  private fixMermaidBlocks(content: string): string {
-    let fixed = content;
-    // Convert incorrectly tagged fences to mermaid
-    fixed = fixed.replace(/```\s*(flowchart|graph)\b/gi, '```mermaid');
-    // Common typo: "flow chart" -> "flowchart"
-    fixed = fixed.replace(/flow\s*chart/gi, 'flowchart');
-    // If a fence contains a flowchart or graph but lacks language, tag as mermaid
-    fixed = fixed.replace(/```\s*\n([\s\S]*?)(flowchart|graph)([\s\S]*?)```/gi, (_m, pre, kw, post) => {
-      return '```mermaid\n' + pre + kw + post + '```';
-    });
-    return fixed;
-  }
-
-  /**
-   * Ensure code fences are balanced (append closing fence if needed).
-   */
-  private ensureBalancedCodeFences(content: string): string {
-    const count = (content.match(/```/g) || []).length;
-    if (count % 2 !== 0) return content + '\n```';
-    return content;
-  }
-
-  /**
-   * Ensure <details> tags are closed if opened.
-   */
-  private fixHtmlDetailsTags(content: string): string {
-    const opens = (content.match(/<details>/g) || []).length;
-    const closes = (content.match(/<\/details>/g) || []).length;
-    if (opens > closes) {
-      return content + '\n</details>';
-    }
-    return content;
-  }
 
   /**
    * Create a friendly, immediately visible status comment indicating analysis started.
