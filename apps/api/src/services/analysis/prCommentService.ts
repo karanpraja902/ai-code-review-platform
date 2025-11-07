@@ -108,11 +108,8 @@ export class PRCommentService {
     
     // Step 5: Clean up any extra whitespace
     processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
-    // Step 6: Fix common Markdown table and mermaid/flowchart syntax issues
+    // Step 6: Normalize Markdown tables only (disable mermaid/HTML/code-fence auto-fixes)
     processedContent = this.fixMarkdownTables(processedContent);
-    processedContent = this.fixMermaidBlocks(processedContent);
-    processedContent = this.ensureBalancedCodeFences(processedContent);
-    processedContent = this.fixHtmlDetailsTags(processedContent);
 
     return processedContent;
   }
@@ -441,12 +438,7 @@ export class PRCommentService {
    */
   async postAnalysisStartedComment(commits?: any[], files?: any[]): Promise<boolean> {
     try {
-      // If a status comment already exists, don’t post a duplicate
-      const existingId = await this.findExistingStatusCommentId();
-      if (existingId) {
-        this.statusCommentId = existingId;
-        return true;
-      }
+      // Always create a fresh status comment for each analysis run
 
       const commitItems = (commits || []).slice(0, 20).map((c: any) => {
         const shortSha = (c?.sha || '').slice(0, 7);
@@ -524,7 +516,7 @@ export class PRCommentService {
       const processed = this.processCommentForGitHub(summaryContent);
       const updatedBody = `${PRCommentService.STATUS_MARKER}\n${processed}`;
 
-      const commentId = this.statusCommentId || await this.findExistingStatusCommentId();
+      const commentId = this.statusCommentId;
       if (!commentId) {
         // Fallback – create as new comment
         const response = await this.octokit.issues.createComment({
