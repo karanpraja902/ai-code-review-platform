@@ -392,7 +392,6 @@ export const PrData = async (payload: any) => {
       }));
 
       
-      // Get commits in the PR
       const commitsResponse = await octokit.pulls.listCommits({
         owner,
         repo,
