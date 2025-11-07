@@ -29,6 +29,9 @@ importers:
       '@e2b/code-interpreter':
         specifier: ^2.0.0
         version: 2.0.0
+      '@google/generative-ai':
+        specifier: ^0.10.0
+        version: 0.10.0
       '@logtail/node':
         specifier: ^0.5.6
         version: 0.5.6
@@ -1137,6 +1140,11 @@ packages:
 
   /@floating-ui/utils@0.2.10:
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+    dev: false
+
+  /@google/generative-ai@0.10.0:
+    resolution: {integrity: sha512-fZJEL8DcDgvBCguLdaAdBBEoh+83LDXK3m9rVh5iksvwVJDgZqkpsLGKJuM5FEBKltWhbJ62WSyMEUGgy8eMUg==}
+    engines: {node: '>=18.0.0'}
     dev: false
 
   /@humanfs/core@0.19.1:

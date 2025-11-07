@@ -1,6 +1,8 @@
 // webhooks/github.webhooks.ts
 import { Webhooks } from '@octokit/webhooks';
 import { logger } from '../utils/logger.js';
+import { getInstallationOctokit } from '../lib/githubApp.js';
+import { respondToAI Code ReviewCommentReply, isAI Code ReviewBotAuthor, isAI Code ReviewMentioned, isLikelyAI Code ReviewComment, isLikelyReplyToAI Code ReviewConversation } from '../services/analysis/commentReplyService.js';
 
 import { commentOnIssueOpened, create_github_installation, delete_github_installation, PrData } from '../queries/github.queries.js';
   // Set up GitHub webhooks
@@ -148,6 +150,112 @@ import { commentOnIssueOpened, create_github_installation, delete_github_install
   webhooks.on('pull_request.reopened', handlePullRequestAnalysis);
   // Trigger analysis when new commits are pushed to the PR
   webhooks.on('pull_request.synchronize', handlePullRequestAnalysis);
+
+  // Handle replies to PR review comments and respond when replying to AI Code Review comments
+  webhooks.on('pull_request_review_comment.created', async ({ payload }) => {
+    try {
+      const installationId = payload.installation?.id;
+      const repoFullName = payload.repository?.full_name || '';
+      const [owner, repo] = repoFullName.split('/');
+      const prNumber = payload.pull_request?.number;
+      const comment = payload.comment;
+      const replyAuthorLogin = comment?.user?.login || '';
+      const replyAuthorType = comment?.user?.type || '';
+
+      console.log(comment, "here is the commetn " )
+
+      logger.debug('PR review comment created', {
+        repo: repoFullName,
+        prNumber,
+        commentId: comment?.id,
+        inReplyToId: comment?.in_reply_to_id,
+        path: comment?.path,
+        line: comment?.line ?? comment?.original_line ?? comment?.start_line,
+        isReply: !!comment?.in_reply_to_id,
+        replyAuthorLogin,
+        replyAuthorType,
+      });
+
+      if (!installationId || !owner || !repo || !comment) {
+        logger.warn('Missing data for pull_request_review_comment.created', {
+          installationId,
+          owner,
+          repo,
+          commentPresent: !!comment,
+        });
+        return;
+      }
+
+      // Ignore replies authored by bots (including AI Code Review itself) to prevent loops
+      const isBotReply = (
+        String(replyAuthorType).toLowerCase() === 'bot' ||
+        /\[bot\]$/i.test(replyAuthorLogin) ||
+        /bot/i.test(replyAuthorLogin)
+      );
+      if (isBotReply) {
+        logger.debug('Reply authored by bot; ignoring.', {
+          replyAuthorLogin,
+          commentId: comment?.id,
+        });
+        return;
+      }
+
+      // Only act on replies to an existing comment thread
+      const inReplyToId = comment.in_reply_to_id;
+      if (!inReplyToId) return;
+
+      const octokit = getInstallationOctokit(installationId);
+      const parentRes = await octokit.request('GET /repos/{owner}/{repo}/pulls/comments/{comment_id}', {
+        owner,
+        repo,
+        comment_id: inReplyToId,
+      });
+      const parentComment = parentRes?.data;
+      const parentBody = parentComment?.body || '';
+      const parentAuthorLogin = parentComment?.user?.login;
+
+      // Ensure the reply targets AI Code Review: prefer strict author login, else allow explicit @mention in the reply body
+      const replyMentionsAI Code Review = isAI Code ReviewMentioned(comment.body || '');
+      const targetsAI Code Review = isAI Code ReviewBotAuthor(parentAuthorLogin) || replyMentionsAI Code Review;
+      if (!targetsAI Code Review) {
+        logger.debug('Reply not targeting AI Code Review (no bot author or @mention in reply); ignoring.', {
+          parentAuthorLogin,
+          parentCommentId: inReplyToId,
+          parentBodyPreview: parentBody.slice(0, 160),
+          replyBodyPreview: (comment.body || '').slice(0, 160),
+        });
+        return;
+      }
+
+      logger.info('Reply targets AI Code Review comment; generating AI response', {
+        installationId,
+        owner,
+        repo,
+        prNumber,
+        parentCommentId: inReplyToId,
+        userReplyCommentId: comment.id,
+      });
+
+      await respondToAI Code ReviewCommentReply({
+        installationId,
+        owner,
+        repo,
+        prNumber,
+        userReplyCommentId: comment.id,
+        userReplyBody: comment.body || '',
+        replyAuthorLogin,
+        parentCommentId: inReplyToId,
+        parentCommentBody: parentBody,
+        parentPath: parentComment?.path,
+        parentLine: (parentComment?.line ?? parentComment?.original_line ?? parentComment?.start_line) as number | undefined,
+        diffHunk: parentComment?.diff_hunk,
+      });
+    } catch (error) {
+      logger.error('Error handling pull_request_review_comment.created', {
+        error: error instanceof Error ? error.message : error,
+      });
+    }
+  });
   
   // Log all webhook events
   webhooks.onAny(({ name, payload }) => {
