@@ -9,6 +9,8 @@ import { getDashboardData } from "./_actions/getDashboardData";
 import DashboardPage from "./_components/DashboardPage";
 import { Loader2Icon } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const Page = async () => {
   const queryClient = new QueryClient();
 
