@@ -26,6 +26,8 @@ export class PRCommentService {
   private octokit: ReturnType<typeof getInstallationOctokit>;
   private postedComments: Set<string> = new Set();
   private filesInPR?: Set<string>;
+  private statusCommentId?: number;
+  private static STATUS_MARKER = '<!-- ai-code-review:main-comment -->';
 
   constructor(context: PRCommentContext) {
     this.context = context;
@@ -106,7 +108,9 @@ export class PRCommentService {
     
     // Step 5: Clean up any extra whitespace
     processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
-    
+    // Step 6: Normalize Markdown tables only (disable mermaid/HTML/code-fence auto-fixes)
+    processedContent = this.fixMarkdownTables(processedContent);
+
     return processedContent;
   }
 
@@ -227,20 +231,17 @@ export class PRCommentService {
         return false;
       }
 
-      // Post as a regular issue comment ONLY for summary comments
+      // Summary comments: update the initial AI Code Review status comment instead of posting a new one
       const trimmed = comment.content.trim();
       if (trimmed.startsWith('## Summary by AI Code Review')) {
-        console.log("🔄 Posting regular summary comment");
-        const response = await this.octokit.issues.createComment({
-          owner: this.context.owner,
-          repo: this.context.repo,
-          issue_number: this.context.pullNumber,
-          body: comment.content
-        });
-
-        this.postedComments.add(commentHash);
-        console.log(`[PR-${this.context.pullNumber}] ✅ Posted summary comment: ${response.data.html_url}`);
-        return true;
+        console.log("🔄 Updating AI Code Review status comment with summary content");
+        const updated = await this.updateStatusCommentWithSummary(comment.content);
+        if (updated) {
+          this.postedComments.add(commentHash);
+          return true;
+        }
+        console.log(`[PR-${this.context.pullNumber}] ❌ Failed to update status comment; not posting duplicate summary`);
+        return false;
       }
 
       // Check if this is a suggestion comment
@@ -321,5 +322,189 @@ export class PRCommentService {
    */
   clearCache(): void {
     this.postedComments.clear();
+  }
+
+  /**
+   * Attempt to normalize Markdown tables: ensure header separator, consistent column counts, and pipe boundaries.
+   */
+  private fixMarkdownTables(content: string): string {
+    const lines = content.split('\n');
+    let inCode = false;
+    const result: string[] = [];
+    let tableBuffer: string[] = [];
+
+    const isFence = (l: string) => l.trim().startsWith('```');
+    const isTableRow = (l: string) => {
+      const s = l.trim();
+      if (!s.includes('|')) return false;
+      if (s.startsWith('<details>') || s.startsWith('</details>')) return false;
+      return true;
+    };
+    const splitRow = (row: string) => {
+      let r = row.trim();
+      if (r.startsWith('|')) r = r.slice(1);
+      if (r.endsWith('|')) r = r.slice(0, -1);
+      return r.split('|');
+    };
+    const separatorForCols = (n: number) => '|' + new Array(n).fill(' --- ').join('|') + '|';
+    const isSeparatorRow = (l: string) => {
+      const s = l.trim();
+      if (!s.includes('|')) return false;
+      return s.replace(/[|:\-\s]/g, '').length === 0;
+    };
+    const flushTable = () => {
+      if (tableBuffer.length === 0) return;
+      const header = tableBuffer[0];
+      const colCount = Math.max(...tableBuffer.map((r) => splitRow(r).length));
+      // Ensure we have a separator row
+      if (tableBuffer.length < 2 || !isSeparatorRow(tableBuffer[1])) {
+        tableBuffer.splice(1, 0, separatorForCols(colCount));
+      } else {
+        tableBuffer[1] = separatorForCols(colCount);
+      }
+      const fixed = tableBuffer.map((row, idx) => {
+        if (idx === 1) return separatorForCols(colCount);
+        const cells = splitRow(row).map((c) => c.trim());
+        const padded = cells.slice(0, colCount);
+        while (padded.length < colCount) padded.push('');
+        return '| ' + padded.join(' | ') + ' |';
+      });
+      result.push(...fixed);
+      tableBuffer = [];
+    };
+
+    for (const line of lines) {
+      if (isFence(line)) {
+        if (!inCode) flushTable();
+        inCode = !inCode;
+        result.push(line);
+        continue;
+      }
+      if (inCode) {
+        result.push(line);
+        continue;
+      }
+      if (isTableRow(line)) {
+        tableBuffer.push(line);
+      } else {
+        flushTable();
+        result.push(line);
+      }
+    }
+    flushTable();
+    return result.join('\n');
+  }
+
+
+  /**
+   * Create a friendly, immediately visible status comment indicating analysis started.
+   * Includes collapsible sections for commits and files.
+   */
+  async postAnalysisStartedComment(commits?: any[], files?: any[]): Promise<boolean> {
+    try {
+      // Always create a fresh status comment for each analysis run
+
+      const commitItems = (commits || []).slice(0, 20).map((c: any) => {
+        const shortSha = (c?.sha || '').slice(0, 7);
+        const msg = (c?.message || '').split('\n')[0];
+        const author = c?.author?.name || c?.author?.login || '';
+        const url = c?.url || `https://github.com/${this.context.owner}/${this.context.repo}/commit/${c?.sha}`;
+        return `- [\`${shortSha}\`](${url}) — ${msg}${author ? ` (${author})` : ''}`;
+      }).join('\n');
+
+      const fileItems = (files || []).slice(0, 30).map((f: any) => {
+        const name = f?.filename || f;
+        const status = f?.status ? ` — ${f.status}` : '';
+        const stats = (f?.additions || f?.deletions) ? ` (+${f?.additions || 0}/−${f?.deletions || 0})` : '';
+        return `- \`${name}\`${status}${stats}`;
+      }).join('\n');
+
+      const commitsCount = (commits || []).length;
+      const filesCount = (files || []).length;
+
+      const body = [
+        PRCommentService.STATUS_MARKER,
+        `## 🪲 AI Code Review Platform is reviewing this PR — Let’s see what you’ve done!`,
+        `Under Review`,
+        `<details>\n<summary>Commits (${commitsCount})</summary>\n\n${commitItems || '- No commits found'}\n\n</details>`,
+        '',
+        `<details>\n<summary>Files Changed (${filesCount})</summary>\n\n${fileItems || '- No files found'}\n\n</details>`,
+        '',
+        `\`Step aside — I’m tearing through this PR 😈 -- You keep on building\``,
+        '',
+        '---',
+        `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
+      ].join('\n');
+
+      const response = await this.octokit.issues.createComment({
+        owner: this.context.owner,
+        repo: this.context.repo,
+        issue_number: this.context.pullNumber,
+        body,
+      });
+
+      this.statusCommentId = response.data.id;
+      return true;
+    } catch (error) {
+      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post analysis started comment:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Find the existing AI Code Review status/main comment on the PR by hidden marker.
+   */
+  private async findExistingStatusCommentId(): Promise<number | undefined> {
+    try {
+      const res = await this.octokit.issues.listComments({
+        owner: this.context.owner,
+        repo: this.context.repo,
+        issue_number: this.context.pullNumber,
+        per_page: 100,
+      });
+      const found = res.data.find((c: any) => typeof c?.body === 'string' && c.body.includes(PRCommentService.STATUS_MARKER));
+      return found?.id;
+    } catch (err) {
+      console.warn(`[PR-${this.context.pullNumber}] ⚠️ Failed to list comments to find status comment`, err);
+      return undefined;
+    }
+  }
+
+  /**
+   * Update the AI Code Review status comment with the provided summary content.
+   * If the status comment is not found, falls back to posting a new summary comment.
+   */
+  private async updateStatusCommentWithSummary(summaryContent: string): Promise<boolean> {
+    try {
+      // Clean summary for GitHub rendering
+      const processed = this.processCommentForGitHub(summaryContent);
+      const updatedBody = `${PRCommentService.STATUS_MARKER}\n${processed}`;
+
+      const commentId = this.statusCommentId;
+      if (!commentId) {
+        // Fallback – create as new comment
+        const response = await this.octokit.issues.createComment({
+          owner: this.context.owner,
+          repo: this.context.repo,
+          issue_number: this.context.pullNumber,
+          body: updatedBody,
+        });
+        this.statusCommentId = response.data.id;
+        console.log(`[PR-${this.context.pullNumber}] ✅ Posted new summary comment (no prior status found): ${response.data.html_url}`);
+        return true;
+      }
+
+      const response = await this.octokit.issues.updateComment({
+        owner: this.context.owner,
+        repo: this.context.repo,
+        comment_id: commentId,
+        body: updatedBody,
+      });
+      console.log(`[PR-${this.context.pullNumber}] ✅ Updated status comment with summary: ${response.data.html_url}`);
+      return true;
+    } catch (error) {
+      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to update status comment with summary:`, error);
+      return false;
+    }
   }
 }
