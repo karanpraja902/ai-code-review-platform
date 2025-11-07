@@ -611,6 +611,7 @@ export const PrData = async (payload: any) => {
         repository: repository.full_name,
         latestCommitSha
       });
+      return
     } else {
       // Replace commits array with only new commits for this insertion
       modelAnalysisData.changes.commits = newCommitsOnly.map((commit: any) => ({

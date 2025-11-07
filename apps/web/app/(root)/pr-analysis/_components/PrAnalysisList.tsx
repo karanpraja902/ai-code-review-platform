@@ -2,7 +2,8 @@ import React from "react";
 import { Separator } from "@/components/ui/separator";
 import { logger } from "@/lib/logger";
 import { getPrAnalyses } from "../../analysis/_actions/getPrAnalyses";
-import { ExternalLink, GitPullRequestIcon } from "lucide-react";
+import { CircleCheck, CircleX, Ellipsis, ExternalLink, GitPullRequestIcon } from "lucide-react";
+import { statusClasses } from "@/lib/utils/statusClasses";
 import { formatDistanceToNow } from "date-fns";
 import { IconBrandGithub } from "@tabler/icons-react";
 
@@ -36,20 +37,7 @@ const PrAnalysisList = async () => {
     }
   };
 
-  const statusClasses = (status: string) => {
-    switch (status) {
-      case "completed":
-        return " text-emerald-400 border border-emerald-200";
-      case "running":
-        return " text-blue-400 border border-blue-200";
-      case "error":
-        return " text-red-400 border border-red-200";
-      case "interrupted":
-        return " text-amber-400 border border-amber-200";
-      default:
-        return "text-gray-400 border border-gray-200";
-    }
-  };
+  // statusClasses imported from shared utility
 
   return (
     <div className="w-full">
@@ -114,8 +102,18 @@ const PrAnalysisList = async () => {
                     )}
                   </div>
                   <div className="col-span-2">
-                    <span className={`text-xs px-2 py-1 rounded-full inline-block ${statusClasses(item.status)}`}>
-                      {item.status}
+                    <span className={`text-xs px-1.5 py-1 rounded-lg inline-block ${statusClasses(item.status)}`}>
+                   
+                      <span className="align-middle">{item.status}</span>
+                        {item.status === "completed" && (
+                        <CircleCheck className="h-3 w-3 inline-block ml-1" />
+                      )}
+                      {item.status === "error" && (
+                        <CircleX className="h-3 w-3 inline-block ml-1" />
+                      )}
+                      {item.status === "running" && (
+                        <Ellipsis className="h-3 w-3 inline-block ml-1 animate-pulse" />
+                      )}
                     </span>
                   </div>
                   <div className="col-span-2 flex items-center justify-between gap-3">
