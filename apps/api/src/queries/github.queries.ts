@@ -748,8 +748,8 @@ export const PrData = async (payload: any) => {
         // Initialize parser state for streaming response parsing
         const parserState = createParserState();
         
-        // Post initial analysis started comment
-        // await prCommentService.postAnalysisStartedComment();
+        // Post initial “Under Review” comment immediately
+        await prCommentService.postAnalysisStartedComment(commits, filesChanged);
 
         // Define streaming callbacks for PR analysis
         const callbacks: StreamingCallbacks = {
