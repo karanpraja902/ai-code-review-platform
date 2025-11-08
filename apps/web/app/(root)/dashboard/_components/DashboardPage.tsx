@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { DashboardMetrics } from "@/app/(root)/dashboard/_components/DashboardMetrics";
 import { RecentActivity } from "@/app/(root)/dashboard/_components/RecentActivity";
 import { GitHubIssuesChart } from "@/app/(root)/dashboard/_components/GitHubIssuesChart";
@@ -10,9 +10,11 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { getDashboardData } from "../_actions/getDashboardData";
 
 const DashboardPage = () => {
+  const [days, setDays] = useState<number>(7);
+
   const { data: dashboardData } = useSuspenseQuery({
-    queryKey: ["dashboardData"],
-    queryFn: getDashboardData,
+    queryKey: ["dashboardData", days],
+    queryFn: () => getDashboardData(days),
   });
 
   if (!dashboardData.data) {
@@ -25,6 +27,20 @@ const DashboardPage = () => {
 
   return (
     <div className="h-full overflow-y-auto scrollBar px-4 py-5">
+      {/* Top-right range selector */}
+      <div className="flex items-center justify-end mb-4">
+        <select
+          className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+          value={days}
+          onChange={(e) => setDays(Number(e.target.value))}
+        >
+          <option value={7}>Last 7 days</option>
+          <option value={15}>Last 15 days</option>
+          <option value={30}>Last 30 days</option>
+          <option value={60}>Last 60 days</option>
+          <option value={90}>Last 90 days</option>
+        </select>
+      </div>
       {/* Dashboard Metrics */}
       <DashboardMetrics data={dashboardData.data} />
 

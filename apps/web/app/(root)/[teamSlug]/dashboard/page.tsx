@@ -21,8 +21,8 @@ const Page = async ({ params }: PageProps) => {
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
-    queryKey: ["teamDashboard", teamSlug],
-    queryFn: getTeamDashboardData,
+    queryKey: ["teamDashboard", teamSlug, 7],
+    queryFn: () => getTeamDashboardData(7),
   });
 
   return (

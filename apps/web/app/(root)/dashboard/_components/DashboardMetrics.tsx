@@ -1,60 +1,146 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DashboardData } from "@/types/dashboard";
-import { GitBranch, GitPullRequest, Bug, MessageSquare } from "lucide-react";
+import { GitBranch, GitPullRequest, Bug } from "lucide-react";
+import { CartesianGrid, XAxis, YAxis, AreaChart, Area } from "recharts";
+import { format, parseISO } from "date-fns";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
 
 interface DashboardMetricsProps {
   data: DashboardData;
 }
 
 export const DashboardMetrics = ({ data }: DashboardMetricsProps) => {
-  const metrics = [
-    {
-      title: "Total Repositories Added",
-      value: data.total_repo_added,
-      icon: <GitBranch className="h-5 w-5" />
+  console.log(data, "here is the data")
+  const rangeDays = data.trends?.range_days ?? 7;
+
+  const prTrendData = (data.trends?.daily_pr_reviews ?? []).map((d) => ({
+    date: format(parseISO(`${d.date}T00:00:00Z`), "MMM dd"),
+    count: d.count,
+  }));
+
+  const fullRepoTrendData = (data.trends?.daily_full_repo_reviews ?? []).map((d) => ({
+    date: format(parseISO(`${d.date}T00:00:00Z`), "MMM dd"),
+    count: d.count,
+  }));
+
+  const prCommentsAvgTrendData = (data.trends?.daily_pr_comments_avg ?? []).map((d) => ({
+    date: format(parseISO(`${d.date}T00:00:00Z`), "MMM dd"),
+    count: d.count,
+  }));
+
+  const singleSeriesConfig = {
+    count: {
+      label: "Count",
+      color: "var(--color-primary)",
     },
-    {
-      title: "Full Repo Reviews",
-      value: data.full_repo_review.total_reviews,
-      icon: <GitPullRequest className="h-5 w-5" />
-    },
-    {
-      title: "GitHub Issues Suggested",
-      value: data.full_repo_review.total_github_issues_suggested,
-      icon: <Bug className="h-5 w-5" />
-    },
-    {
-      title: "GitHub Issues Opened",
-      value: data.full_repo_review.github_issues_opened,
-      icon: <Bug className="h-5 w-5" />
-    },
-    {
-      title: "Pull Requests Suggested",
-      value: data.full_repo_review.total_pull_request_suggested,
-      icon: <GitPullRequest className="h-5 w-5" />
-    },
-    {
-      title: "Pull Requests Opened",
-      value: data.full_repo_review.pull_request_opened,
-      icon: <GitPullRequest className="h-5 w-5" />
-    }
-  ];
+  } satisfies ChartConfig;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-      {metrics.map((metric, index) => (
-        <Card key={index} className="hover:shadow-lg dark:hover:shadow-xl transition-all duration-200 hover:scale-[1.02]">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="text-sm font-medium text-muted-foreground">{metric.title}</h3>
-            <div className="text-muted-foreground">{metric.icon}</div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {metric.value.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      {/* Trend Chart: PR Reviews (Gradient Area) */}
+      <Card className="rounded-md">
+        <CardHeader>
+          <CardTitle className="text-sm">PR Reviews </CardTitle>
+          <CardDescription>Daily completed PR reviews</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={singleSeriesConfig}>
+            <AreaChart
+              accessibilityLayer
+              data={prTrendData}
+              margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+            >
+              <defs>
+                <linearGradient id="fillCountPR" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-count)" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="var(--color-count)" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Area
+                dataKey="count"
+                type="monotone"
+                stroke="var(--color-count)"
+                strokeWidth={2}
+                fill="url(#fillCountPR)"
+              />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+
+      {/* Trend Chart: Full Repo Reviews (Gradient Area) */}
+      <Card className="rounded-md">
+        <CardHeader>
+          <CardTitle className="text-sm">Full Repo Reviews </CardTitle>
+          <CardDescription>Daily completed full repo reviews</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={singleSeriesConfig}>
+            <AreaChart
+              accessibilityLayer
+              data={fullRepoTrendData}
+              margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+            >
+              <defs>
+                <linearGradient id="fillCountRepo" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-count)" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="var(--color-count)" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Area
+                dataKey="count"
+                type="monotone"
+                stroke="var(--color-count)"
+                strokeWidth={2}
+                fill="url(#fillCountRepo)"
+              />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+
+      {/* Trend Chart: Avg PR Comments per Unique PR */}
+      <Card className="rounded-md">
+        <CardHeader>
+          <CardTitle className="text-sm">Avg Comments per PR </CardTitle>
+          <CardDescription>Daily average comments across unique PRs</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={singleSeriesConfig}>
+            <AreaChart
+              accessibilityLayer
+              data={prCommentsAvgTrendData}
+              margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+            >
+              <defs>
+                <linearGradient id="fillCountPRAvg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-count)" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="var(--color-count)" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Area
+                dataKey="count"
+                type="monotone"
+                stroke="var(--color-count)"
+                strokeWidth={2}
+                fill="url(#fillCountPRAvg)"
+              />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 };

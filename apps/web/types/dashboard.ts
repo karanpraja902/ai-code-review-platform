@@ -7,13 +7,19 @@ export interface DashboardData {
     total_pull_request_suggested: number;
     pull_request_opened: number;
   };
-  pr_review: {
+  pr_reviews: {
     total_reviews: number;
     total_comments: number;
   };
   recent_activity: {
     pull_request: PullRequestActivity[];
     full_repo: FullRepoActivity[];
+  };
+  trends?: {
+    daily_full_repo_reviews: Array<{ date: string; count: number }>;
+    daily_pr_reviews: Array<{ date: string; count: number }>;
+    daily_pr_comments_avg?: Array<{ date: string; count: number }>;
+    range_days: number;
   };
 }
 
@@ -22,6 +28,9 @@ export interface PullRequestActivity {
   state: string;
   date: string;
   total_comments: number;
+  pr_url?: string;
+  repo_id?: string;
+  analysis_id?: string;
 }
 
 export interface FullRepoActivity {
@@ -33,6 +42,8 @@ export interface FullRepoActivity {
   github_issues_opened: number;
   total_pull_request_suggested: number;
   pull_request_opened: number;
+  repo_id?: string;
+  analysis_id?: string;
 }
 
 export interface DashboardResponse {

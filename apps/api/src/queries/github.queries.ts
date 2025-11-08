@@ -10,6 +10,7 @@ import { createParserState, parseStreamingResponse, finalizeParsing, ParserState
 import { PRCommentService, PRCommentContext } from "../services/analysis/prCommentService.js";
 import mongoose from "mongoose";
 import { logger } from "../utils/logger.js";
+import { initAnalysisCommentCounter } from "../utils/analysisStreamStore.js";
 
 export const create_github_installation = async (payload: CreateInstallationInput) => {
     try {
@@ -747,7 +748,18 @@ export const PrData = async (payload: any) => {
             logger.warn('Failed to create fallback commit status', { error: statusErr instanceof Error ? statusErr.message : statusErr });
           }
         }
-        const prCommentService = new PRCommentService(prCommentContext);
+        // Pre-generate an Analysis ID to link streaming, Redis counters, and finalization
+        const preAnalysisId = new mongoose.Types.ObjectId().toString();
+        const prCommentService = new PRCommentService({
+          ...prCommentContext,
+          analysisId: preAnalysisId,
+        });
+        // Initialize Redis comment counter with TTL for cleanup (safe if already incremented)
+        try {
+          await initAnalysisCommentCounter(preAnalysisId);
+        } catch (initErr) {
+          logger.warn("Failed to initialize Redis comment counter", { analysisId: preAnalysisId, error: initErr instanceof Error ? initErr.message : initErr });
+        }
         
         // Initialize parser state for streaming response parsing
         const parserState = createParserState();
@@ -815,7 +827,9 @@ export const PrData = async (payload: any) => {
             pr_url: prUrl,
             pr_title: pull_request.title
           },
-          user.email
+          user.email,
+          undefined, // teamId (not used here)
+          preAnalysisId // ensure executeAnalysis uses this ID when persisting
         ).then(async (result) => {
           logger.info("PR analysis completed", { 
             repository: repository.full_name, 
