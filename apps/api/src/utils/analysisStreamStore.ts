@@ -37,7 +37,8 @@ export async function appendToRedisBuffer(_id: string, data: string): Promise<vo
 export async function initAnalysisCommentCounter(_id: string, ttlSeconds = 60 * 60 * 4): Promise<void> {
   const key = getAnalysisCommentsKey(_id);
   // Only set if not exists to avoid clobbering ongoing counts
-  await redis.set(key, "0", { EX: ttlSeconds, NX: true } as any);
+  // ioredis expects option flags as separate arguments (NX/EX)
+  await redis.set(key, "0", "EX", ttlSeconds, "NX");
 }
 
 /** Increment the PR comments counter for a given analysis */
