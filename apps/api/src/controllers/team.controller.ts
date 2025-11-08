@@ -273,7 +273,7 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
                 const key = formatDateKey(d);
                 const prEntries = Object.values(dayToPRMap[key] || {});
                 const uniquePRs = prEntries.length;
-                const sumCommentsAcrossPRs = prEntries.reduce((acc, e) => acc + (e.total / Math.max(1, e.runs)), 0);
+                const sumCommentsAcrossPRs = prEntries.reduce((acc, e) => acc + e.total, 0);
                 const avg = uniquePRs > 0 ? sumCommentsAcrossPRs / uniquePRs : 0;
                 out.push({ date: key, count: Number(avg.toFixed(2)) });
             }
