@@ -1,6 +1,10 @@
 import React, { Suspense } from "react";
 import AnalysisSidebar from "./_components/analysis-sidebar";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 import { getAnalysisWithId } from "./_actions/getAnalysiswithId";
 
 export default async function AnalysisLayout({
@@ -17,13 +21,19 @@ export default async function AnalysisLayout({
     <div className="h-screen">
       <Suspense>
         <ResizablePanelGroup direction="horizontal" className="h-full">
-            {analysisList && analysisList.length > 0 && (
-              <>
-                <ResizablePanel defaultSize={20} minSize={4} maxSize={25}>
-                  <AnalysisSidebar repoId={repoId} analysisList={analysisList} />
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-              </>)}
+          {analysisList && analysisList.length > 0 && (
+            <>
+              <ResizablePanel
+                defaultSize={20}
+                minSize={0}
+                maxSize={25}
+                hidden={true}
+                className="hidden md:block">
+                <AnalysisSidebar repoId={repoId} analysisList={analysisList} />
+              </ResizablePanel>
+              <ResizableHandle withHandle className="hidden md:block" />
+            </>
+          )}
           <ResizablePanel defaultSize={75}>
             <div className="h-full">{children}</div>
           </ResizablePanel>

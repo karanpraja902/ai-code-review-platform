@@ -22,17 +22,17 @@ const AnalysisContent = ({
   const pathname = usePathname();
   const containerRef = useRef<HTMLElement>(null);
   const [isNarrow, setIsNarrow] = useState(false);
-  
+
   // Use the custom hook for analysis list management
-  const { 
-    analysisList, 
-    isLoading: isRefreshing, 
-    error, 
-    refreshAnalysisList, 
-    hasRunningAnalyses 
-  } = useAnalysisList({ 
-    repoId, 
-    initialAnalysisList 
+  const {
+    analysisList,
+    isLoading: isRefreshing,
+    error,
+    refreshAnalysisList,
+    hasRunningAnalyses,
+  } = useAnalysisList({
+    repoId,
+    initialAnalysisList,
   });
 
   const analysis_id = pathname.split("/")[pathname.split("/").length - 1];
@@ -61,8 +61,6 @@ const AnalysisContent = ({
 
     router.replace(redirectUrl);
   }, [analysisList, queryString, repoId, router]);
-
-
 
   useEffect(() => {
     const container = containerRef.current;
@@ -118,10 +116,11 @@ const AnalysisContent = ({
                   {analysis.status}
                 </span>
               </div>
-              <div className={cn(
-                "mt-1 text-sm font-medium truncate",
-                isNarrow ? "hidden" : "block"
-              )}>
+              <div
+                className={cn(
+                  "mt-1 text-sm font-medium truncate",
+                  isNarrow ? "hidden" : "block"
+                )}>
                 {new Date(analysis.createdAt).toLocaleString()}{" "}
               </div>
             </Link>

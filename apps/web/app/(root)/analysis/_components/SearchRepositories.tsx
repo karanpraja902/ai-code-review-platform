@@ -22,12 +22,12 @@ const SearchRepositories = () => {
   }, 300);
 
   return (
-    <div className="flex items-center gap-2 max-w-2xs w-full border shadow-xs rounded-md pl-3">
+    <div className="flex items-center gap-2 max-w-2xs border shadow-xs rounded-md px-3">
       <SearchIcon className="size-5" />
 
       <Input
         placeholder="Search repositories"
-        className="border-none shadow-none"
+        className="border-none shadow-none hidden lg:block"
         onChange={(e) => {
           handleSearch(e.target.value);
         }}
