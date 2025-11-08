@@ -289,12 +289,16 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
 
         // Get analyses split by type for team repositories (using team owner's userId)
         const fullRepoAnalyses = await Analysis.find({
+                      github_repositoryId: { $in: repositoryIds },
+
             userId: team.ownerId,
             analysis_type: 'full_repo_analysis',
             createdAt: { $gte: rangeStart, $lte: now }
         }).lean();
 
         const prAnalyses = await Analysis.find({
+                      github_repositoryId: { $in: repositoryIds },
+
             userId: team.ownerId,
             analysis_type: 'pr_analysis',
             createdAt: { $gte: rangeStart, $lte: now }
@@ -323,7 +327,7 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
 
         // Get recent activity (last 5 items) - both full repo analyses and PR analyses
         const recentFullRepoAnalyses = await Analysis.find({
-            // github_repositoryId: { $in: repositoryIds },
+            github_repositoryId: { $in: repositoryIds },
             userId: team.ownerId,
             analysis_type: 'full_repo_analysis',
             createdAt: { $gte: rangeStart, $lte: now }
@@ -334,7 +338,7 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
         .lean();
 
         const recentPrAnalyses = await Analysis.find({
-            // github_repositoryId: { $in: repositoryIds },
+            github_repositoryId: { $in: repositoryIds },
             userId: team.ownerId,
             analysis_type: 'pr_analysis',
             createdAt: { $gte: rangeStart, $lte: now }
