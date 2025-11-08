@@ -1,6 +1,7 @@
 // apps/api/src/services/prCommentService.ts
 import { getInstallationOctokit } from '../../lib/githubApp.js';
 import { PRComment } from '../../utils/responseParser.js';
+import { incrementAnalysisCommentCounter } from '../../utils/analysisStreamStore.js';
 
 export interface PRCommentContext {
   installationId: number;
@@ -9,6 +10,8 @@ export interface PRCommentContext {
   pullNumber: number;
   commitSha?: string;
   filesChanged?: string[]; // optional list of filenames (and previous filenames) from PR
+  // Optional analysis ID to persist total posted comments
+  analysisId?: string;
 }
 
 export interface ParsedSuggestion {
@@ -283,6 +286,14 @@ export class PRCommentService {
         // Add a small delay between comments to avoid rate limiting
         await this.delay(1000);
       }
+    }
+    // Persist the count to Redis for finalization if available
+    try {
+      if (successCount > 0 && this.context.analysisId) {
+        await incrementAnalysisCommentCounter(this.context.analysisId, successCount);
+      }
+    } catch (err) {
+      console.warn(`[PR-${this.context.pullNumber}] ⚠️ Failed to increment Redis comment counter`, err);
     }
     
     return successCount;

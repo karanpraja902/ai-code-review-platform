@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { DashboardMetrics } from "@/app/(root)/dashboard/_components/DashboardMetrics";
 import { RecentActivity } from "@/app/(root)/dashboard/_components/RecentActivity";
 import { GitHubIssuesChart } from "@/app/(root)/dashboard/_components/GitHubIssuesChart";
@@ -12,10 +12,11 @@ import { getTeamDashboardData } from "../_actions/getTeamDashboardData";
 
 const TeamDashboardPage = () => {
   const { teamSlug } = useParams<{ teamSlug: string }>();
+  const [days, setDays] = useState<number>(7);
 
   const { data: dashboardData } = useSuspenseQuery({
-    queryKey: ["teamDashboard", teamSlug],
-    queryFn: getTeamDashboardData,
+    queryKey: ["teamDashboard", teamSlug, days],
+    queryFn: () => getTeamDashboardData(days),
   });
 
   if (!dashboardData.data) {
@@ -35,7 +36,19 @@ const TeamDashboardPage = () => {
     <div className="h-full space-y-6 px-4 py-5">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Team Dashboard</h1>
-        <div className="text-sm text-gray-500">Team: {teamSlug}</div>
+        <div className="flex items-center">
+          <select
+            className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={15}>Last 15 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={60}>Last 60 days</option>
+            <option value={90}>Last 90 days</option>
+          </select>
+        </div>
       </div>
 
       <DashboardMetrics data={dashboardData.data} />

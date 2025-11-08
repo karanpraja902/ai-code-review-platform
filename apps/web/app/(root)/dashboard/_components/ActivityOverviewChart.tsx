@@ -69,7 +69,7 @@ export function ActivityOverviewChart({ data }: ActivityOverviewChartProps) {
   const implementationRate = overallActivity > 0 ? ((overallImplemented / overallActivity) * 100).toFixed(1) : "0";
 
   return (
-    <Card>
+    <Card className="rounded-md">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Activity className="h-5 w-5" />

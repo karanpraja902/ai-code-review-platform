@@ -14,6 +14,8 @@ export interface IAnalysis {
   pr_number?: number;
   pr_url?: string;
   pr_title?: string;
+  // Total number of PR comments posted during this analysis
+  pr_comments_posted?: number;
   // Options field only for PR review context
   options?: Record<string, any>;
   exitCode?: number | null;
@@ -45,6 +47,7 @@ const AnalysisSchema = new Schema<IAnalysis>(
     pr_number: { type: Number },
     pr_url: { type: String },
     pr_title: { type: String },
+    pr_comments_posted: { type: Number, default: 0 },
     // Options field used only for PR review context
     options: { type: Schema.Types.Mixed },
     exitCode: { type: Number },

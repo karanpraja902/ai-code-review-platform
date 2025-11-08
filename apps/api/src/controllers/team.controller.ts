@@ -213,6 +213,73 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
             return next(new CustomError('Forbidden: not a team member', 403));
         }
 
+        // Time range filter: supports last 7/15/30/60/90 days, default 7
+        const allowedDays = new Set([7, 15, 30, 60, 90]);
+        const qDays = parseInt(String(req.query.days ?? '7'), 10);
+        const days = allowedDays.has(qDays) ? qDays : 7;
+        const now = new Date();
+        const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const rangeStart = (() => {
+            const d = new Date(now);
+            d.setDate(d.getDate() - (days - 1));
+            return startOfDay(d);
+        })();
+        const formatDateKey = (d: Date) => {
+            const yr = d.getFullYear();
+            const mo = String(d.getMonth() + 1).padStart(2, '0');
+            const da = String(d.getDate()).padStart(2, '0');
+            return `${yr}-${mo}-${da}`;
+        };
+        const buildDailyCounts = (items: any[]) => {
+            const map: Record<string, number> = {};
+            for (const item of items) {
+                const created = new Date(item.createdAt);
+                if (created < rangeStart || created > now) continue;
+                if (item.status !== 'completed') continue;
+                const key = formatDateKey(created);
+                map[key] = (map[key] ?? 0) + 1;
+            }
+            const out: { date: string; count: number }[] = [];
+            for (let i = 0; i < days; i++) {
+                const d = new Date(rangeStart);
+                d.setDate(rangeStart.getDate() + i);
+                const key = formatDateKey(d);
+                out.push({ date: key, count: map[key] ?? 0 });
+            }
+            return out;
+        };
+
+        // Build daily average comments per unique PR (unique by pr_url or pr_number+repoUrl)
+        const buildDailyAvgCommentsForUniquePRs = (items: any[]) => {
+            const dayToPRMap: Record<string, Record<string, { total: number; runs: number }>> = {};
+            for (const item of items) {
+                const created = new Date(item.createdAt);
+                if (created < rangeStart || created > now) continue;
+                if (item.status !== 'completed') continue;
+                const key = formatDateKey(created);
+                const prKey = (item.pr_url && item.pr_url.length > 0)
+                  ? String(item.pr_url)
+                  : `${item.repoUrl}#${item.pr_number ?? ''}`;
+                const comments = typeof item.pr_comments_posted === 'number' ? item.pr_comments_posted : 0;
+                if (!dayToPRMap[key]) dayToPRMap[key] = {};
+                if (!dayToPRMap[key][prKey]) dayToPRMap[key][prKey] = { total: 0, runs: 0 };
+                dayToPRMap[key][prKey].total += comments;
+                dayToPRMap[key][prKey].runs += 1;
+            }
+            const out: { date: string; count: number }[] = [];
+            for (let i = 0; i < days; i++) {
+                const d = new Date(rangeStart);
+                d.setDate(rangeStart.getDate() + i);
+                const key = formatDateKey(d);
+                const prEntries = Object.values(dayToPRMap[key] || {});
+                const uniquePRs = prEntries.length;
+                const sumCommentsAcrossPRs = prEntries.reduce((acc, e) => acc + e.total, 0);
+                const avg = uniquePRs > 0 ? sumCommentsAcrossPRs / uniquePRs : 0;
+                out.push({ date: key, count: Number(avg.toFixed(2)) });
+            }
+            return out;
+        };
+
         // Get all repositories that belong to this team
         const repositories = await Github_Repository.find({ teams: teamId }).lean();
         const repositoryIds = repositories.map(repo => repo._id);
@@ -220,26 +287,39 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
         // Get total repositories added to team
         const total_repo_added = repositories.length;
 
-        // Get all analyses for team repositories (using team owner's userId for analyses)
-        const analyses = await Analysis.find({
-            github_repositoryId: { $in: repositoryIds },
-            userId: team.ownerId
+        // Get analyses split by type for team repositories (using team owner's userId)
+        const fullRepoAnalyses = await Analysis.find({
+                      github_repositoryId: { $in: repositoryIds },
+
+            userId: team.ownerId,
+            analysis_type: 'full_repo_analysis',
+            createdAt: { $gte: rangeStart, $lte: now }
+        }).lean();
+
+        const prAnalyses = await Analysis.find({
+                      github_repositoryId: { $in: repositoryIds },
+
+            userId: team.ownerId,
+            analysis_type: 'pr_analysis',
+            createdAt: { $gte: rangeStart, $lte: now }
         }).lean();
 
         // Get all GitHub issues created for team repositories
         const githubIssues = await GithubIssue.find({
             github_repositoryId: { $in: repositoryIds },
-            createdBy: team.ownerId
+            createdBy: team.ownerId,
+            createdAt: { $gte: rangeStart, $lte: now }
         }).lean();
 
         // Get all pull requests created for team repositories
         const pullRequests = await GithubPullRequest.find({
             github_repositoryId: { $in: repositoryIds },
-            createdBy: team.ownerId
+            createdBy: team.ownerId,
+            createdAt: { $gte: rangeStart, $lte: now }
         }).lean();
 
-        // Calculate full repo review metrics
-        const total_reviews = analyses.length;
+        // Calculate full repo review metrics (only full repo analyses)
+        const total_reviews = fullRepoAnalyses.length;
         const total_github_issues_suggested = githubIssues.length;
         const github_issues_opened = githubIssues.filter(issue => issue.state !== 'draft').length;
         const total_pull_request_suggested = pullRequests.length;
@@ -249,7 +329,8 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
         const recentFullRepoAnalyses = await Analysis.find({
             github_repositoryId: { $in: repositoryIds },
             userId: team.ownerId,
-            analysis_type: 'full_repo_analysis'
+            analysis_type: 'full_repo_analysis',
+            createdAt: { $gte: rangeStart, $lte: now }
         })
         .sort({ createdAt: -1 })
         .limit(5)
@@ -259,7 +340,8 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
         const recentPrAnalyses = await Analysis.find({
             github_repositoryId: { $in: repositoryIds },
             userId: team.ownerId,
-            analysis_type: 'pr_analysis'
+            analysis_type: 'pr_analysis',
+            createdAt: { $gte: rangeStart, $lte: now }
         })
         .sort({ createdAt: -1 })
         .limit(5)
@@ -286,17 +368,27 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
                 total_github_issues_suggested: repoIssues.length,
                 github_issues_opened: repoIssues.filter(issue => issue.state !== 'draft').length,
                 total_pull_request_suggested: repoPRs.length,
-                pull_request_opened: repoPRs.filter(pr => pr.state !== 'draft').length
+                pull_request_opened: repoPRs.filter(pr => pr.state !== 'draft').length,
+                repo_id: (repo?._id ? String(repo._id) : String(analysis.github_repositoryId)),
+                analysis_id: String(analysis._id)
             };
         });
 
         const recent_pull_requests = recentPrAnalyses.map(analysis => {
             const repo = analysis.github_repositoryId as any;
+            const prUrl = (analysis as any).pr_url && (analysis as any).pr_url.length > 0
+              ? String((analysis as any).pr_url)
+              : (analysis as any).pr_number && repo?.fullName
+                ? `https://github.com/${repo.fullName}/pull/${(analysis as any).pr_number}`
+                : undefined;
             return {
                 repo_name: repo?.fullName || 'Unknown',
                 state: analysis.status,
                 date: analysis.createdAt,
-                total_comments: 0 // As requested, leaving this as 0
+                total_comments: typeof (analysis as any).pr_comments_posted === 'number' ? (analysis as any).pr_comments_posted : 0,
+                pr_url: prUrl,
+                repo_id: (repo?._id ? String(repo._id) : String(analysis.github_repositoryId)),
+                analysis_id: String(analysis._id)
             };
         });
 
@@ -309,13 +401,21 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
                 total_pull_request_suggested,
                 pull_request_opened
             },
-            pr_review: {
-                total_reviews: 0, // No separate PR review tracking found in models
-                total_comments: 0 // As requested, leaving this as 0
+            pr_reviews: {
+                total_reviews: prAnalyses.length,
+                total_comments: prAnalyses
+                  .filter(a => a.status === 'completed')
+                  .reduce((acc, a) => acc + (typeof (a as any).pr_comments_posted === 'number' ? (a as any).pr_comments_posted : 0), 0)
             },
             recent_activity: {
                 pull_request: recent_pull_requests,
                 full_repo: recent_full_repo
+            },
+            trends: {
+                daily_full_repo_reviews: buildDailyCounts(fullRepoAnalyses),
+                daily_pr_reviews: buildDailyCounts(prAnalyses),
+                daily_pr_comments_avg: buildDailyAvgCommentsForUniquePRs(prAnalyses),
+                range_days: days
             }
         };
 

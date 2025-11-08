@@ -26,11 +26,11 @@ interface GitHubIssuesChartProps {
 const chartConfig = {
   suggested: {
     label: "Issues Suggested",
-    color: "var(--chart-1)",
+    color: "var(--primary)",
   },
   opened: {
     label: "Issues Opened",
-    color: "var(--chart-2)",
+    color: "var(--chart-3)",
   },
 } satisfies ChartConfig
 
@@ -50,7 +50,7 @@ export function GitHubIssuesChart({ data }: GitHubIssuesChartProps) {
   ];
 
   return (
-    <Card>
+    <Card className="rounded-md">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bug className="h-5 w-5" />

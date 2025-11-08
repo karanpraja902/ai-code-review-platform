@@ -50,7 +50,7 @@ export function PullRequestsChart({ data }: PullRequestsChartProps) {
   ];
 
   return (
-    <Card>
+    <Card className="rounded-md">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <GitPullRequest className="h-5 w-5" />

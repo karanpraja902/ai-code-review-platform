@@ -4,9 +4,9 @@ import { apiGet } from "@/lib/api-client";
 import { DashboardResponse } from "@/types/dashboard";
 import { logger } from "@/lib/logger";
 
-export const getTeamDashboardData = async () => {
+export const getTeamDashboardData = async (days: number = 7) => {
   try {
-    const response = await apiGet("/api/team/dashboard", {
+    const response = await apiGet(`/api/team/dashboard?days=${encodeURIComponent(days)}`, {
       cache: "no-store", // Dashboard data should be fresh
     });
 

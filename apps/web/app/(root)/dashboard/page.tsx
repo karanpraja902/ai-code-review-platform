@@ -15,8 +15,8 @@ const Page = async () => {
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
-    queryKey: ["dashboardData"],
-    queryFn: getDashboardData,
+    queryKey: ["dashboardData", 7],
+    queryFn: () => getDashboardData(7),
   });
 
   return (
