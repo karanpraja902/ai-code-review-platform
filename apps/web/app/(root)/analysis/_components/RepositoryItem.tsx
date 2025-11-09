@@ -17,7 +17,7 @@ interface RepositoryItemProps {
 
 const RepositoryItem: React.FC<RepositoryItemProps> = ({ repo, teamId }) => {
   const [selectedBranch, setSelectedBranch] = useState(
-    repo.defaultBranch || "main"
+    repo.defaultBranch || "main",
   );
   const [isHovered, setIsHovered] = useState(false);
 
@@ -33,17 +33,22 @@ const RepositoryItem: React.FC<RepositoryItemProps> = ({ repo, teamId }) => {
 
   return (
     <div
-      className="flex items-center justify-between gap-3 group"
+      className="group flex items-center justify-between gap-3"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <Link
         href={`/analysis/${encodeURIComponent(repo._id)}${teamId ? `?teamId=${teamId}` : ""}${selectedBranch !== "main" ? `${teamId ? "&" : "?"}branch=${selectedBranch}` : ""}`}
-        className="flex items-center gap-3">
+        className="flex items-center gap-3"
+      >
         <IconBrandGithub className="size-4 shrink-0" />
-        <span className="text-sm md:text-base truncate">{repo.fullName}</span>
+        <div className="max-w-full break-before-auto text-sm md:text-base">
+          {repo.fullName}
+        </div>
         <Badge
           variant={"outline"}
-          className="border-neutral-300 text-neutral-300 text-xs rounded-full">
+          className="text-muted-foreground rounded-full"
+        >
           {repo.private ? "Private" : "Public"}
         </Badge>
       </Link>
@@ -54,9 +59,11 @@ const RepositoryItem: React.FC<RepositoryItemProps> = ({ repo, teamId }) => {
           size="sm"
           className={`transition-opacity duration-200 ${
             isHovered ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          }`}>
+          }`}
+        >
           <Link
-            href={`/repo/${encodeURIComponent(repo._id)}/settings${teamId ? `?teamId=${teamId}` : ""}`}>
+            href={`/repo/${encodeURIComponent(repo._id)}/settings${teamId ? `?teamId=${teamId}` : ""}`}
+          >
             <Settings className="h-4 w-4" />
           </Link>
         </Button>
