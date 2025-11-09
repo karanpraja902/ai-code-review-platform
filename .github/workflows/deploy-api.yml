@@ -76,6 +76,10 @@ jobs:
           cd apps/api
           docker-compose down || true
 
+      - name: Login to Docker Hub
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Pull latest images
         run: |
           docker pull ${{ secrets.DOCKER_USERNAME }}/ai-code-review-api:latest
