@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { getAuth } from '@clerk/express';
 import { CustomError } from "../middlewares/error.js";
 import Analysis from "../models/analysis.model.js";
 import { Github_Repository } from "../models/github_repostries.model.js";
@@ -364,10 +365,8 @@ export const getPrAnalysis = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?._id;
-    console.log(userId, "here is the user id")
-
-    if (!userId) {
+    const currentUserId = req.user?._id;
+    if (!currentUserId) {
       return next(new CustomError("Unauthorized", 401));
     }
     // Pagination defaults
@@ -380,11 +379,50 @@ export const getPrAnalysis = async (
     const rawSearch = ((req.query.query || req.query.q || req.query.search) as string) || "";
     const search = rawSearch.trim();
 
-    // Base filter
+    // Determine team context: prefer explicit header, then attached context, then Clerk orgId
+    const headerTeamId = (req.headers['x-team-id'] as string) || undefined;
+    const attachedTeamId = req.team?.id || undefined;
+    const { orgId } = getAuth(req);
+    const resolvedTeamId = headerTeamId || attachedTeamId || orgId || undefined;
+
+    // Base filter always starts with analysis_type
     const filter: any = {
       analysis_type: "pr_analysis",
-      userId: userId,
     };
+
+    if (resolvedTeamId) {
+      // Team context: restrict to repositories accessible to the team and use team owner's analyses
+      const team = await Team.findById(resolvedTeamId);
+      if (!team) {
+        return next(new CustomError("Team not found", 404));
+      }
+      const isMember = team.members?.some((m: any) => m.userId === currentUserId);
+      if (!isMember) {
+        return next(new CustomError("Forbidden: not a team member", 403));
+      }
+      const repos = await Github_Repository.find({ teams: resolvedTeamId }).select('_id').lean();
+      const repoIds = repos.map((r: any) => r._id);
+
+      // If no accessible repositories, return empty result with pagination
+      if (repoIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 1,
+          },
+        });
+      }
+
+      filter.github_repositoryId = { $in: repoIds };
+      filter.userId = team.ownerId;
+    } else {
+      // Personal context: filter by current user
+      filter.userId = currentUserId;
+    }
 
     // Build search filter across pr_title, repoUrl, and pr_number
     if (search.length > 0) {
