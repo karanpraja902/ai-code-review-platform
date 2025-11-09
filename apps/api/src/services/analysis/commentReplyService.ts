@@ -63,7 +63,7 @@ export function isAI Code ReviewMentioned(body?: string): boolean {
 export function isLikelyReplyToAI Code ReviewConversation(body: string): boolean {
   if (!body) return false;
   const lowered = body.toLowerCase();
-  const hasBotMention = /@ai-code-review[-_]ai|@ai-code-review[-_]ai|@.*\[bot\]/i.test(body);
+  const hasBotMention = /@ai-code-review[-_]ai|@.*\[bot\]/i.test(body);
   const mentionsAI Code Review = lowered.includes('@ai-code-review');
   const quotesAI Code Review = />\s*.*(ai-code-review|```suggestion|###\s*problem)/i.test(body);
   logger.debug('Issue comment reply intent detection', {

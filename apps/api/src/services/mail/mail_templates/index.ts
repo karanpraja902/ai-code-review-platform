@@ -1,4 +1,4 @@
-// Core templates for ai-code-review-platform
+// Core templates for ai-code-review-platform.dev
 export { baseTemplate } from './baseTemplate.js';
 export { defaultTemplate } from './defaultTemplate.js';
 
