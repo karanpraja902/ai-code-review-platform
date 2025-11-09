@@ -13,7 +13,7 @@ import TeamRoutes from "./routes/team.routes.js";
 import SandboxRoutes from "./routes/sandbox.routes.js";
 import SubscriptionRoutes from "./routes/subscription.routes.js";
 import { config } from "dotenv";
-import { logger, winstonLogger } from "./utils/logger.js";
+import { winstonLogger } from "./utils/logger.js";
 
 export function createApp(): Application {
   const app = express();
@@ -37,6 +37,7 @@ export function createApp(): Application {
       origin: [
         process.env.FRONTEND_URL!,
         "http://localhost:3000",
+        "https://ai-code-review-prod.vercel.app",
         "https://ai-code-review.vercel.app",
         "https://ai-code-review-platform.dev",
         "https://www.ai-code-review-platform.dev",

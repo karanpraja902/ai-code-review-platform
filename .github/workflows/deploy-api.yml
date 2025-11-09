@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    name: Test API
+    name: Test AI Code Review-api
     runs-on: ubuntu-latest
     
     steps:

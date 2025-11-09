@@ -89,17 +89,17 @@ export const welcomeTemplate = (options: WelcomeOptions) => {
         📚 Helpful Resources
       </h2>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-        <a href="https://ai-code-review-platform/docs" style="display: block; padding: 16px; background-color: white; border-radius: 6px; text-decoration: none; color: #1e40af; border: 1px solid #bfdbfe;">
+        <a href="https://ai-code-review-platform.dev/docs" style="display: block; padding: 16px; background-color: white; border-radius: 6px; text-decoration: none; color: #1e40af; border: 1px solid #bfdbfe;">
           <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600;">📖 Documentation</h3>
           <p style="margin: 0; font-size: 14px; color: #6b7280;">Learn how to use all features</p>
         </a>
         
-        <a href="https://ai-code-review-platform/examples" style="display: block; padding: 16px; background-color: white; border-radius: 6px; text-decoration: none; color: #1e40af; border: 1px solid #bfdbfe;">
+        <a href="https://ai-code-review-platform.dev/examples" style="display: block; padding: 16px; background-color: white; border-radius: 6px; text-decoration: none; color: #1e40af; border: 1px solid #bfdbfe;">
           <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600;">💡 Examples</h3>
           <p style="margin: 0; font-size: 14px; color: #6b7280;">See analysis examples</p>
         </a>
         
-        <a href="https://ai-code-review-platform/support" style="display: block; padding: 16px; background-color: white; border-radius: 6px; text-decoration: none; color: #1e40af; border: 1px solid #bfdbfe;">
+        <a href="https://ai-code-review-platform.dev/support" style="display: block; padding: 16px; background-color: white; border-radius: 6px; text-decoration: none; color: #1e40af; border: 1px solid #bfdbfe;">
           <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600;">🆘 Support</h3>
           <p style="margin: 0; font-size: 14px; color: #6b7280;">Get help when you need it</p>
         </a>
@@ -114,7 +114,7 @@ export const welcomeTemplate = (options: WelcomeOptions) => {
         </a>
       ` : ''}
       <p style="margin: 16px 0 0 0; font-size: 14px; color: #6b7280;">
-        Questions? Reply to this email or visit our <a href="https://ai-code-review-platform/support" style="color: #667eea;">support center</a>.
+        Questions? Reply to this email or visit our <a href="https://ai-code-review-platform.dev/support" style="color: #667eea;">support center</a>.
       </p>
     </div>
   `);
