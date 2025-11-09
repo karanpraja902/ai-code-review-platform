@@ -25,7 +25,7 @@ const GithubOrgSwitcher = () => {
   const orgSlug = searchParams.get("orgSlug") || "all";
 
   const selectedInstallation: InstallationItem | undefined = useMemo(
-    () => installations.find((inst) => inst.login === orgSlug),
+    () => installations?.find((inst) => inst.login === orgSlug),
     [installations, orgSlug]
   );
   

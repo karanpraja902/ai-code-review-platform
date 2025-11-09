@@ -8,6 +8,7 @@ import {
 import { getDashboardData } from "./_actions/getDashboardData";
 import DashboardPage from "./_components/DashboardPage";
 import { Loader2Icon } from "lucide-react";
+import { getUserInstallations } from "@/_actions/user-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +20,21 @@ const Page = async () => {
     queryFn: () => getDashboardData(7),
   });
 
+  await queryClient.prefetchQuery({
+    queryKey: ["userInstallations"],
+    queryFn: async () => {
+      try {
+        const data = await getUserInstallations();
+        return Array.isArray(data) ? data : [];
+      } catch (e) {
+        return [];
+      }
+    },
+  });
+
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="h-svh max-w-7xl w-full mx-auto">
+      <div className="h-full w-full mx-auto">
         <ErrorBoundary
           fallback={
             <div className="h-full  flex items-center justify-center">

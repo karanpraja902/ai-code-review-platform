@@ -11,6 +11,7 @@ import { PRCommentService, PRCommentContext } from "../services/analysis/prComme
 import mongoose from "mongoose";
 import { logger } from "../utils/logger.js";
 import { initAnalysisCommentCounter } from "../utils/analysisStreamStore.js";
+import Analysis from "../models/analysis.model.js";
 
 export const create_github_installation = async (payload: CreateInstallationInput) => {
     try {
@@ -750,6 +751,29 @@ export const PrData = async (payload: any) => {
         }
         // Pre-generate an Analysis ID to link streaming, Redis counters, and finalization
         const preAnalysisId = new mongoose.Types.ObjectId().toString();
+
+        // Pre-create analysis record with running status and PR metadata
+        try {
+          const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
+          const createPayload: any = {
+            _id: preAnalysisId,
+            analysis_type: "pr_analysis",
+            userId: githubInstallation.userId,
+            repoUrl,
+            github_repositoryId: githubRepo._id,
+            sandboxId: "",
+            model: "gemini-2.5-pro",
+            prompt: prAnalysisPrompt,
+            status: "running",
+            pr_number: pull_request.number,
+            pr_url: prUrl,
+            pr_title: pull_request.title,
+          };
+          await Analysis.create(createPayload);
+          logger.info("Pre-created analysis record", { analysisId: preAnalysisId, repo: repository.full_name, prNumber: pull_request.number });
+        } catch (createErr) {
+          logger.warn("Failed to pre-create analysis record", { analysisId: preAnalysisId, error: createErr instanceof Error ? createErr.message : createErr });
+        }
         const prCommentService = new PRCommentService({
           ...prCommentContext,
           analysisId: preAnalysisId,

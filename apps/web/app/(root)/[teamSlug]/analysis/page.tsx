@@ -38,8 +38,8 @@ const Page = async (props: PageProps) => {
   });
 
   return (
-    <div className="h-svh max-w-8xl w-full mx-auto py-5 px-4">
-      <div className="h-full p-4">
+    <div className="h-svh max-w-8xl w-full mx-auto p-5">
+      <div className="h-full">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
           <div>
             <h2 className="text-xl lg:text-2xl font-medium">

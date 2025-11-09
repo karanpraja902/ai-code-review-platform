@@ -26,7 +26,7 @@ const Page = async ({ params }: PageProps) => {
   });
 
   return (
-    <div className="h-svh max-w-7xl w-full mx-auto">
+    <div className="h-svh w-full mx-auto">
       <HydrationBoundary state={dehydrate(queryClient)}>
         <ErrorBoundary
           fallback={

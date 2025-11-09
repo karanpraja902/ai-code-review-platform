@@ -102,11 +102,23 @@ const PrAnalysisList = () => {
             Loading...
           </div>
         ) : items && items.length > 0 ? (
-          items.map((item, idx) => (
+          items.map((item, idx) => {
+            // Compute descending global index across the full dataset
+            const globalIndex = Math.max(total - (page - 1) * limit - idx, 1);
+            // Prepare title with PR number prefix
+            const rawTitle = item?.pr_title
+              ? item.pr_title.length > 30
+                ? `${item.pr_title.slice(0, 30)}...`
+                : item.pr_title
+              : "Untitled Pull Request";
+            const prPrefix = item?.pr_number ? `#${item.pr_number} ` : "";
+            const displayTitle = `${prPrefix}${rawTitle}`;
+            return (
             <React.Fragment key={`${item.repoUrl}-${item.pr_number}-${idx}`}>
               <li className="py-4">
                 <div className="grid grid-cols-12 items-center">
-                  <div className="col-span-1 text-sm text-muted-foreground">{item.pr_number}</div>
+                  {/* Show descending index in the # column */}
+                  <div className="col-span-1 text-sm text-muted-foreground">{globalIndex}</div>
                   <div className="col-span-4 flex items-center gap-2 min-w-0">
                     <GitPullRequestIcon className="h-4 w-4 flex-shrink-0" />
                     <div className="truncate">
@@ -117,19 +129,11 @@ const PrAnalysisList = () => {
                           rel="noopener noreferrer"
                           className="text-sm truncate hover:underline"
                         >
-                          {item?.pr_title
-                            ? item.pr_title.length > 30
-                              ? `${item.pr_title.slice(0, 30)}...`
-                              : item.pr_title
-                            : "Untitled Pull Request"}
+                          {displayTitle}
                         </a>
                       ) : (
                         <span className="text-sm truncate">
-                          {item?.pr_title
-                            ? item.pr_title.length > 30
-                              ? `${item.pr_title.slice(0, 30)}...`
-                              : item.pr_title
-                            : "Untitled Pull Request"}
+                          {displayTitle}
                         </span>
                       )}
                     </div>
@@ -181,7 +185,8 @@ const PrAnalysisList = () => {
               </li>
               <Separator />
             </React.Fragment>
-          ))
+          );
+          })
         ) : (
           <li className="min-h-[70vh] grid place-items-center text-base font-medium text-foreground">
             {error ? `Error: ${error}` : "No PR analyses found"}

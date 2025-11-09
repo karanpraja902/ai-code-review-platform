@@ -1,0 +1,110 @@
+"use client";
+
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { IconBrandGithub } from "@tabler/icons-react";
+import { StarsIcon, GitPullRequest, ScanTextIcon, AtSign } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import ConnectGithubCard from "../../_components/connect-github-card";
+
+const HowToCard = ({
+  title,
+  description,
+  icon: Icon,
+  imageSrc,
+  imageAlt,
+  href,
+  cta,
+}: {
+  title: string;
+  description: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  imageSrc?: string;
+  imageAlt?: string;
+  href?: string;
+  cta?: string;
+}) => {
+  return (
+    <Card className="bg-background">
+      <CardHeader className="flex flex-row items-center gap-3">
+        {Icon ? <Icon className="h-5 w-5 text-muted-foreground" /> : null}
+        <div>
+          <CardTitle className="text-sm">{title}</CardTitle>
+          <CardDescription className="text-xs">{description}</CardDescription>
+        </div>
+      </CardHeader>
+      {(imageSrc || (href && cta)) && (
+        <CardContent className="pt-0">
+          {imageSrc && (
+            <div className="mt-2 flex justify-center">
+              <Image
+                src={imageSrc}
+                alt={imageAlt ?? title}
+                width={200}
+                height={200}
+                className=""
+              />
+            </div>
+          )}
+          {href && cta && (
+            <Button asChild variant="outline" size="sm" className="cursor-pointer mt-2">
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                {cta}
+              </a>
+            </Button>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  );
+};
+
+const NoInstallationOnboarding = () => {
+  return (
+    <div className="h-full">
+ 
+     <ConnectGithubCard/>
+      <div className=" mx-auto">
+        <Card className="rounded-md  p-5">
+        <div className="mb-2">
+        <h2 className="text-xl font-bold">How to Interact with AI Code Review</h2>
+        <span className="text-muted-foreground text-sm">Learn how to use ai-code-review and how ai-code-review works</span>
+       
+        </div>
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+          <HowToCard
+            title="Install the GitHub App"
+            description="Authorize AI Code Review for your personal or organization account to access repositories."
+            icon={IconBrandGithub}
+            href="https://github.com/apps/ai-code-review-platform/installations/select_target"
+            cta="Install on GitHub"
+          />
+          <HowToCard
+            title="Add and Sync Repositories"
+            description="Add repos from GitHub and sync to fetch branches, issues, and PRs."
+            icon={ScanTextIcon}
+            href="https://github.com/apps/ai-code-review-platform/installations/select_target"
+            cta="Add from GitHub"
+          />
+          <HowToCard
+            title="Run Analyses"
+            description="Trigger full repo reviews or PR checks to surface issues and suggestions."
+            icon={AtSign}
+            imageSrc="/@ai-code-review.png"
+          />
+          <HowToCard
+            title="Review Insights"
+            description="Track metrics and recent activity on your dashboard as analyses complete."
+            icon={StarsIcon}
+            imageSrc="/metrics.png"
+          />
+        </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default NoInstallationOnboarding;
