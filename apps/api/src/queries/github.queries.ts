@@ -12,6 +12,8 @@ import mongoose from "mongoose";
 import { logger } from "../utils/logger.js";
 import { initAnalysisCommentCounter } from "../utils/analysisStreamStore.js";
 import Analysis from "../models/analysis.model.js";
+import SubscriptionPlan from "../models/subscription_plan.model.js";
+import { FeatureAccessChecker } from "../middlewares/helpers/checkAccessService.js";
 
 export const create_github_installation = async (payload: CreateInstallationInput) => {
     try {
@@ -356,6 +358,75 @@ export const PrData = async (payload: any) => {
       repositoryName: repository?.full_name,
       prNumber: pull_request?.number 
     });
+
+    // Early check: daily PR analysis limit
+    try {
+      const githubInstallation = await Github_Installation.findOne({ installationId: installation.id });
+      if (githubInstallation?.userId) {
+        const user = await User.findById(githubInstallation.userId);
+        const [owner, repo] = repository.full_name.split('/');
+        let subscriptionPlan = null as any;
+
+        if (user?.subscriptionPlanId) {
+          try {
+            subscriptionPlan = await SubscriptionPlan.findById(new mongoose.Types.ObjectId(user.subscriptionPlanId.toString()));
+          } catch (e) {
+            subscriptionPlan = null;
+          }
+        }
+        if (!subscriptionPlan) {
+          subscriptionPlan = await SubscriptionPlan.findOne({ name: 'free', isActive: true });
+        }
+
+        if (subscriptionPlan && user) {
+          const sub = {
+            planId: subscriptionPlan._id,
+            planName: subscriptionPlan.name,
+            status: user.subscriptionStatus || 'free',
+            features: {
+              maxTeams: subscriptionPlan.features.maxTeams,
+              maxTeamMembers: subscriptionPlan.features.maxTeamMembers,
+              maxPrAnalysisPerDay: (subscriptionPlan.features as any).maxPrAnalysisPerDay ?? 5,
+              maxFullRepoAnalysisPerDay: (subscriptionPlan.features as any).maxFullRepoAnalysisPerDay ?? 2,
+              prioritySupport: subscriptionPlan.features.prioritySupport,
+              organizationSupport: (subscriptionPlan.features as any).organizationSupport ?? (subscriptionPlan.name === 'lite' || subscriptionPlan.name === 'advance'),
+            },
+            startDate: user.subscriptionStartDate,
+            endDate: user.subscriptionEndDate,
+          };
+
+          const fakeReq: any = { sub, user: { _id: user._id } };
+          const featureResult = await FeatureAccessChecker.checkFeatureAccess(fakeReq, 'maxPrAnalysisPerDay');
+
+          if (!featureResult.allowed) {
+            const prCommentService = new PRCommentService({
+              installationId: installation.id,
+              owner,
+              repo,
+              pullNumber: pull_request.number,
+              commitSha: pull_request.head.sha,
+            });
+
+            const msg = `You've hit the daily limits of PR analysis. Consider updating the plan: https://ai-code-review-platform.dev/dashboard`;
+            await prCommentService.postDailyLimitReachedComment(msg);
+
+            logger.info("PR analysis blocked due to daily limit", {
+              userId: githubInstallation.userId,
+              planName: featureResult.planName,
+              currentCount: featureResult.currentCount,
+              maxAllowed: featureResult.maxAllowed,
+              prNumber: pull_request.number,
+              repository: repository.full_name,
+            });
+
+            return; // Stop further processing when limit is reached
+          }
+        }
+      }
+    } catch (limitErr) {
+      logger.warn("Failed to perform PR analysis daily limit check", { error: limitErr instanceof Error ? limitErr.message : limitErr });
+      // Continue processing if check fails; do not block PR handling due to check failure
+    }
     // Write full payload to file
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `pr-llm-payload-${timestamp}.json`;

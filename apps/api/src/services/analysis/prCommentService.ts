@@ -463,6 +463,36 @@ export class PRCommentService {
   }
 
   /**
+   * Post a daily PR analysis limit reached status comment.
+   * Keeps the same links section used in the main status comment.
+   */
+  async postDailyLimitReachedComment(message?: string): Promise<boolean> {
+    try {
+      const body = [
+        PRCommentService.STATUS_MARKER,
+        `## 🪲 Daily PR Analysis Limit Reached`,
+        (message || `You've hit the daily PR analysis limit on your current plan. Consider upgrading your plan: https://ai-code-review-platform.dev/dashboard`),
+        '',
+        '---',
+        `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
+      ].join('\n');
+
+      const response = await this.octokit.issues.createComment({
+        owner: this.context.owner,
+        repo: this.context.repo,
+        issue_number: this.context.pullNumber,
+        body,
+      });
+
+      this.statusCommentId = response.data.id;
+      return true;
+    } catch (error) {
+      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post daily limit reached comment:`, error);
+      return false;
+    }
+  }
+
+  /**
    * Find the existing AI Code Review status/main comment on the PR by hidden marker.
    */
   private async findExistingStatusCommentId(): Promise<number | undefined> {
