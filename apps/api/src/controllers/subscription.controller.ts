@@ -10,31 +10,31 @@ export const getSubscriptionFeatures = async (req: Request, res: Response) => {
     // Access subscription data from req.sub (set by checkAuth middleware)
     const subscription = req.sub;
 
-    if (!subscription) {
+  if (!subscription) {
       return res.status(200).json({
         message: "No subscription data available",
         hasSubscription: false,
         defaultFeatures: {
-          maxProjects: 1,
           maxTeams: 0,
           maxTeamMembers: 1,
-          maxAnalysisPerMonth: 5,
+          maxPrAnalysisPerDay: 5,
+          maxFullRepoAnalysisPerDay: 2,
           prioritySupport: false,
+          organizationSupport: false,
         }
       });
     }
-
-    // Example of how to use subscription features in your business logic
-    const canCreateProject = (currentProjectCount: number) => {
-      return currentProjectCount < subscription.features.maxProjects;
-    };
 
     const canCreateTeam = (currentTeamCount: number) => {
       return currentTeamCount < subscription.features.maxTeams;
     };
 
-    const canRunAnalysis = (currentMonthAnalysisCount: number) => {
-      return currentMonthAnalysisCount < subscription.features.maxAnalysisPerMonth;
+    const canRunPrAnalysisToday = (currentTodayPrCount: number) => {
+      return currentTodayPrCount < subscription.features.maxPrAnalysisPerDay;
+    };
+
+    const canRunFullRepoAnalysisToday = (currentTodayFullRepoCount: number) => {
+      return currentTodayFullRepoCount < subscription.features.maxFullRepoAnalysisPerDay;
     };
 
     logger.info(`Subscription features accessed for plan: ${subscription.planName}`);
@@ -52,9 +52,9 @@ export const getSubscriptionFeatures = async (req: Request, res: Response) => {
       },
       // Example usage functions
       examples: {
-        canCreateProject: canCreateProject(0), // Example with 0 current projects
         canCreateTeam: canCreateTeam(0), // Example with 0 current teams
-        canRunAnalysis: canRunAnalysis(0), // Example with 0 current analysis
+        canRunPrAnalysisToday: canRunPrAnalysisToday(0),
+        canRunFullRepoAnalysisToday: canRunFullRepoAnalysisToday(0),
       }
     });
   } catch (error) {
@@ -72,27 +72,28 @@ export const getSubscriptionFeatures = async (req: Request, res: Response) => {
 export const checkProjectCreationLimit = async (req: Request, res: Response) => {
   try {
     const subscription = req.sub;
-    const { currentProjectCount } = req.body;
+    const { analysisType, currentTodayCount = 0 } = req.body as { analysisType: 'pr_analysis' | 'full_repo_analysis'; currentTodayCount?: number };
 
     if (!subscription) {
       return res.status(403).json({
-        message: "No subscription found. Please upgrade to create projects.",
+        message: "No subscription found. Please upgrade to run analyses.",
         canCreate: false
       });
     }
-
-    const canCreate = currentProjectCount < subscription.features.maxProjects;
-    const remaining = Math.max(0, subscription.features.maxProjects - currentProjectCount);
+    const isPr = analysisType === 'pr_analysis';
+    const maxAllowed = isPr ? subscription.features.maxPrAnalysisPerDay : subscription.features.maxFullRepoAnalysisPerDay;
+    const canCreate = currentTodayCount < maxAllowed;
+    const remaining = Math.max(0, maxAllowed - currentTodayCount);
 
     return res.status(200).json({
       canCreate,
-      currentCount: currentProjectCount,
-      maxAllowed: subscription.features.maxProjects,
+      currentCount: currentTodayCount,
+      maxAllowed,
       remaining,
       planName: subscription.planName,
       message: canCreate 
-        ? `You can create ${remaining} more projects on your ${subscription.planName} plan`
-        : `You've reached your project limit (${subscription.features.maxProjects}) on your ${subscription.planName} plan. Please upgrade to create more projects.`
+        ? `You can run ${remaining} more ${isPr ? 'PR' : 'full repo'} analyses today on your ${subscription.planName} plan`
+        : `You've reached your daily ${isPr ? 'PR' : 'full repo'} analysis limit (${maxAllowed}) on your ${subscription.planName} plan. Please upgrade or try again tomorrow.`
     });
   } catch (error) {
     logger.error(`Error checking project creation limit: ${error}`);

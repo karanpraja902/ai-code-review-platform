@@ -5,15 +5,15 @@ import React from 'react'
 
 const ConnectGithubCard = () => {
   return (
-     <Card className="relative overflow-hidden mx-auto mb-8 p-5">
+     <Card className="relative overflow-hidden mx-auto mb-8 p-5 w-full">
         {/* Decorative right-side background image */}
         <div
           aria-hidden
-          className="pointer-events-none absolute right-0 top-0 bottom-0 w-[100%] bg-[url('/@ai-code-review.png')] bg-no-repeat bg-right bg-contain opacity-70 dark:opacity-60"
+          className="pointer-events-none absolute right-0  bottom-0 w-[100%] h-40 bg-[url('/@ai-code-review.png')] bg-no-repeat bg-right bg-contain opacity-70 dark:opacity-60"
         />
         <div>
         <h2 className="text-xl font-bold">Connect GitHub to get started</h2>
-        <span className="text-muted-foreground text-sm">          Install the AI Code Review GitHub App to sync your repositories, analyze code, and track activity.
+        <span className="text-muted-foreground text-sm">          Install the AI Code Review GitHub App to sync your repositories, <br /> analyze code, and track activity.
 </span>
        
         </div>

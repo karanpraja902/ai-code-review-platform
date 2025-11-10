@@ -10,6 +10,9 @@ import { formatDistanceToNow } from "date-fns";
 import { IconBrandGithub } from "@tabler/icons-react";
 import { Input } from "@/components/ui/input";
 import { useDebouncedCallback } from "use-debounce";
+import { useAuth } from "@clerk/nextjs";
+import { _config } from "@/lib/_config";
+import ConnectGithubCard from "../../_components/connect-github-card";
 
 const PrAnalysisList = () => {
   const [items, setItems] = useState<Array<{
@@ -29,14 +32,54 @@ const PrAnalysisList = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [installationsLoading, setInstallationsLoading] = useState(true);
+  const [hasInstallations, setHasInstallations] = useState<boolean | null>(null);
+  const { getToken } = useAuth();
 
   const debouncedSetQuery = useDebouncedCallback((val: string) => {
     setPage(1); // Reset to first page on new search
     setQuery(val);
   }, 400);
 
+  // First, check if the user has any GitHub installations
+  useEffect(() => {
+    let cancelled = false;
+    const checkInstallations = async () => {
+      try {
+        if (!_config.API_BASE_URL) {
+          if (!cancelled) {
+            setHasInstallations(false);
+            setInstallationsLoading(false);
+          }
+          return;
+        }
+        const token = await getToken();
+        const res = await fetch(`${_config.API_BASE_URL}/api/user/installations`, {
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        });
+        const data = await res.json();
+        const arr = Array.isArray(data?.data) ? data.data : [];
+        if (!cancelled) {
+          setHasInstallations(arr.length > 0);
+          setInstallationsLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setHasInstallations(false);
+          setInstallationsLoading(false);
+        }
+      }
+    };
+    checkInstallations();
+    return () => {
+      cancelled = true;
+    };
+  }, [getToken]);
+
+  // Fetch PR analyses only if installations exist
   useEffect(() => {
     const fetchData = async () => {
+      if (installationsLoading || hasInstallations !== true) return;
       try {
         setLoading(true);
         setError(null);
@@ -57,7 +100,7 @@ const PrAnalysisList = () => {
     };
 
     fetchData();
-  }, [page, limit, query]);
+  }, [page, limit, query, installationsLoading, hasInstallations]);
 
   const repoName = (url?: string) => {
     if (!url) return "";
@@ -96,13 +139,20 @@ const PrAnalysisList = () => {
       <Separator />
 
       {/* Rows */}
-      <ul className="min-h-[70vh]">
-        {loading ? (
-          <div className="min-h-[70vh] grid place-items-center text-sm text-neutral-500">
-            Loading...
-          </div>
-        ) : items && items.length > 0 ? (
-          items.map((item, idx) => {
+      {installationsLoading ? (
+        <div className="min-h-[70vh] grid place-items-center text-sm text-neutral-500">Checking GitHub installation…</div>
+      ) : hasInstallations === false ? (
+        <div className="mt-2 min-h-[68vh]">
+          <ConnectGithubCard />
+        </div>
+      ) : (
+        <ul className="min-h-[70vh]">
+          {loading ? (
+            <div className="min-h-[70vh] grid place-items-center text-sm text-neutral-500">
+              Loading...
+            </div>
+          ) : items && items.length > 0 ? (
+            items.map((item, idx) => {
             // Compute descending global index across the full dataset
             const globalIndex = Math.max(total - (page - 1) * limit - idx, 1);
             // Prepare title with PR number prefix
@@ -186,13 +236,14 @@ const PrAnalysisList = () => {
               <Separator />
             </React.Fragment>
           );
-          })
-        ) : (
-          <li className="min-h-[70vh] grid place-items-center text-base font-medium text-foreground">
-            {error ? `Error: ${error}` : "No PR analyses found"}
-          </li>
-        )}
-      </ul>
+            })
+          ) : (
+            <li className="min-h-[70vh] grid place-items-center text-base font-medium text-foreground">
+              {error ? `Error: ${error}` : "No PR analyses found"}
+            </li>
+          )}
+        </ul>
+      )}
 
       {/* Pagination controls */}
       <div className="flex items-center justify-between py-2 px-3 text-xs border-t mt-2">

@@ -4,7 +4,7 @@ import { logger } from "../utils/logger.js";
 
 /**
  * Middleware factory to check feature access based on subscription limits
- * Usage: checkFeatureAccess('maxAnalysisPerMonth')
+ * Usage: checkFeatureAccess('maxPrAnalysisPerDay')
  */
 export const checkFeatureAccess = (
   featureType: FeatureType,
@@ -82,7 +82,7 @@ export const checkFeatureAccess = (
 
 /**
  * Middleware to check multiple features at once
- * Usage: checkMultipleFeatures(['maxProjects', 'maxAnalysisPerMonth'])
+ * Usage: checkMultipleFeatures(['maxTeams', 'maxPrAnalysisPerDay'])
  */
 export const checkMultipleFeatures = (
   features: FeatureType[],
@@ -175,13 +175,14 @@ export const extractAnalysisData = (req: Request) => ({
 /**
  * Pre-configured middleware for common use cases
  */
-export const checkAnalysisAccess = checkFeatureAccess('maxAnalysisPerMonth', {
+export const checkPrAnalysisAccess = checkFeatureAccess('maxPrAnalysisPerDay', {
   additionalDataExtractor: extractAnalysisData,
-  customErrorMessage: "You've reached your monthly analysis limit. Please upgrade your plan to run more analyses."
+  customErrorMessage: "You've reached your daily PR analysis limit. Please upgrade your plan to run more PR analyses."
 });
 
-export const checkProjectAccess = checkFeatureAccess('maxProjects', {
-  customErrorMessage: "You've reached your project limit. Please upgrade your plan to create more projects."
+export const checkFullRepoAnalysisAccess = checkFeatureAccess('maxFullRepoAnalysisPerDay', {
+  additionalDataExtractor: extractAnalysisData,
+  customErrorMessage: "You've reached your daily full repo analysis limit. Please upgrade your plan to run more full repo analyses."
 });
 
 export const checkTeamAccess = checkFeatureAccess('maxTeams', {
@@ -195,6 +196,10 @@ export const checkTeamMemberAccess = checkFeatureAccess('maxTeamMembers', {
 
 export const checkPrioritySupportAccess = checkFeatureAccess('prioritySupport', {
   customErrorMessage: "Priority support is not available on your current plan. Please upgrade to access priority support."
+});
+
+export const checkOrganizationSupportAccess = checkFeatureAccess('organizationSupport', {
+  customErrorMessage: "Organization support is not available on your current plan. Please upgrade to access organization support."
 });
 
 // Extend Express Request interface to include feature check results

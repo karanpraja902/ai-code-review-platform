@@ -8,6 +8,7 @@ import { StarsIcon, GitPullRequest, ScanTextIcon, AtSign } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import ConnectGithubCard from "../../_components/connect-github-card";
+import UpgradePlanCard from "./UpgradePlanCard";
 
 const HowToCard = ({
   title,
@@ -64,8 +65,10 @@ const HowToCard = ({
 const NoInstallationOnboarding = () => {
   return (
     <div className="h-full">
- 
-     <ConnectGithubCard/>
+      <div className="flex gap-4">
+        <ConnectGithubCard />
+        <UpgradePlanCard />
+      </div>
       <div className=" mx-auto">
         <Card className="rounded-md  p-5">
         <div className="mb-2">

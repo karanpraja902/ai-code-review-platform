@@ -300,43 +300,43 @@ export const executeAnalysis = async (
         }
 
         // Send email notification if userEmail is provided
-        if (userEmail && result.exitCode === 0) {
-          console.log(userEmail, "here is email")
-          console.log("📧 Attempting to send email notification...")
-          try {
-            const repositoryName = repoUrl.split('/').pop() || 'Unknown Repository';
-            console.log("📧 Calling mailService.analysisComplete with:", { to: userEmail, repositoryName });
-            await mailService.analysisComplete({
-              to: userEmail,
-              username: 'User', // You can get this from user data if available
-              repositoryName: repositoryName,
-              repositoryUrl: repoUrl,
-              analysisId: _id.toString(),
-              analysisType: 'full',
-              analysisResults: {
-                issuesFound: 12, // Dummy data for testing
-                criticalIssues: 3, // Dummy data for testing
-                suggestions: [
-                  'Fix SQL injection vulnerabilities',
-                  'Update outdated dependencies',
-                  'Implement proper error handling'
-                ],
-                summary: 'Analysis completed successfully with security and quality recommendations'
-              },
-              dashboardLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/analysis/${_id.toString()}`
-            });
-            console.log("✅ Mail service call completed successfully");
+        // if (userEmail && result.exitCode === 0) {
+        //   console.log(userEmail, "here is email")
+        //   console.log("📧 Attempting to send email notification...")
+        //   try {
+        //     const repositoryName = repoUrl.split('/').pop() || 'Unknown Repository';
+        //     console.log("📧 Calling mailService.analysisComplete with:", { to: userEmail, repositoryName });
+        //     await mailService.analysisComplete({
+        //       to: userEmail,
+        //       username: 'User', // You can get this from user data if available
+        //       repositoryName: repositoryName,
+        //       repositoryUrl: repoUrl,
+        //       analysisId: _id.toString(),
+        //       analysisType: 'full',
+        //       analysisResults: {
+        //         issuesFound: 12, // Dummy data for testing
+        //         criticalIssues: 3, // Dummy data for testing
+        //         suggestions: [
+        //           'Fix SQL injection vulnerabilities',
+        //           'Update outdated dependencies',
+        //           'Implement proper error handling'
+        //         ],
+        //         summary: 'Analysis completed successfully with security and quality recommendations'
+        //       },
+        //       dashboardLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/analysis/${_id.toString()}`
+        //     });
+        //     console.log("✅ Mail service call completed successfully");
 
-            if (callbacks?.onProgress) {
-              await callbacks.onProgress(`📧 Analysis report sent to ${userEmail}`);
-            }
-          } catch (emailError) {
-            console.error(`❌ Failed to send analysis email:`, emailError);
-            if (callbacks?.onProgress) {
-              await callbacks.onProgress(`⚠️ Warning: Failed to send email notification`);
-            }
-          }
-        }
+        //     if (callbacks?.onProgress) {
+        //       await callbacks.onProgress(`📧 Analysis report sent to ${userEmail}`);
+        //     }
+        //   } catch (emailError) {
+        //     console.error(`❌ Failed to send analysis email:`, emailError);
+        //     if (callbacks?.onProgress) {
+        //       await callbacks.onProgress(`⚠️ Warning: Failed to send email notification`);
+        //     }
+        //   }
+        // }
       } catch (persistError) {
         console.error(`❌ Failed to persist analysis results:`, persistError);
         if (callbacks?.onProgress) {
@@ -398,30 +398,30 @@ export const executeAnalysis = async (
         }
 
         // Send error email notification if userEmail is provided
-        if (userEmail) {
-          try {
-            const repositoryName = repoUrl.split('/').pop() || 'Unknown Repository';
-            await mailService.analysisError({
-              to: userEmail,
-              username: 'User', // You can get this from user data if available
-              repositoryName: repositoryName,
-              repositoryUrl: repoUrl,
-              analysisId: _id.toString(),
-              errorMessage: error.message || 'An unexpected error occurred during analysis',
-              errorCode: `EXIT_${runExitCode || -1}`,
-              supportLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/support`
-            });
+        // if (userEmail) {
+        //   try {
+        //     const repositoryName = repoUrl.split('/').pop() || 'Unknown Repository';
+        //     await mailService.analysisError({
+        //       to: userEmail,
+        //       username: 'User', // You can get this from user data if available
+        //       repositoryName: repositoryName,
+        //       repositoryUrl: repoUrl,
+        //       analysisId: _id.toString(),
+        //       errorMessage: error.message || 'An unexpected error occurred during analysis',
+        //       errorCode: `EXIT_${runExitCode || -1}`,
+        //       supportLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/support`
+        //     });
 
-            if (callbacks?.onProgress) {
-              await callbacks.onProgress(`📧 Error notification sent to ${userEmail}`);
-            }
-          } catch (emailError) {
-            console.error(`❌ Failed to send error email:`, emailError);
-            if (callbacks?.onProgress) {
-              await callbacks.onProgress(`⚠️ Warning: Failed to send error email notification`);
-            }
-          }
-        }
+        //     if (callbacks?.onProgress) {
+        //       await callbacks.onProgress(`📧 Error notification sent to ${userEmail}`);
+        //     }
+        //   } catch (emailError) {
+        //     console.error(`❌ Failed to send error email:`, emailError);
+        //     if (callbacks?.onProgress) {
+        //       await callbacks.onProgress(`⚠️ Warning: Failed to send error email notification`);
+        //     }
+        //   }
+        // }
       } catch (persistError) {
         console.error(
           `❌ Failed to persist error analysis results:`,

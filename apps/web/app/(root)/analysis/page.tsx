@@ -51,7 +51,7 @@ const Page = async (props: {
           </div>
         </div>
 
-        <div className="h-[calc(100%-3rem)] overflow-y-auto output-scrollbar">
+        <div className="h-full">
           <Suspense key={query} fallback={<RepositoryListSkeleton />}>
             <RepositoryList query={query} scope={scope} teamId={teamId} orgSlug={orgSlug}/>
           </Suspense>

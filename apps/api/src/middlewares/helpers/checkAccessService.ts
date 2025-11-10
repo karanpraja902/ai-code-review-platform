@@ -1,16 +1,15 @@
 import { Request } from "express";
-import User from "../../models/user.model.js";
 import Team from "../../models/team.model.js";
 import Analysis from "../../models/analysis.model.js";
-import { Github_Repository } from "../../models/github_repostries.model.js";
 import { logger } from "../../utils/logger.js";
 
 export type FeatureType = 
-  | 'maxProjects' 
   | 'maxTeams' 
   | 'maxTeamMembers' 
-  | 'maxAnalysisPerMonth' 
-  | 'prioritySupport';
+  | 'maxPrAnalysisPerDay'
+  | 'maxFullRepoAnalysisPerDay'
+  | 'prioritySupport'
+  | 'organizationSupport';
 
 export interface FeatureCheckResult {
   allowed: boolean;
@@ -62,20 +61,23 @@ export class FeatureAccessChecker {
     console.log(featureType, "entering switch case")
     try {
       switch (featureType) {
-        case 'maxProjects':
-          return await this.checkProjectLimit(userId, subscription.features.maxProjects, subscription.planName);
-        
         case 'maxTeams':
           return await this.checkTeamLimit(userId, subscription.features.maxTeams, subscription.planName);
         
         case 'maxTeamMembers':
           return await this.checkTeamMemberLimit(userId, subscription.features.maxTeamMembers, subscription.planName, additionalData?.teamId);
         
-        case 'maxAnalysisPerMonth':
-          return await this.checkAnalysisLimit(userId, subscription.features.maxAnalysisPerMonth, subscription.planName, additionalData?.teamId);
+        case 'maxPrAnalysisPerDay':
+          return await this.checkPrAnalysisDailyLimit(userId, subscription.features.maxPrAnalysisPerDay, subscription.planName);
+
+        case 'maxFullRepoAnalysisPerDay':
+          return await this.checkFullRepoAnalysisDailyLimit(userId, subscription.features.maxFullRepoAnalysisPerDay, subscription.planName);
         
         case 'prioritySupport':
           return this.checkPrioritySupport(subscription.features.prioritySupport, subscription.planName);
+        
+        case 'organizationSupport':
+          return this.checkOrganizationSupport(subscription.features.organizationSupport, subscription.planName);
         
         default:
           return {
@@ -103,34 +105,36 @@ export class FeatureAccessChecker {
   }
 
   /**
-   * Check project creation limit
+   * Check daily PR analysis limit
    */
-  private static async checkProjectLimit(
-    userId: string, 
-    maxProjects: number, 
+  private static async checkPrAnalysisDailyLimit(
+    userId: string,
+    maxPerDay: number,
     planName: string
   ): Promise<FeatureCheckResult> {
-    // Count user's repositories (projects)
-    const currentCount = await Github_Repository.countDocuments({ 
-      $or: [
-        { ownerId: userId },
-        { collaborators: userId }
-      ]
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const currentCount = await Analysis.countDocuments({
+      userId,
+      analysis_type: 'pr_analysis',
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
     });
 
-    const remaining = Math.max(0, maxProjects - currentCount);
-    const allowed = currentCount < maxProjects;
+    const remaining = Math.max(0, maxPerDay - currentCount);
+    const allowed = currentCount < maxPerDay;
 
     return {
       allowed,
       currentCount,
-      maxAllowed: maxProjects,
+      maxAllowed: maxPerDay,
       remaining,
-      message: allowed 
-        ? `You can create ${remaining} more projects on your ${planName} plan`
-        : `You've reached your project limit (${maxProjects}) on your ${planName} plan. Please upgrade to create more projects.`,
-      featureType: 'maxProjects',
-      planName
+      message: allowed
+        ? `You can run ${remaining} more PR analyses today on your ${planName} plan`
+        : `You've reached your daily PR analysis limit (${maxPerDay}) on your ${planName} plan. Please upgrade or try again tomorrow.`,
+      featureType: 'maxPrAnalysisPerDay',
+      planName,
     };
   }
 
@@ -214,57 +218,36 @@ export class FeatureAccessChecker {
   }
 
   /**
-   * Check monthly analysis limit
+   * Check daily full repo analysis limit
    */
-  private static async checkAnalysisLimit(
-    userId: string, 
-    maxAnalysisPerMonth: number, 
-    planName: string,
-    teamId?: string
+  private static async checkFullRepoAnalysisDailyLimit(
+    userId: string,
+    maxPerDay: number,
+    planName: string
   ): Promise<FeatureCheckResult> {
-    // Get current month's start and end dates
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    console.log("here inside check analysis limit", userId, maxAnalysisPerMonth, planName, teamId)
-    // Count analyses created this month
-    const query: any = {
-      userId: userId,
-      createdAt: {
-        $gte: startOfMonth,
-        $lte: endOfMonth
-      }
-    };
+    const currentCount = await Analysis.countDocuments({
+      userId,
+      analysis_type: 'full_repo_analysis',
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
+    });
 
-    // If teamId is provided, also count team analyses
-    if (teamId) {
-      const team = await Team.findById(teamId);
-      if (team && team.ownerId === userId) {
-        // For team owner, count all team analyses
-        query.$or = [
-          { userId: userId },
-          { userId: team.ownerId }
-        ];
-      }
-    }
-
-    const currentCount = await Analysis.countDocuments(query);
-    console.log(currentCount, maxAnalysisPerMonth, "====> here is the currnet and max coutns")
-
-    const remaining = Math.max(0, maxAnalysisPerMonth - currentCount);
-    const allowed = currentCount < maxAnalysisPerMonth;
+    const remaining = Math.max(0, maxPerDay - currentCount);
+    const allowed = currentCount < maxPerDay;
 
     return {
       allowed,
       currentCount,
-      maxAllowed: maxAnalysisPerMonth,
+      maxAllowed: maxPerDay,
       remaining,
-      message: allowed 
-        ? `You can run ${remaining} more analyses this month on your ${planName} plan`
-        : `You've reached your monthly analysis limit (${maxAnalysisPerMonth}) on your ${planName} plan. Please upgrade or wait until next month.`,
-      featureType: 'maxAnalysisPerMonth',
-      planName
+      message: allowed
+        ? `You can run ${remaining} more full repo analyses today on your ${planName} plan`
+        : `You've reached your daily full repo analysis limit (${maxPerDay}) on your ${planName} plan. Please upgrade or try again tomorrow.`,
+      featureType: 'maxFullRepoAnalysisPerDay',
+      planName,
     };
   }
 
@@ -284,6 +267,26 @@ export class FeatureAccessChecker {
         ? `Priority support is available on your ${planName} plan`
         : `Priority support is not available on your ${planName} plan. Please upgrade to access priority support.`,
       featureType: 'prioritySupport',
+      planName
+    };
+  }
+
+  /**
+   * Check organization support access
+   */
+  private static checkOrganizationSupport(
+    hasOrganizationSupport: boolean,
+    planName: string
+  ): FeatureCheckResult {
+    return {
+      allowed: hasOrganizationSupport,
+      currentCount: hasOrganizationSupport ? 1 : 0,
+      maxAllowed: 1,
+      remaining: hasOrganizationSupport ? 0 : 1,
+      message: hasOrganizationSupport
+        ? `Organization support is available on your ${planName} plan`
+        : `Organization support is not available on your ${planName} plan. Please upgrade to access organization support.`,
+      featureType: 'organizationSupport',
       planName
     };
   }

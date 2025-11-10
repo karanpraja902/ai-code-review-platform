@@ -19,6 +19,7 @@ export interface IUser extends Document {
   subscriptionEndDate?: Date;
   earlyAccess?: boolean;
   earlyAccessRequestedAt?: Date;
+  requestedUpgrade?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +95,10 @@ const userSchema = new Schema<IUser>(
     },
     earlyAccessRequestedAt: {
       type: Date,
+    },
+    requestedUpgrade: {
+      type: Boolean,
+      default: false,
     },
   },
   {
