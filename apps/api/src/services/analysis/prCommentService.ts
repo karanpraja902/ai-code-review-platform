@@ -1,6 +1,7 @@
 // apps/api/src/services/prCommentService.ts
 import { getInstallationOctokit } from '../../lib/githubApp.js';
 import { PRComment } from '../../utils/responseParser.js';
+import { incrementAnalysisCommentCounter } from '../../utils/analysisStreamStore.js';
 
 export interface PRCommentContext {
   installationId: number;
@@ -9,6 +10,8 @@ export interface PRCommentContext {
   pullNumber: number;
   commitSha?: string;
   filesChanged?: string[]; // optional list of filenames (and previous filenames) from PR
+  // Optional analysis ID to persist total posted comments
+  analysisId?: string;
 }
 
 export interface ParsedSuggestion {
@@ -284,6 +287,14 @@ export class PRCommentService {
         await this.delay(1000);
       }
     }
+    // Persist the count to Redis for finalization if available
+    try {
+      if (successCount > 0 && this.context.analysisId) {
+        await incrementAnalysisCommentCounter(this.context.analysisId, successCount);
+      }
+    } catch (err) {
+      console.warn(`[PR-${this.context.pullNumber}] ⚠️ Failed to increment Redis comment counter`, err);
+    }
     
     return successCount;
   }
@@ -447,6 +458,36 @@ export class PRCommentService {
       return true;
     } catch (error) {
       console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post analysis started comment:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Post a daily PR analysis limit reached status comment.
+   * Keeps the same links section used in the main status comment.
+   */
+  async postDailyLimitReachedComment(message?: string): Promise<boolean> {
+    try {
+      const body = [
+        PRCommentService.STATUS_MARKER,
+        `## 🪲 Daily PR Analysis Limit Reached`,
+        (message || `You've hit the daily PR analysis limit on your current plan. Consider upgrading your plan: https://ai-code-review-platform.dev/dashboard`),
+        '',
+        '---',
+        `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
+      ].join('\n');
+
+      const response = await this.octokit.issues.createComment({
+        owner: this.context.owner,
+        repo: this.context.repo,
+        issue_number: this.context.pullNumber,
+        body,
+      });
+
+      this.statusCommentId = response.data.id;
+      return true;
+    } catch (error) {
+      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post daily limit reached comment:`, error);
       return false;
     }
   }

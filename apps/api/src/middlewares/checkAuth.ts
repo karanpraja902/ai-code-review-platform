@@ -40,11 +40,12 @@ declare global {
         planName: 'free' | 'lite' | 'advance' | 'custom';
         status: 'active' | 'inactive' | 'cancelled' | 'free';
         features: {
-          maxProjects: number;
           maxTeams: number;
           maxTeamMembers: number;
-          maxAnalysisPerMonth: number;
+          maxPrAnalysisPerDay: number;
+          maxFullRepoAnalysisPerDay: number;
           prioritySupport: boolean;
+          organizationSupport: boolean;
         };
         startDate?: Date;
         endDate?: Date;
@@ -175,11 +176,12 @@ export const subscriptionAuth = async (req: Request, res: Response, next: NextFu
             planName: subscriptionPlan.name,
             status: user.subscriptionStatus || 'free',
             features: {
-              maxProjects: subscriptionPlan.features.maxProjects,
               maxTeams: subscriptionPlan.features.maxTeams,
               maxTeamMembers: subscriptionPlan.features.maxTeamMembers,
-              maxAnalysisPerMonth: subscriptionPlan.features.maxAnalysisPerMonth,
+              maxPrAnalysisPerDay: (subscriptionPlan.features as any).maxPrAnalysisPerDay ?? 5,
+              maxFullRepoAnalysisPerDay: (subscriptionPlan.features as any).maxFullRepoAnalysisPerDay ?? 2,
               prioritySupport: subscriptionPlan.features.prioritySupport,
+              organizationSupport: (subscriptionPlan.features as any).organizationSupport ?? (subscriptionPlan.name === 'lite' || subscriptionPlan.name === 'advance'),
             },
             startDate: user.subscriptionStartDate,
             endDate: user.subscriptionEndDate,

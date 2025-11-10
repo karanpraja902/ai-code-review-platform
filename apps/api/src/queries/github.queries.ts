@@ -10,6 +10,10 @@ import { createParserState, parseStreamingResponse, finalizeParsing, ParserState
 import { PRCommentService, PRCommentContext } from "../services/analysis/prCommentService.js";
 import mongoose from "mongoose";
 import { logger } from "../utils/logger.js";
+import { initAnalysisCommentCounter } from "../utils/analysisStreamStore.js";
+import Analysis from "../models/analysis.model.js";
+import SubscriptionPlan from "../models/subscription_plan.model.js";
+import { FeatureAccessChecker } from "../middlewares/helpers/checkAccessService.js";
 
 export const create_github_installation = async (payload: CreateInstallationInput) => {
     try {
@@ -354,6 +358,75 @@ export const PrData = async (payload: any) => {
       repositoryName: repository?.full_name,
       prNumber: pull_request?.number 
     });
+
+    // Early check: daily PR analysis limit
+    try {
+      const githubInstallation = await Github_Installation.findOne({ installationId: installation.id });
+      if (githubInstallation?.userId) {
+        const user = await User.findById(githubInstallation.userId);
+        const [owner, repo] = repository.full_name.split('/');
+        let subscriptionPlan = null as any;
+
+        if (user?.subscriptionPlanId) {
+          try {
+            subscriptionPlan = await SubscriptionPlan.findById(new mongoose.Types.ObjectId(user.subscriptionPlanId.toString()));
+          } catch (e) {
+            subscriptionPlan = null;
+          }
+        }
+        if (!subscriptionPlan) {
+          subscriptionPlan = await SubscriptionPlan.findOne({ name: 'free', isActive: true });
+        }
+
+        if (subscriptionPlan && user) {
+          const sub = {
+            planId: subscriptionPlan._id,
+            planName: subscriptionPlan.name,
+            status: user.subscriptionStatus || 'free',
+            features: {
+              maxTeams: subscriptionPlan.features.maxTeams,
+              maxTeamMembers: subscriptionPlan.features.maxTeamMembers,
+              maxPrAnalysisPerDay: (subscriptionPlan.features as any).maxPrAnalysisPerDay ?? 5,
+              maxFullRepoAnalysisPerDay: (subscriptionPlan.features as any).maxFullRepoAnalysisPerDay ?? 2,
+              prioritySupport: subscriptionPlan.features.prioritySupport,
+              organizationSupport: (subscriptionPlan.features as any).organizationSupport ?? (subscriptionPlan.name === 'lite' || subscriptionPlan.name === 'advance'),
+            },
+            startDate: user.subscriptionStartDate,
+            endDate: user.subscriptionEndDate,
+          };
+
+          const fakeReq: any = { sub, user: { _id: user._id } };
+          const featureResult = await FeatureAccessChecker.checkFeatureAccess(fakeReq, 'maxPrAnalysisPerDay');
+
+          if (!featureResult.allowed) {
+            const prCommentService = new PRCommentService({
+              installationId: installation.id,
+              owner,
+              repo,
+              pullNumber: pull_request.number,
+              commitSha: pull_request.head.sha,
+            });
+
+            const msg = `You've hit the daily limits of PR analysis. Consider updating the plan: https://ai-code-review-platform.dev/dashboard`;
+            await prCommentService.postDailyLimitReachedComment(msg);
+
+            logger.info("PR analysis blocked due to daily limit", {
+              userId: githubInstallation.userId,
+              planName: featureResult.planName,
+              currentCount: featureResult.currentCount,
+              maxAllowed: featureResult.maxAllowed,
+              prNumber: pull_request.number,
+              repository: repository.full_name,
+            });
+
+            return; // Stop further processing when limit is reached
+          }
+        }
+      }
+    } catch (limitErr) {
+      logger.warn("Failed to perform PR analysis daily limit check", { error: limitErr instanceof Error ? limitErr.message : limitErr });
+      // Continue processing if check fails; do not block PR handling due to check failure
+    }
     // Write full payload to file
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `pr-llm-payload-${timestamp}.json`;
@@ -739,7 +812,7 @@ export const PrData = async (payload: any) => {
               state: 'pending',
               context: 'AI Code Review',
               description: 'AI Code Review Platform is reviewing…',
-              target_url: `https://ai-code-reviewai.ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
+              target_url: `https://ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
             });
             usedStatusFallback = true;
             logger.info('Created fallback commit status for AI Code Review Platform Review', { prNumber: pull_request.number });
@@ -747,7 +820,41 @@ export const PrData = async (payload: any) => {
             logger.warn('Failed to create fallback commit status', { error: statusErr instanceof Error ? statusErr.message : statusErr });
           }
         }
-        const prCommentService = new PRCommentService(prCommentContext);
+        // Pre-generate an Analysis ID to link streaming, Redis counters, and finalization
+        const preAnalysisId = new mongoose.Types.ObjectId().toString();
+
+        // Pre-create analysis record with running status and PR metadata
+        try {
+          const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
+          const createPayload: any = {
+            _id: preAnalysisId,
+            analysis_type: "pr_analysis",
+            userId: githubInstallation.userId,
+            repoUrl,
+            github_repositoryId: githubRepo._id,
+            sandboxId: "",
+            model: "gemini-2.5-pro",
+            prompt: prAnalysisPrompt,
+            status: "running",
+            pr_number: pull_request.number,
+            pr_url: prUrl,
+            pr_title: pull_request.title,
+          };
+          await Analysis.create(createPayload);
+          logger.info("Pre-created analysis record", { analysisId: preAnalysisId, repo: repository.full_name, prNumber: pull_request.number });
+        } catch (createErr) {
+          logger.warn("Failed to pre-create analysis record", { analysisId: preAnalysisId, error: createErr instanceof Error ? createErr.message : createErr });
+        }
+        const prCommentService = new PRCommentService({
+          ...prCommentContext,
+          analysisId: preAnalysisId,
+        });
+        // Initialize Redis comment counter with TTL for cleanup (safe if already incremented)
+        try {
+          await initAnalysisCommentCounter(preAnalysisId);
+        } catch (initErr) {
+          logger.warn("Failed to initialize Redis comment counter", { analysisId: preAnalysisId, error: initErr instanceof Error ? initErr.message : initErr });
+        }
         
         // Initialize parser state for streaming response parsing
         const parserState = createParserState();
@@ -809,13 +916,15 @@ export const PrData = async (payload: any) => {
           callbacks,
           {pr_data_id: prDataInsertedId, 
             auth_token: sandbox_token.auth_token,
-            base_url: "https://ai-code-reviewapi.ai-code-review-platform.dev",
+            base_url: "https://api.ai-code-review-platform.dev",
             // Pass PR metadata for persistence
             pr_number: pull_request.number,
             pr_url: prUrl,
             pr_title: pull_request.title
           },
-          user.email
+          user.email,
+          undefined, // teamId (not used here)
+          preAnalysisId // ensure executeAnalysis uses this ID when persisting
         ).then(async (result) => {
           logger.info("PR analysis completed", { 
             repository: repository.full_name, 

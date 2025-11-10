@@ -4,6 +4,8 @@ import { GithubRepository } from "@/types/types";
 import { Separator } from "@/components/ui/separator";
 import RepositoryItem from "./RepositoryItem";
 import { logger } from "@/lib/logger";
+import { getUserInstallations } from "@/_actions/user-actions";
+import ConnectGithubCard from "../../_components/connect-github-card";
 
 type RepoScope = "user" | "team";
 
@@ -19,6 +21,7 @@ const RepositoryList = async ({
   orgSlug?: string;
 }) => {
   let data: GithubRepository[] | undefined;
+  let installations: any[] = [];
 
   try {
     const res = await getRepository(query, scope, teamId, orgSlug);
@@ -32,9 +35,20 @@ const RepositoryList = async ({
     });
   }
 
+  try {
+    const ins = await getUserInstallations();
+    installations = Array.isArray(ins) ? ins : [];
+  } catch (_) {
+    installations = [];
+  }
+
   return (
     <ul className="h-full w-full">
-      {data && data.length > 0 ? (
+      {!installations || installations.length === 0 ? (
+        <li className="mt-2 h-full w-full">
+          <ConnectGithubCard />
+        </li>
+      ) : data && data.length > 0 ? (
         data.map((repo) => (
           <React.Fragment key={repo._id}>
             <li className="w-full py-5">

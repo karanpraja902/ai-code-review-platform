@@ -3,23 +3,22 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardData } from "@/types/dashboard";
 import { GitBranch, Clock, Bug, GitPullRequest, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
+import { statusClasses } from "@/lib/utils/statusClasses";
 
 interface RecentActivityProps {
   data: DashboardData;
 }
 
 export const RecentActivity = ({ data }: RecentActivityProps) => {
-  const getStatusColor = (state: string) => {
-    switch (state.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+  // Explicitly type the merged activities as a discriminated union
+  type RepoActivityUI = DashboardData["recent_activity"]["full_repo"][number] & {
+    type: "repository";
+    date: Date;
+  };
+  type PRAcitivityUI = DashboardData["recent_activity"]["pull_request"][number] & {
+    type: "pull_request";
+    date: Date;
   };
 
   const formatDate = (dateString: string) => {
@@ -30,7 +29,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
     }
   };
 
-  // Merge and sort all activities by date
+  // Merge and sort all activities by date (typed union)
   const mergedActivities = [
     ...data.recent_activity.full_repo.map(repo => ({
       ...repo,
@@ -45,7 +44,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
   return (
-    <Card>
+    <Card className="rounded-md">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <GitBranch className="h-5 w-5" />
@@ -53,39 +52,118 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4 h-[400px] overflow-auto">
+        <div className="space-y-4 h-[400px] overflow-auto no-scrollbar">
           {mergedActivities.length > 0 ? (
             mergedActivities.map((activity, index) => (
-              <div key={index} className="border rounded-lg p-4 hover:bg-neutral-900 cursor-pointer transition-colors">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      {activity.type === 'repository' ? (
+              activity.type === 'pull_request' && activity.pr_url ? (
+                <a
+                  key={index}
+                  href={activity.pr_url as string}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block border rounded-md p-4 hover:bg-neutral-900 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
                         <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-blue-600">REPO</span>
+                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                          <span className="text-xs font-medium text-primary">PR</span>
                         </div>
-                      ) : (
+                      </div>
+                      <h4 className="font-medium text-sm">{activity.repo_name}</h4>
+                    </div>
+                    <Badge className={statusClasses(activity.state)}>
+                      {activity.state}
+                    </Badge>
+                  </div>
+
+                  <div className="text-xs text-gray-600 mb-2">
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3" />
+                      Comments: {activity.total_comments}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {formatDate(activity.date.toISOString())}
+                  </p>
+                </a>
+              ) : activity.type === 'repository' && activity.repo_id && activity.analysis_id ? (
+                <Link
+                  key={index}
+                  href={`/analysis/${activity.repo_id}/${activity.analysis_id}`}
+                  className="block border rounded-md p-4 hover:bg-neutral-900 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
                         <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-green-600">PR</span>
+                          <div className="w-2 h-2 bg-blue-800 rounded-full"></div>
+                          <span className="text-xs font-medium text-blue-800">REPO</span>
                         </div>
+                      </div>
+                      <h4 className="font-medium text-sm">{activity.repo_name}</h4>
+                      {activity.type === 'repository' && (
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                          <GitBranch className="h-3 w-3" />
+                          {activity.branch}
+                        </p>
                       )}
                     </div>
-                    <h4 className="font-medium text-sm">{activity.repo_name}</h4>
-                    {activity.type === 'repository' && 'branch' in activity && (
-                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                        <GitBranch className="h-3 w-3" />
-                        {activity.branch}
-                      </p>
-                    )}
+                    <Badge className={statusClasses(activity.state)}>
+                      {activity.state}
+                    </Badge>
                   </div>
-                  <Badge className={getStatusColor(activity.state)}>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
+                    <div className="flex items-center gap-1">
+                      <Bug className="h-3 w-3" />
+                      Issues: {activity.total_github_issues_suggested} suggested, {activity.github_issues_opened} opened
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <GitPullRequest className="h-3 w-3" />
+                      PRs: {activity.total_pull_request_suggested} suggested, {activity.pull_request_opened} opened
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {formatDate(activity.date.toISOString())}
+                  </p>
+                </Link>
+              ) : (
+                <div key={index} className="border rounded-md p-4 hover:bg-neutral-900 cursor-pointer transition-colors">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {activity.type === 'repository' ? (
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-xs font-medium text-blue-600">REPO</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs font-medium text-green-600">PR</span>
+                          </div>
+                        )}
+                      </div>
+                      <h4 className="font-medium text-sm">{activity.repo_name}</h4>
+                      {activity.type === 'repository' && (
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                          <GitBranch className="h-3 w-3" />
+                          {activity.branch}
+                        </p>
+                      )}
+                    </div>
+                  <Badge className={statusClasses(activity.state)}>
                     {activity.state}
                   </Badge>
                 </div>
                 
-                {activity.type === 'repository' && 'total_github_issues_suggested' in activity ? (
+                {activity.type === 'repository' ? (
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
                     <div className="flex items-center gap-1">
                       <Bug className="h-3 w-3" />
@@ -100,7 +178,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                   <div className="text-xs text-gray-600 mb-2">
                     <div className="flex items-center gap-1">
                       <MessageSquare className="h-3 w-3" />
-                      Comments: {'total_comments' in activity ? activity.total_comments : 0}
+                      Comments: {activity.total_comments}
                     </div>
                   </div>
                 )}
@@ -109,7 +187,8 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                   <Clock className="h-3 w-3" />
                   {formatDate(activity.date.toISOString())}
                 </p>
-              </div>
+                </div>
+              )
             ))
           ) : (
             <p className="text-gray-500 text-center py-4">No recent activity</p>

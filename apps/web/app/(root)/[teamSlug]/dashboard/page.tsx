@@ -21,12 +21,12 @@ const Page = async ({ params }: PageProps) => {
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
-    queryKey: ["teamDashboard", teamSlug],
-    queryFn: getTeamDashboardData,
+    queryKey: ["teamDashboard", teamSlug, 7],
+    queryFn: () => getTeamDashboardData(7),
   });
 
   return (
-    <div className="h-svh max-w-7xl w-full mx-auto">
+    <div className="h-svh w-full mx-auto">
       <HydrationBoundary state={dehydrate(queryClient)}>
         <ErrorBoundary
           fallback={

@@ -28,7 +28,7 @@ const Page = async (props: {
   logger.info(`Analysis page loaded with query:`, { query, scope, teamId });
 
   return (
-    <div className="min-h-svh max-w-8xl w-full mx-auto">
+    <div className="max-w-8xl mx-auto min-h-svh w-full">
       <div className="h-full p-4">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
           <div className="flex items-center gap-3">
@@ -47,7 +47,8 @@ const Page = async (props: {
               href={
                 "https://github.com/apps/ai-code-review-platform/installations/select_target"
               }
-              target="_blank">
+              target="_blank"
+            >
               <Button className="cursor-pointer text-xs">
                 <Plus />
                 <span className="hidden lg:block">Add Repositories</span>
@@ -56,7 +57,7 @@ const Page = async (props: {
           </div>
         </div>
 
-        <div className="h-[calc(100%-3rem)] overflow-y-auto output-scrollbar px-3">
+        <div className="output-scrollbar h-[calc(100%-3rem)] overflow-y-auto px-3">
           <Suspense key={query} fallback={<RepositoryListSkeleton />}>
             <RepositoryList
               query={query}

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { DashboardMetrics } from "@/app/(root)/dashboard/_components/DashboardMetrics";
 import { RecentActivity } from "@/app/(root)/dashboard/_components/RecentActivity";
 import { GitHubIssuesChart } from "@/app/(root)/dashboard/_components/GitHubIssuesChart";
@@ -13,10 +13,11 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const TeamDashboardPage = () => {
   const { teamSlug } = useParams<{ teamSlug: string }>();
+  const [days, setDays] = useState<number>(7);
 
   const { data: dashboardData } = useSuspenseQuery({
-    queryKey: ["teamDashboard", teamSlug],
-    queryFn: getTeamDashboardData,
+    queryKey: ["teamDashboard", teamSlug, days],
+    queryFn: () => getTeamDashboardData(days),
   });
 
   if (!dashboardData.data) {

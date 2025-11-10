@@ -196,6 +196,15 @@ body {
   letter-spacing: var(--tracking-normal);
 }
 
+/* Utility: Hide scrollbars while preserving scroll behavior */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 /* Navbar Glass Effect Styles */
 .tt-navbar-strip {
   backdrop-filter: blur(0.6rem) !important;

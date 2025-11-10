@@ -118,11 +118,11 @@ export const analysisCompleteTemplate = (options: AnalysisCompleteOptions) => {
 
     <!-- Action Buttons -->
     <div style="text-align: center; margin: 32px 0;">
-      <a href="${dashboardLink || 'https://ai-code-review-platform/dashboard'}" style="display: inline-block; padding: 16px 32px; background-color: #667eea; color: white; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin-right: 16px;">
+      <a href="${dashboardLink || 'https://ai-code-review-platform.dev/dashboard'}" style="display: inline-block; padding: 16px 32px; background-color: #667eea; color: white; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin-right: 16px;">
         View Full Report
       </a>
       ${analysisResults?.issuesFound && analysisResults.issuesFound > 0 ? `
-      <a href="${dashboardLink || 'https://ai-code-review-platform/dashboard'}/issues" style="display: inline-block; padding: 16px 32px; background-color: transparent; color: #667eea; text-decoration: none; border: 2px solid #667eea; border-radius: 8px; font-size: 16px; font-weight: 600;">
+      <a href="${dashboardLink || 'https://ai-code-review-platform.dev/dashboard'}/issues" style="display: inline-block; padding: 16px 32px; background-color: transparent; color: #667eea; text-decoration: none; border: 2px solid #667eea; border-radius: 8px; font-size: 16px; font-weight: 600;">
         Fix Issues
       </a>
       ` : ''}

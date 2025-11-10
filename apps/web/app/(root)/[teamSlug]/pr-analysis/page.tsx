@@ -3,8 +3,8 @@ import PrAnalysisList from "../../pr-analysis/_components/PrAnalysisList";
 
 const Page = async () => {
   return (
-    <div className="h-svh max-w-8xl w-full mx-auto py-5 px-4">
-      <div className="h-full p-4">
+    <div className="h-svh max-w-8xl w-full mx-auto p-5">
+      <div className="h-full">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
           <h2 className="text-2xl font-medium">PR Analyses</h2>
         </div>
