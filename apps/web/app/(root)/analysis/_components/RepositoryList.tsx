@@ -11,7 +11,7 @@ const RepositoryList = async ({
   query,
   scope,
   teamId,
-  orgSlug
+  orgSlug,
 }: {
   query: string;
   scope: RepoScope;
@@ -24,27 +24,27 @@ const RepositoryList = async ({
     const res = await getRepository(query, scope, teamId, orgSlug);
     data = (res?.data || []).reverse();
   } catch (error) {
-    logger.error("Failed to fetch repositories in RepositoryList", { 
-      query, 
-      scope, 
+    logger.error("Failed to fetch repositories in RepositoryList", {
+      query,
+      scope,
       teamId,
-      error: error instanceof Error ? error.message : error 
+      error: error instanceof Error ? error.message : error,
     });
   }
 
   return (
-    <ul className="h-full">
+    <ul className="h-full w-full">
       {data && data.length > 0 ? (
         data.map((repo) => (
           <React.Fragment key={repo._id}>
-            <li className="py-5">
+            <li className="w-full py-5">
               <RepositoryItem repo={repo} teamId={teamId} />
             </li>
             <Separator />
           </React.Fragment>
         ))
       ) : (
-        <li className="h-full grid place-items-center text-base font-medium text-foreground">
+        <li className="text-foreground grid h-full place-items-center text-base font-medium">
           No repository added
         </li>
       )}

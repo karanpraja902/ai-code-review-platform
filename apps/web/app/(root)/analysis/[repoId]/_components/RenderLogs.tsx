@@ -37,6 +37,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createAnalysisRecord } from "../_actions/createAnalysis";
 import { triggerAnalysisListRefresh } from "@/lib/utils/analysisEvents";
 import { IconSandbox } from "@tabler/icons-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const RenderLogs = ({
   repoId,
@@ -57,7 +58,7 @@ const RenderLogs = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadedFromDb, setIsLoadedFromDb] = useState(false);
   const [selectedFileFilter, setSelectedFileFilter] = useState<string | null>(
-    null
+    null,
   );
   const { getToken } = useAuth();
 
@@ -169,7 +170,7 @@ const RenderLogs = ({
               headers: {
                 Authorization: `Bearer ${token}`,
               },
-            }
+            },
           );
           const json = await res.json();
           const statusFromDb = json?.data?.status as AnalysisStatus | undefined;
@@ -205,7 +206,7 @@ const RenderLogs = ({
 
       if (!analysisResult.success) {
         throw new Error(
-          analysisResult.error || "Failed to create analysis record"
+          analysisResult.error || "Failed to create analysis record",
         );
       }
 
@@ -251,7 +252,7 @@ const RenderLogs = ({
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
 
         // if (!res.ok) {
@@ -329,7 +330,7 @@ const RenderLogs = ({
       toast.success("Analysis stopped");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to stop analysis"
+        error instanceof Error ? error.message : "Failed to stop analysis",
       );
     }
   };
@@ -348,11 +349,11 @@ const RenderLogs = ({
       const statusUpdateResult = await updateAnalysisStatus(
         analysisId,
         "running",
-        token
+        token,
       );
       if (!statusUpdateResult.success) {
         toast.error(
-          statusUpdateResult.error || "Failed to update analysis status"
+          statusUpdateResult.error || "Failed to update analysis status",
         );
         return;
       }
@@ -405,7 +406,7 @@ const RenderLogs = ({
       // Return logs for the selected file plus ungrouped logs (like INITIALISATION)
       const selectedFileLogs = fileContextGroups[selectedFileFilter] || [];
       const initLogs = ungroupedLogs.filter(
-        (log) => log.type === "INITIALISATION"
+        (log) => log.type === "INITIALISATION",
       );
 
       console.log("File context groups:", Object.keys(fileContextGroups));
@@ -416,10 +417,10 @@ const RenderLogs = ({
     }
 
     const initLogs = filteredLogs.filter(
-      (log) => log.type === "INITIALISATION"
+      (log) => log.type === "INITIALISATION",
     );
     const otherLogs = filteredLogs.filter(
-      (log) => log.type !== "INITIALISATION"
+      (log) => log.type !== "INITIALISATION",
     );
 
     if (initLogs.length === 0) {
@@ -436,19 +437,20 @@ const RenderLogs = ({
   }, [logs, selectedFileFilter]);
 
   return (
-    <main className="flex w-full h-full bg-amber-200">
+    <section className="flex h-full w-full">
       <RepoFileTree
         repoTree={repoTree}
         onFileSelect={setSelectedFileFilter}
         selectedFile={selectedFileFilter}
       />
 
-      <div className="h-full w-full flex flex-col overflow-hidden">
-        <div className="px-4 py-3 flex justify-between items-center flex-shrink-0">
+      <div className="mx-auto flex max-w-4xl min-w-0 flex-1 flex-col">
+        <div className="flex items-center justify-between px-2 py-3 md:px-4">
+          <SidebarTrigger className="md:hidden" />
           {/* File filter indicator */}
           <div className="flex items-center gap-2">
             {selectedFileFilter && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/50 rounded-md text-sm">
+              <div className="bg-accent/50 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm">
                 <span className="text-muted-foreground">Filtering:</span>
                 <span className="font-medium">
                   {selectedFileFilter.split("/").pop()}
@@ -457,7 +459,8 @@ const RenderLogs = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setSelectedFileFilter(null)}
-                  className="h-auto p-1 hover:bg-accent">
+                  className="hover:bg-accent h-auto p-1"
+                >
                   ✕
                 </Button>
               </div>
@@ -465,6 +468,7 @@ const RenderLogs = ({
           </div>
 
           {/* Action buttons */}
+
           <div className="flex gap-3">
             <GithubIssuesSlider
               repoId={repoId}
@@ -494,7 +498,8 @@ const RenderLogs = ({
                       ? handleStopAnalysis
                       : startCurrentAnalysis
                   }
-                  className="cursor-pointer">
+                  className="cursor-pointer"
+                >
                   {analysisStatus === "running"
                     ? "Stop Analysis"
                     : "Restart Analysis"}
@@ -502,22 +507,24 @@ const RenderLogs = ({
               )}
           </div>
         </div>
-        <div className="flex-1 px-4 pb-3 max-w-4xl w-full mx-auto overflow-hidden">
-          <div className="w-full h-full py-3 overflow-y-auto output-scrollbar">
+
+        <div className="flex-1 overflow-hidden px-4 pb-3">
+          <div className="output-scrollbar h-full w-full overflow-y-auto py-3">
             {/* Show start analysis button when no logs exist and not loading */}
             {processedLogs.length === 0 &&
               !isLoading &&
               analysisId &&
               !selectedFileFilter && (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-                  <div className="text-center space-y-4">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+                  <div className="space-y-4 text-center">
                     <Button
                       onClick={startCurrentAnalysis}
                       size="lg"
-                      className="px-8 py-3 text-base font-medium">
+                      className="px-8 py-3 text-base font-medium"
+                    >
                       Start Analysis
                     </Button>
-                    <p className="text-sm text-muted-foreground max-w-md">
+                    <p className="text-muted-foreground max-w-md text-sm">
                       You are about to start a full repository analysis on your
                       default branch. This will analyze your codebase for
                       security vulnerabilities and code quality.
@@ -528,19 +535,20 @@ const RenderLogs = ({
 
             {/* Show message when no logs found for selected file */}
             {processedLogs.length === 0 && !isLoading && selectedFileFilter && (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-                <div className="text-center space-y-4">
+              <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+                <div className="space-y-4 text-center">
                   <p className="text-lg font-medium">
                     No logs found for this file
                   </p>
-                  <p className="text-sm text-muted-foreground max-w-md">
+                  <p className="text-muted-foreground max-w-md text-sm">
                     The selected file "{selectedFileFilter.split("/").pop()}"
                     doesn't have any analysis logs yet. Try selecting a
                     different file or clear the filter to see all logs.
                   </p>
                   <Button
                     onClick={() => setSelectedFileFilter(null)}
-                    variant="outline">
+                    variant="outline"
+                  >
                     Clear Filter
                   </Button>
                 </div>
@@ -549,7 +557,7 @@ const RenderLogs = ({
 
             {/* Show logs when they exist */}
             {processedLogs.length > 0 && (
-              <div className="w-full flex flex-col items-start gap-3.5">
+              <div className="flex w-full flex-col items-start gap-3.5">
                 {processedLogs.map((log, i) => (
                   <React.Fragment key={i}>
                     {log.type === "TOOL_CALL" ? (
@@ -562,7 +570,7 @@ const RenderLogs = ({
                           result?.result
                         ) {
                           return (
-                            <div className="w-full whitespace-pre-wrap text-sm m-0">
+                            <div className="m-0 w-full text-sm whitespace-pre-wrap">
                               <RenderToolCall
                                 log={log}
                                 allLogs={processedLogs}
@@ -576,16 +584,16 @@ const RenderLogs = ({
                         return null;
                       })()
                     ) : log.type === "INITIALISATION" ? (
-                      <div className="w-full px-2 mb-6 whitespace-pre-wrap dark:text-neutral-200 text-neutral-800 text-sm leading-7 m-0">
+                      <div className="m-0 mb-6 w-full px-2 text-sm leading-7 whitespace-pre-wrap text-neutral-800 dark:text-neutral-200">
                         <Accordion type="single" collapsible>
                           <AccordionItem value="item-1" className="border-none">
-                            <AccordionTrigger className=" p-2 border bg-neutral-800 border-input rounded-t-md data-[state=closed]:rounded-b-md hover:no-underline cursor-pointer">
+                            <AccordionTrigger className="border-input cursor-pointer rounded-t-md border bg-neutral-800 p-2 hover:no-underline data-[state=closed]:rounded-b-md">
                               <span className="text-gray-400">
-                                <IconSandbox className="inline-block w-4 h-4 mr-1" />{" "}
+                                <IconSandbox className="mr-1 inline-block h-4 w-4" />{" "}
                                 Bootstrapping AI Code Review Platform Sandbox
                               </span>{" "}
                             </AccordionTrigger>
-                            <AccordionContent className="border border-input rounded-b-md bg-card p-3">
+                            <AccordionContent className="border-input bg-card rounded-b-md border p-3">
                               <div>{log.messages.join("\n")}</div>
                             </AccordionContent>
                           </AccordionItem>
@@ -599,9 +607,9 @@ const RenderLogs = ({
 
             {/* Show loading indicator */}
             {isLoading && (
-              <div className="flex items-center gap-2 ml-2 py-2">
-                <RefreshCcwDotIcon className="size-5 animate-spin text-primary" />
-                <span className="italic text-gray-400 text-sm">
+              <div className="ml-2 flex items-center gap-2 py-2">
+                <RefreshCcwDotIcon className="text-primary size-5 animate-spin" />
+                <span className="text-sm text-gray-400 italic">
                   {isLoadedFromDb ? "Loading..." : "Analyzing..."}
                 </span>
               </div>
@@ -609,7 +617,7 @@ const RenderLogs = ({
           </div>
         </div>
       </div>
-    </main>
+    </section>
   );
 };
 

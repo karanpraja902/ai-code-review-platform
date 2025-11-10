@@ -71,11 +71,13 @@ const AppSidebar = () => {
       <SidebarHeader>
         <SidebarMenu
           className={cn(
-            "p-0 flex-row items-center",
-            open ? "justify-between" : "justify-center"
-          )}>
+            "flex-row items-center p-0",
+            open ? "justify-between" : "justify-center",
+          )}
+        >
           <SidebarMenuItem
-            className={cn("p-0", open ? "not-sr-only" : "sr-only")}>
+            className={cn("p-0", open ? "not-sr-only" : "sr-only")}
+          >
             <SidebarMenuButton asChild>
               <Link href={"/dashboard"} className="flex items-center gap-1">
                 <AI Code ReviewLogo />
@@ -83,8 +85,9 @@ const AppSidebar = () => {
                 <span
                   className={cn(
                     "font-semibold",
-                    open ? "not-sr-only" : "sr-only"
-                  )}>
+                    open ? "not-sr-only" : "sr-only",
+                  )}
+                >
                   AI CODE REVIEW
                 </span>
               </Link>
@@ -108,9 +111,10 @@ const AppSidebar = () => {
                       href={item.url}
                       className={cn(
                         pathname === item.url
-                          ? "bg-primary/40 border-l-2 border-primary"
-                          : ""
-                      )}>
+                          ? "bg-primary/40 border-primary border-l-2"
+                          : "",
+                      )}
+                    >
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -124,13 +128,15 @@ const AppSidebar = () => {
 
       <SidebarFooter>
         <SidebarMenu
-          className={cn("items-center justify-between flex-col gap-4")}>
+          className={cn("flex-col items-center justify-between gap-4")}
+        >
           <div
             className={cn(
-              "flex items-center justify-between w-full gap-4",
-              open ? "flex-row-reverse" : "flex-col-reverse"
-            )}>
-            <SidebarMenuItem className="items-center justify-center flex">
+              "flex w-full items-center justify-between gap-4",
+              open ? "flex-row-reverse" : "flex-col-reverse",
+            )}
+          >
+            <SidebarMenuItem className="flex items-center justify-center">
               <SidebarMenuButton asChild>
                 <UserButton
                   appearance={{
@@ -151,7 +157,7 @@ const AppSidebar = () => {
             </SidebarMenuItem>
           </div>
 
-          <SidebarMenuItem className="items-center justify-start flex w-full">
+          <SidebarMenuItem className="flex w-full items-center justify-start">
             <SidebarMenuButton asChild>
               <OrganizationSwitcher
                 hidePersonal={false}
@@ -171,7 +177,7 @@ const AppSidebar = () => {
                   elements: {
                     organizationSwitcherTrigger: cn(
                       "cursor-pointer",
-                      open ? "p-1" : "ml-1 w-7 h-7 overflow-hidden"
+                      open ? "p-1" : "ml-1 w-7 h-7 overflow-hidden",
                     ),
                   },
                 }}

@@ -15,13 +15,13 @@ import { BoxSelect, Eye, Import, SearchCode } from "lucide-react";
 import React from "react";
 import { RenderLLMSegments } from "./RenderLLMSegments";
 
-export const RenderToolCall = ({ 
-  log, 
-  allLogs, 
-  repoId, 
-  analysisId, 
-  isLoadedFromDb 
-}: { 
+export const RenderToolCall = ({
+  log,
+  allLogs,
+  repoId,
+  analysisId,
+  isLoadedFromDb,
+}: {
   log: LogItem;
   allLogs?: LogItem[];
   repoId?: string;
@@ -35,9 +35,9 @@ export const RenderToolCall = ({
 
   if (result?.type === "READ_FILE") {
     return (
-      <div className="w-full whitespace-pre-wrap break-words">
+      <div className="w-full break-words whitespace-pre-wrap">
         <span>
-            {/* <Eye className="inline-block w-4 h-4 mr-1"/> {extractPath(result.result.file_path)} <span className="text-sm text-slate-500">{result.result.start_line ?? 0}-{result.result.end_line ?? 0}</span>  */}
+          {/* <Eye className="inline-block w-4 h-4 mr-1"/> {extractPath(result.result.file_path)} <span className="text-sm text-slate-500">{result.result.start_line ?? 0}-{result.result.end_line ?? 0}</span>  */}
         </span>
       </div>
     );
@@ -58,7 +58,10 @@ export const RenderToolCall = ({
         // Check if this is a read_file tool call that starts a new file context
         if (logItem.type === "TOOL_CALL") {
           const toolResult = parseToolCall(logItem.messages.join("\n"));
-          if (toolResult?.type === "READ_FILE" && toolResult?.result?.file_path) {
+          if (
+            toolResult?.type === "READ_FILE" &&
+            toolResult?.result?.file_path
+          ) {
             const normalizedLogPath = extractPath(toolResult.result.file_path);
             if (normalizedLogPath) {
               currentFileContext = normalizedLogPath;
@@ -79,23 +82,23 @@ export const RenderToolCall = ({
     };
 
     const fileSpecificLogs = getFileSpecificLogs();
-     const filteredLogs = fileSpecificLogs.filter(logItem => {
-       // Exclude INFO logs
-       if (logItem.type !== "LLM_RESPONSE" && logItem.type !== "TOOL_CALL") {
-         return false;
-       }
-       // Include LLM_RESPONSE segments
-       if (logItem.type === "LLM_RESPONSE") {
-         return true;
-       }
-       // Include non-READ_FILE tool calls
-       if (logItem.type === "TOOL_CALL") {
-         const toolResult = parseToolCall(logItem.messages.join("\n"));
-         return !toolResult?.type?.includes("READ_FILE");
-       }
-       // Include other log types (except INFO which is already excluded above)
-       return true;
-     });
+    const filteredLogs = fileSpecificLogs.filter((logItem) => {
+      // Exclude INFO logs
+      if (logItem.type !== "LLM_RESPONSE" && logItem.type !== "TOOL_CALL") {
+        return false;
+      }
+      // Include LLM_RESPONSE segments
+      if (logItem.type === "LLM_RESPONSE") {
+        return true;
+      }
+      // Include non-READ_FILE tool calls
+      if (logItem.type === "TOOL_CALL") {
+        const toolResult = parseToolCall(logItem.messages.join("\n"));
+        return !toolResult?.type?.includes("READ_FILE");
+      }
+      // Include other log types (except INFO which is already excluded above)
+      return true;
+    });
 
     // Count issues and fixes from the filtered logs
     const getCounts = () => {
@@ -103,12 +106,15 @@ export const RenderToolCall = ({
       let fixCount = 0;
       let warningCount = 0;
 
-      filteredLogs.forEach(logItem => {
+      filteredLogs.forEach((logItem) => {
         if (logItem.type === "LLM_RESPONSE" && logItem.segments) {
-          logItem.segments.forEach(segment => {
+          logItem.segments.forEach((segment) => {
             if (segment.kind === "githubIssue") {
               issueCount++;
-            } else if (segment.kind === "patch" || segment.kind === "githubPullRequest") {
+            } else if (
+              segment.kind === "patch" ||
+              segment.kind === "githubPullRequest"
+            ) {
               fixCount++;
             } else if (segment.kind === "warning") {
               warningCount++;
@@ -123,55 +129,63 @@ export const RenderToolCall = ({
     const { issueCount, fixCount, warningCount } = getCounts();
 
     return (
-      <Accordion type="single" collapsible defaultValue={filePath ?? "item-1"} className="w-full px-2 rounded mb-2">
-        <AccordionItem
-          value={filePath ?? "item-1"}
-          className="border-none">
-          <AccordionTrigger className="py-2 data-[state=closed]:rounded-b-md hover:no-underline cursor-pointer">
-            <span className="text-gray-400 flex items-center">
-              <Eye className="inline-block w-4 h-4 mr-2"/> 
-              <span className="font-medium">{normalizedFilePath}</span>
-              {result.result?.current_range && (
-                <span className="text-sm text-slate-500 ml-2">
-                  Lines {result.result.current_range.start_line}-{result.result.current_range.end_line}
-                </span>
-              )}
-                 {issueCount > 0 && (
-                    <span className="text-sm text-slate-400 ml-2">
-                      {issueCount} Github issue{issueCount !== 1 ? 's' : ''},
-                    </span>
-                  )}
-                  {fixCount > 0 && (
-                    <span className="text-sm text-slate-400 ml-2">
-                      {fixCount} Fix suggested{fixCount !== 1 ? '' : ''}
-                    </span>
-                  )}
-                  {warningCount > 0 && (
-                    <span className="text-sm text-slate-400 ml-2">
-                      {warningCount} Warning{warningCount !== 1 ? 's' : ''}
-                    </span>
-                  )}
-             </span>        
-           </AccordionTrigger>
-           <AccordionContent className="p-0 overflow-hidden">
-             <div className="p-4">
-               {filteredLogs.length > 0 ? (
-                 <div className="w-full flex flex-col items-start gap-3.5">
-                   {filteredLogs.map((logItem: any, index: number) => (
+      <Accordion
+        type="single"
+        collapsible
+        defaultValue={filePath ?? "item-1"}
+        className="mb-2 w-full rounded px-2"
+      >
+        <AccordionItem value={filePath ?? "item-1"} className="border-none">
+          <AccordionTrigger className="cursor-pointer py-2 hover:no-underline data-[state=closed]:rounded-b-md">
+            <span className="flex flex-col text-gray-400 md:flex-row md:items-center">
+              <span>
+                <Eye className="mr-2 inline-block size-4" />
+                <span className="font-medium">{normalizedFilePath}</span>
+              </span>
+              <span>
+                {result.result?.current_range && (
+                  <span className="ml-2 text-xs text-slate-500">
+                    Lines {result.result.current_range.start_line}-
+                    {result.result.current_range.end_line}
+                  </span>
+                )}
+                {issueCount > 0 && (
+                  <span className="ml-2 text-xs text-slate-400">
+                    {issueCount} Github issue{issueCount !== 1 ? "s" : ""},
+                  </span>
+                )}
+                {fixCount > 0 && (
+                  <span className="ml-2 text-xs text-slate-400">
+                    {fixCount} Fix suggested{fixCount !== 1 ? "" : ""}
+                  </span>
+                )}
+                {warningCount > 0 && (
+                  <span className="ml-2 text-xs text-slate-400">
+                    {warningCount} Warning{warningCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="overflow-hidden p-0">
+            <div className="p-4">
+              {filteredLogs.length > 0 ? (
+                <div className="flex w-full flex-col items-start gap-3.5">
+                  {filteredLogs.map((logItem: any, index: number) => (
                     <React.Fragment key={index}>
                       {logItem.type === "LLM_RESPONSE" && logItem.segments ? (
-                        <div className="w-full break-words text-sm m-0">
-                          <RenderLLMSegments 
-                            segments={logItem.segments} 
-                            repoId={repoId || ""} 
-                            analysisId={analysisId} 
-                            isLoadedFromDb={isLoadedFromDb || false} 
+                        <div className="m-0 w-full text-sm break-words">
+                          <RenderLLMSegments
+                            segments={logItem.segments}
+                            repoId={repoId || ""}
+                            analysisId={analysisId}
+                            isLoadedFromDb={isLoadedFromDb || false}
                           />
                         </div>
                       ) : logItem.type === "TOOL_CALL" ? (
-                        <div className="w-full whitespace-pre-wrap text-sm m-0">
-                          <RenderToolCall 
-                            log={logItem} 
+                        <div className="m-0 w-full text-sm whitespace-pre-wrap">
+                          <RenderToolCall
+                            log={logItem}
                             allLogs={allLogs}
                             repoId={repoId}
                             analysisId={analysisId}
@@ -179,22 +193,20 @@ export const RenderToolCall = ({
                           />
                         </div>
                       ) : (
-                        <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground">
+                        <div className="text-muted-foreground w-full text-sm whitespace-pre-wrap">
                           {logItem.messages.join("\n")}
                         </div>
                       )}
                     </React.Fragment>
                   ))}
                 </div>
-              ) : (
-                // Only show "no logs found" if analysis is loaded from DB (not streaming)
-                // During live streaming, don't show any message as logs may still be coming
-                isLoadedFromDb ? (
-                  <div className="text-center text-muted-foreground py-4">
-                    No logs found for this file
-                  </div>
-                ) : null
-              )}
+              ) : // Only show "no logs found" if analysis is loaded from DB (not streaming)
+              // During live streaming, don't show any message as logs may still be coming
+              isLoadedFromDb ? (
+                <div className="text-muted-foreground py-4 text-center">
+                  No logs found for this file
+                </div>
+              ) : null}
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -204,7 +216,7 @@ export const RenderToolCall = ({
 
   if (result?.type === "EXTRACT_IMPORTS") {
     return (
-      <div className="w-full whitespace-pre-wrap break-words">
+      <div className="w-full break-words whitespace-pre-wrap">
         {/* <p>
           <span className="px-2 py-1 border border-input font-medium rounded">
             Extract Imports
@@ -224,13 +236,20 @@ export const RenderToolCall = ({
     const id = String(Math.floor(Math.random() * 100));
 
     return (
-      <Accordion type="single" collapsible className="inline-block px-2 rounded mb-3">
+      <Accordion
+        type="single"
+        collapsible
+        className="mb-3 inline-block rounded px-2"
+      >
         <AccordionItem value={`item-${id}`} className="border-none">
-           <AccordionTrigger className=" py-0 rounded-t-md data-[state=closed]:rounded-b-md hover:no-underline cursor-pointer">
- <span className="text-gray-400">
-            <Import className="inline-block w-4 h-4 mr-1"/> Extract {" "} {result.result?.file_path && extractPath(result.result?.file_path)}{" "} 
-        </span>            </AccordionTrigger>
-          <AccordionContent className="w-full bg-card p-2 border border-input rounded-md overflow-x-auto output-scrollbar text-xs text-muted-foreground leading-6">
+          <AccordionTrigger className="cursor-pointer rounded-t-md py-0 hover:no-underline data-[state=closed]:rounded-b-md">
+            <span className="text-gray-400">
+              <Import className="mr-1 inline-block h-4 w-4" /> Extract{" "}
+              {result.result?.file_path &&
+                extractPath(result.result?.file_path)}{" "}
+            </span>{" "}
+          </AccordionTrigger>
+          <AccordionContent className="bg-card border-input output-scrollbar text-muted-foreground w-full overflow-x-auto rounded-md border p-2 text-xs leading-6">
             {result.result.map((item: string, i: number) => {
               const language = detectLanguage(item);
               return (
@@ -247,7 +266,7 @@ export const RenderToolCall = ({
 
   if (result?.type === "SELECT_FILES") {
     return (
-      <div className="w-full whitespace-pre-wrap break-words">
+      <div className="w-full break-words whitespace-pre-wrap">
         {/* <p>
           <span className="px-2 py-1.5 border border-input font-medium rounded">
             Select Files
@@ -267,13 +286,22 @@ export const RenderToolCall = ({
     const id = String(Math.floor(Math.random() * 100));
 
     return (
-      <Accordion type="single" collapsible className="inline-block px-2 rounded mb-2">
+      <Accordion
+        type="single"
+        collapsible
+        className="mb-2 inline-block rounded px-2"
+      >
         <AccordionItem value={`item-${id}`} className="border-none">
-            <AccordionTrigger className=" py-0 rounded-t-md data-[state=closed]:rounded-b-md hover:no-underline cursor-pointer">
- <span className="text-gray-400">
-            <BoxSelect className="inline-block w-4 h-4 mr-1"/> Select {" "} <span className="text-sm text-slate-500">{result.result?.file_path && extractPath(result.result?.file_path)}{" "}</span>
-        </span>            </AccordionTrigger>
-          <AccordionContent className="w-full bg-card p-2 border border-input rounded-md overflow-x-auto output-scrollbar text-xs text-muted-foreground leading-6">
+          <AccordionTrigger className="cursor-pointer rounded-t-md py-0 hover:no-underline data-[state=closed]:rounded-b-md">
+            <span className="text-gray-400">
+              <BoxSelect className="mr-1 inline-block h-4 w-4" /> Select{" "}
+              <span className="text-sm text-slate-500">
+                {result.result?.file_path &&
+                  extractPath(result.result?.file_path)}{" "}
+              </span>
+            </span>{" "}
+          </AccordionTrigger>
+          <AccordionContent className="bg-card border-input output-scrollbar text-muted-foreground w-full overflow-x-auto rounded-md border p-2 text-xs leading-6">
             {result.result && result.result.length > 0 ? (
               result.result.map((item: string, i: number) => {
                 const language = detectLanguage(item);
@@ -294,7 +322,7 @@ export const RenderToolCall = ({
 
   if (result?.type === "GREP_FILE_CONTENT") {
     return (
-      <div className="w-full whitespace-pre-wrap break-words">
+      <div className="w-full break-words whitespace-pre-wrap">
         {/* <div className="border border-b-0 border-input py-3 px-1.5 rounded-t-md">
           <span className="px-2 py-1.5 border border-input font-medium rounded">
             Grep File
@@ -313,14 +341,23 @@ export const RenderToolCall = ({
     const id = String(Math.floor(Math.random() * 100));
 
     return (
-      <Accordion type="single" collapsible className="inline-block px-2 rounded mb-2">
+      <Accordion
+        type="single"
+        collapsible
+        className="mb-2 inline-block rounded px-2"
+      >
         <AccordionItem value={`item-${id}`} className="border-none">
-            <AccordionTrigger className=" py-0 rounded-t-md data-[state=closed]:rounded-b-md hover:no-underline cursor-pointer">
- <span className="text-gray-400">
-            <SearchCode className="inline-block w-4 h-4 mr-1"/> Searching Codebase {" "} <span className="text-sm text-slate-500">{result.result?.search_query}</span>{" "} 
-        </span>            </AccordionTrigger>
+          <AccordionTrigger className="cursor-pointer rounded-t-md py-0 hover:no-underline data-[state=closed]:rounded-b-md">
+            <span className="text-gray-400">
+              <SearchCode className="mr-1 inline-block h-4 w-4" /> Searching
+              Codebase{" "}
+              <span className="text-sm text-slate-500">
+                {result.result?.search_query}
+              </span>{" "}
+            </span>{" "}
+          </AccordionTrigger>
 
-          <AccordionContent className="w-full bg-card p-2 border border-input rounded-md overflow-x-auto output-scrollbar text-xs text-muted-foreground leading-6">
+          <AccordionContent className="bg-card border-input output-scrollbar text-muted-foreground w-full overflow-x-auto rounded-md border p-2 text-xs leading-6">
             <p>Files searched: {result.result.search_summary.files_searched}</p>
             <p>
               Total files with matches:{" "}
@@ -342,7 +379,7 @@ export const RenderToolCall = ({
   }
 
   return (
-    <div className="w-full space-y-2 whitespace-pre-wrap break-words">
+    <div className="w-full space-y-2 break-words whitespace-pre-wrap">
       <p>{log.messages.join("\n")}</p>
     </div>
   );

@@ -42,7 +42,7 @@ const RepositoryItem: React.FC<RepositoryItemProps> = ({ repo, teamId }) => {
         className="flex items-center gap-3"
       >
         <IconBrandGithub className="size-4 shrink-0" />
-        <div className="max-w-full break-before-auto text-sm md:text-base">
+        <div className="text-sm whitespace-pre-wrap md:text-base">
           {repo.fullName}
         </div>
         <Badge

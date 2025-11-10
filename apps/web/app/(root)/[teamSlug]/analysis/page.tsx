@@ -39,13 +39,13 @@ const Page = async (props: PageProps) => {
   });
 
   return (
-    <div className="min-h-svh max-w-8xl w-full mx-auto">
-      <div className="h-full p-4">
+    <div className="max-w-8xl mx-auto min-h-svh w-full">
+      <div className="h-full w-full p-4">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
           <div className="flex items-center gap-3">
             <SidebarTrigger className="md:hidden" />
             <div>
-              <h2 className="text-lg md:text-xl xl:text-2xl font-medium">
+              <h2 className="text-lg font-medium md:text-xl xl:text-2xl">
                 Team Repositories
               </h2>
               <p className="text-sm text-gray-500">Team: {teamSlug}</p>

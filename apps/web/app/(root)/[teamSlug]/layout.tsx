@@ -7,7 +7,10 @@ interface TeamLayoutProps {
   }>;
 }
 
-export default async function TeamLayout({ children, params }: TeamLayoutProps) {
+export default async function TeamLayout({
+  children,
+  params,
+}: TeamLayoutProps) {
   const resolvedParams = await params;
   const teamSlug = resolvedParams.teamSlug;
 
@@ -18,7 +21,7 @@ export default async function TeamLayout({ children, params }: TeamLayoutProps) 
   // - Provide team context to children
 
   return (
-    <div className="team-layout" data-team-slug={teamSlug}>
+    <div className="h-full w-full" data-team-slug={teamSlug}>
       {/* TODO: Add team-specific providers/context here */}
       {children}
     </div>
