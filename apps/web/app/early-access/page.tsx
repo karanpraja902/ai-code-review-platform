@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { requestEarlyAccess } from "@/app/(root)/dashboard/_actions/requestEarlyAccess";
 import { toast } from "sonner";
 import { useEffect } from "react";
@@ -29,7 +28,8 @@ export default function EarlyAccessPage() {
       setRequesting(true);
       const res = await requestEarlyAccess();
       if (res?.success) {
-        toast.success("Early access requested. You will get access in 24 hrs.");
+        toast.success("Early access granted. Redirecting to dashboard...");
+        router.replace("/dashboard");
       } else {
         toast.error(res?.error || "Failed to request early access");
       }
@@ -92,7 +92,7 @@ const CheckIcon = () => {
          disabled={requesting} 
          className="bg-white text-black hover:bg-gray-100 mt-3 cursor-pointer relative z-20 disabled:cursor-not-allowed disabled:opacity-50"
        >
-         {requesting ? "Requesting..." : "Request Early Access"}
+         {requesting ? "Accepting..." : "Accept and Continue"}
        </Button>
     </CardSpotlight>
     </div>

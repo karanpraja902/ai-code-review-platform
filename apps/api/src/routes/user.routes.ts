@@ -2,6 +2,7 @@ import express, { Router } from "express";
 import { baseAuth, checkAuth } from "../middlewares/checkAuth.js";
 import { getUser, getUserRepositories, getUserInstallations, getUserDashboardInfo } from "../controllers/user.controller.js";
 import { requestEarlyAccess } from "../controllers/early_access.controller.js";
+import { requestUpgrade } from "../controllers/upgrade.controller.js";
 
 const router: Router = express.Router();
 
@@ -12,6 +13,7 @@ router.get("/repositories", getUserRepositories)
 router.get("/installations", getUserInstallations)
 router.get("/dashboard", getUserDashboardInfo)
 router.post("/request/early-access", baseAuth, requestEarlyAccess);
+router.post("/request/upgrade", baseAuth, requestUpgrade);
 
 
 export default router

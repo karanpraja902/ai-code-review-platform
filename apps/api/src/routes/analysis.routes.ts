@@ -9,7 +9,7 @@ import {
   getPrAnalysis,
 } from "../controllers/analysis.controller.js";
 import { baseAuth, checkAuth, teamAuth } from "../middlewares/checkAuth.js";
-import { checkAnalysisAccess } from "../middlewares/checkFeatureAccess.js";
+import { checkFullRepoAnalysisAccess } from "../middlewares/checkFeatureAccess.js";
 import { stopAnalysis } from "../controllers/analysis.controller.js";
 
 const router: Router = express.Router();
@@ -20,13 +20,13 @@ router.get("/status", getAnalysisStatus);
 // Routes that need full auth (user + subscription + team)
 router.post("/create", 
   checkAuth,
-  checkAnalysisAccess,
+  checkFullRepoAnalysisAccess,
   createAnalysis
 );
 
 router.post("/execute", 
   checkAuth,
-  checkAnalysisAccess,
+  checkFullRepoAnalysisAccess,
   startAnalysis
 );
 

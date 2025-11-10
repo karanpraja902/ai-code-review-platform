@@ -9,14 +9,12 @@ export interface ISubscriptionPlan extends Document {
     yearly: number;
   };
   features: {
-    maxProjects: number;
+    maxTeams: number;
     maxTeamMembers: number;
-    maxAnalysisPerMonth: number;
-    githubIntegration: boolean;
-    advancedAnalytics: boolean;
+    maxPrAnalysisPerDay: number;
+    maxFullRepoAnalysisPerDay: number;
     prioritySupport: boolean;
-    customIntegrations: boolean;
-    apiAccess: boolean;
+    organizationSupport: boolean;
   };
   isActive: boolean;
   createdAt: Date;
@@ -54,11 +52,6 @@ const subscriptionPlanSchema = new Schema<ISubscriptionPlan>(
       },
     },
     features: {
-      maxProjects: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
       maxTeams: {
         type: Number,
         required: true,
@@ -69,12 +62,24 @@ const subscriptionPlanSchema = new Schema<ISubscriptionPlan>(
         required: true,
         min: 0,
       },
-      maxAnalysisPerMonth: {
+      maxPrAnalysisPerDay: {
         type: Number,
         required: true,
         min: 0,
+        default: 5,
+      },
+      maxFullRepoAnalysisPerDay: {
+        type: Number,
+        required: true,
+        min: 0,
+        default: 2,
       },
       prioritySupport: {
+        type: Boolean,
+        required: true,
+        default: false,
+      },
+      organizationSupport: {
         type: Boolean,
         required: true,
         default: false,
