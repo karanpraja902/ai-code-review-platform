@@ -58,8 +58,6 @@ const AppSidebar = () => {
 
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [isFreePlan, setIsFreePlan] = useState(true);
-  // Upgrade modal open state
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,7 +117,7 @@ const AppSidebar = () => {
   };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar>
       <SidebarHeader>
         <SidebarMenu
           className={cn(
@@ -144,10 +142,6 @@ const AppSidebar = () => {
                 </span>
               </Link>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarTrigger className="cursor-pointer" />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -182,7 +176,7 @@ const AppSidebar = () => {
         <SidebarMenu
           className={cn("flex-col items-center justify-between gap-4")}
         >
-          <div
+          {/* <div
             className={cn(
               "flex w-full items-center justify-between gap-4",
               open ? "flex-row-reverse" : "flex-col-reverse",
@@ -207,7 +201,7 @@ const AppSidebar = () => {
                 <ThemeToggle darkIconClassName="text-foreground fill-foreground" />
               </SidebarMenuButton>
             </SidebarMenuItem>
-          </div>
+          </div> */}
 
           <SidebarMenuItem className="flex w-full items-center justify-start">
             {loadingPlan ? (
@@ -221,13 +215,7 @@ const AppSidebar = () => {
               </div>
             ) : isFreePlan ? (
               <>
-                <Button className="w-full" onClick={() => setUpgradeOpen(true)}>
-                  Upgrade for free
-                </Button>
-                <UpgradePlanDialog
-                  open={upgradeOpen}
-                  onOpenChange={setUpgradeOpen}
-                />
+                <UpgradePlanDialog />
               </>
             ) : (
               <SidebarMenuButton asChild>

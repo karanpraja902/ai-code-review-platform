@@ -3,16 +3,18 @@
 import React from "react";
 import ThemeToggle from "@/components/shared/theme-toggle";
 import { UserButton } from "@clerk/nextjs";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const RootHeader = () => {
   return (
-    <div className="px-4 py-1 border-b flex items-center justify-between">
+    <div className="flex items-center justify-between border-b px-4 py-1">
       {/* Left side placeholder (can hold page title later) */}
-      <div className="" />
+
+      <SidebarTrigger className="cursor-pointer" />
 
       {/* Right side: bulb (theme toggle) and user avatar */}
       <div className="flex items-center gap-2">
-        <ThemeToggle className="hover:bg-transparent" />
+        <ThemeToggle />
         <UserButton
           appearance={{
             elements: {

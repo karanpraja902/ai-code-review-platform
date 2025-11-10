@@ -12,10 +12,10 @@ export default async function MainLayout({
     <SidebarProvider>
       <AppSidebar />
 
-      <main className="flex-1">
+      <main className="flex flex-1 flex-col">
         <RootHeader />
-        {children}
-        </main>
+        <div className="flex-1">{children}</div>
+      </main>
     </SidebarProvider>
   );
 }

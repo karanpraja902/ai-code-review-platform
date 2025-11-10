@@ -26,27 +26,29 @@ const Page = async ({ params }: PageProps) => {
   });
 
   return (
-    <div className="h-svh w-full mx-auto">
+    <div className="h-full w-full overflow-y-auto">
       <HydrationBoundary state={dehydrate(queryClient)}>
         <ErrorBoundary
           fallback={
-            <div className="h-full flex items-center justify-center px-4 py-5">
+            <div className="flex h-full items-center justify-center px-4 py-5">
               <div className="text-center">
-                <h2 className="text-xl font-semibold text-red-600 mb-2">
+                <h2 className="mb-2 text-xl font-semibold text-red-600">
                   Error fetching team dashboard data
                 </h2>
               </div>
             </div>
-          }>
+          }
+        >
           <Suspense
             fallback={
-              <div className="h-full flex items-center justify-center px-4 py-5">
+              <div className="flex h-full items-center justify-center px-4 py-5">
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-6 w-6 animate-spin" />
                   <span>Loading team dashboard...</span>
                 </div>
               </div>
-            }>
+            }
+          >
             <TeamDashboardPage />
           </Suspense>
         </ErrorBoundary>

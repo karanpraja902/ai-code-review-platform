@@ -32,11 +32,12 @@ const ThemeToggle = ({
       size={"icon"}
       variant={"ghost"}
       className={cn("cursor-pointer rounded-full", className)}
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+    >
       {resolvedTheme === "dark" ? (
-        <SunIcon className={cn("size-4 text-amber-400", lightIconClassName)} />
+        <SunIcon className={cn("text-primary size-4", lightIconClassName)} />
       ) : (
-        <Moon className={cn("size-4 text-white", darkIconClassName)} />
+        <Moon className={cn("text-primary size-4", darkIconClassName)} />
       )}
 
       <span className="sr-only">Toggle Theme</span>

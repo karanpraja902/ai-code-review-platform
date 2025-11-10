@@ -37,7 +37,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createAnalysisRecord } from "../_actions/createAnalysis";
 import { triggerAnalysisListRefresh } from "@/lib/utils/analysisEvents";
 import { IconSandbox } from "@tabler/icons-react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import AnalysisSheet from "./AnalysisSheet";
 
 const RenderLogs = ({
   repoId,
@@ -446,7 +446,10 @@ const RenderLogs = ({
 
       <div className="mx-auto flex max-w-4xl min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between px-2 py-3 md:px-4">
-          <SidebarTrigger className="md:hidden" />
+          {/* <div className="md:hidden">
+            <AnalysisSheet />
+          </div> */}
+
           {/* File filter indicator */}
           <div className="flex items-center gap-2">
             {selectedFileFilter && (

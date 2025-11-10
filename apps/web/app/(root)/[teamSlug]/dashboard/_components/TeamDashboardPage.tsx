@@ -37,8 +37,6 @@ const TeamDashboardPage = () => {
     <div className="h-full space-y-6 px-4 py-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <SidebarTrigger />
-
           <h1 className="text-xl font-bold md:text-3xl">Team Dashboard</h1>
         </div>
 

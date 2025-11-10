@@ -33,7 +33,7 @@ const Page = async ({ params, searchParams }: PageProps) => {
   );
 
   return (
-    <div className="flex h-svh w-full">
+    <div className="flex h-[calc(100vh-45px)] w-full">
       <div className="flex-1">
         <AnalysisViewer
           repoId={decodeURIComponent(repoId)}
