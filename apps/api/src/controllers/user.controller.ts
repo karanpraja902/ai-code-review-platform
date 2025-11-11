@@ -283,6 +283,8 @@ export const getUserDashboardInfo = async (req: Request, res: Response, next: Ne
                 : undefined;
             return {
                 repo_name: repo?.fullName || 'Unknown',
+                pr_title: (analysis as any).pr_title ?? undefined,
+                pr_number: (analysis as any).pr_number ?? undefined,
                 state: analysis.status,
                 date: analysis.createdAt,
                 total_comments: typeof (analysis as any).pr_comments_posted === 'number' ? (analysis as any).pr_comments_posted : 0,
