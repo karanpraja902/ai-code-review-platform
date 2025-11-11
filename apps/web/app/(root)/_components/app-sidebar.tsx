@@ -3,7 +3,7 @@
 import { UserButton, OrganizationSwitcher, useAuth } from "@clerk/nextjs";
 import { ScanTextIcon, StarsIcon, BotIcon, GitPullRequest } from "lucide-react";
 import Link from "next/link";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
 import ThemeToggle from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -213,36 +213,49 @@ const AppSidebar = () => {
               >
                 Checking plan…
               </div>
-            ) : isFreePlan ? (
-              <>
-                <UpgradePlanDialog />
-              </>
             ) : (
-              <SidebarMenuButton asChild>
-                <OrganizationSwitcher
-                  hidePersonal={false}
-                  afterSelectOrganizationUrl={(organization) => {
-                    const currentPathWithoutSlug =
-                      getCurrentPathWithoutTeamSlug();
-                    return `/${organization.slug}${currentPathWithoutSlug}`;
-                  }}
-                  afterSelectPersonalUrl={() => {
-                    return getCurrentPathWithoutTeamSlug();
-                  }}
-                  afterCreateOrganizationUrl={(organization) => {
-                    return `/${organization.slug}/dashboard`;
-                  }}
-                  appearance={{
-                    baseTheme: resolvedTheme === "dark" ? dark : undefined,
-                    elements: {
-                      organizationSwitcherTrigger: cn(
-                        "cursor-pointer",
-                        open ? "p-1" : "ml-1 w-7 h-7 overflow-hidden",
-                      ),
-                    },
-                  }}
-                />
-              </SidebarMenuButton>
+              <div className="flex flex-col">
+                <SidebarMenuButton asChild>
+                  <OrganizationSwitcher
+                    hidePersonal={false}
+                    afterSelectOrganizationUrl={(organization) => {
+                      const currentPathWithoutSlug =
+                        getCurrentPathWithoutTeamSlug();
+                      return `/${organization.slug}${currentPathWithoutSlug}`;
+                    }}
+                    afterSelectPersonalUrl={() => {
+                      return getCurrentPathWithoutTeamSlug();
+                    }}
+                    afterCreateOrganizationUrl={(organization) => {
+                      return `/${organization.slug}/dashboard`;
+                    }}
+                    // For free plan, redirect "Create organization" to upgrade page instead of opening Clerk modal
+                    {...(isFreePlan
+                      ? {
+                          createOrganizationMode: "navigation" as const,
+                          createOrganizationUrl: "/upgrade",
+                        }
+                      : {
+                          createOrganizationMode: "modal" as const,
+                        })}
+                    appearance={{
+                      baseTheme: resolvedTheme === "dark" ? dark : undefined,
+                      elements: {
+                        organizationSwitcherTrigger: cn(
+                          "cursor-pointer",
+                          open ? "p-1" : "ml-1 w-7 h-7 overflow-hidden",
+                        ),
+                      },
+                    }}
+                  />
+                </SidebarMenuButton>
+
+                {isFreePlan && (
+                  <div className={cn("mt-2 w-full", open ? "px-1" : "px-0")}> 
+                    <UpgradePlanDialog />
+                  </div>
+                )}
+              </div>
             )}
           </SidebarMenuItem>
         </SidebarMenu>
