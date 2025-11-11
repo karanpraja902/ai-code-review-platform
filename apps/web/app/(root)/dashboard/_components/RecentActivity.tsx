@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DashboardData } from "@/types/dashboard";
+
 import { GitBranch, Clock, Bug, GitPullRequest, MessageSquare, Github } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -57,7 +58,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
     } catch {
-      return 'Unknown time';
+      return "Unknown time";
     }
   };
 
@@ -77,7 +78,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
       ...repo,
       type: 'repository' as const,
     })),
-    ...data.recent_activity.pull_request.map(pr => ({
+    ...data.recent_activity.pull_request.map((pr) => ({
       ...pr,
       type: 'pull_request' as const,
     }))
@@ -101,7 +102,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                   href={activity?.pr_url || ''}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block border rounded-md p-4 hover:bg-neutral-900 cursor-pointer transition-colors"
+                  className="block cursor-pointer rounded-md border p-4 transition-colors hover:bg-neutral-100 hover:dark:bg-neutral-800"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <ActivityHeader activity={activity} />
@@ -122,11 +123,13 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                     {formatDate(activity.date)}
                   </p>
                 </a>
-              ) : activity.type === 'repository' && activity.repo_id && activity.analysis_id ? (
+              ) : activity.type === "repository" &&
+                activity.repo_id &&
+                activity.analysis_id ? (
                 <Link
                   key={index}
                   href={`/analysis/${activity.repo_id}/${activity.analysis_id}`}
-                  className="block border rounded-md p-4 hover:bg-neutral-900 cursor-pointer transition-colors"
+                  className="block cursor-pointer rounded-md border p-4 transition-colors hover:bg-neutral-100 hover:dark:bg-neutral-800"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <ActivityHeader activity={activity} />
@@ -138,11 +141,14 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                   <div className="grid grid-cols-2 gap-2 text-xs mb-2">
                     <div className="flex items-center gap-1">
                       <Bug className="h-3 w-3" />
-                      Issues: {activity.total_github_issues_suggested} suggested, {activity.github_issues_opened} opened
+                      Issues: {activity.total_github_issues_suggested}{" "}
+                      suggested, {activity.github_issues_opened} opened
                     </div>
                     <div className="flex items-center gap-1">
                       <GitPullRequest className="h-3 w-3" />
-                      PRs: {activity.total_pull_request_suggested} suggested, {activity.pull_request_opened} opened
+                      PRs: {
+                        activity.total_pull_request_suggested
+                      } suggested, {activity.pull_request_opened} opened
                     </div>
                   </div>
 

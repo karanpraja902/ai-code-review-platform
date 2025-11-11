@@ -40,7 +40,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${workSans.variable} ${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased min-h-screen output-scrollbar`}>
+        className={`${workSans.variable} ${geistSans.variable} ${geistMono.variable} ${inter.variable} output-scrollbar min-h-screen antialiased`}
+      >
         <Providers>{children}</Providers>
         <Toaster richColors closeButton position="top-center" />
       </body>

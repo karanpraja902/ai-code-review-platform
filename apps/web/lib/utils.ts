@@ -158,9 +158,9 @@ export function safeParseJSON(str: string) {
 
     return JSON.parse(normalized);
   } catch (error) {
-    logger.error("Failed to parse JSON string in safeParseJSON", { 
-      originalString: str, 
-      error: error instanceof Error ? error.message : String(error) 
+    logger.error("Failed to parse JSON string in safeParseJSON", {
+      originalString: str,
+      error: error instanceof Error ? error.message : String(error),
     });
 
     return null;
@@ -423,9 +423,9 @@ export function bufferJSONToUint8Array(
       // console.log("🔄 Buffer JSON to Uint8Array(base64): ", arr);
       return arr;
     } catch (error) {
-      logger.error("Failed to convert base64 string to Uint8Array", { 
-        bufferLike, 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error("Failed to convert base64 string to Uint8Array", {
+        bufferLike,
+        error: error instanceof Error ? error.message : String(error),
       });
       return null;
     }
@@ -438,7 +438,10 @@ export function bufferJSONToUint8Array(
     // console.log("🔄 Buffer JSON to Uint8Array3: ", bufferLike.data);
     return new Uint8Array(bufferLike.data);
   }
-  logger.warn("Unable to convert bufferLike to Uint8Array - unsupported format", { bufferLike });
+  logger.warn(
+    "Unable to convert bufferLike to Uint8Array - unsupported format",
+    { bufferLike }
+  );
   return null;
 }
 
@@ -470,7 +473,9 @@ export function extractTitleAndDescription(input: string) {
 
   // Find ISSUE_ID line
   const issueIdLine = lines.find((line) => line.startsWith("ISSUE_ID:"));
-  const issueId = issueIdLine ? issueIdLine.replace(/^ISSUE_ID:\s*/, "").trim() : "";
+  const issueId = issueIdLine
+    ? issueIdLine.replace(/^ISSUE_ID:\s*/, "").trim()
+    : "";
 
   // Remove title line and issue ID line, take the rest as description
   const description = lines
@@ -518,7 +523,6 @@ export function parsePatchString(input: string): ParsedPatch {
   if (explanationMatch && explanationMatch[1])
     result.explanation = explanationMatch[1].trim();
 
-  
   // Find ISSUE_ID line
   const issueIdLine = input.match(/^ISSUE_ID:\s*(.*)$/m);
   const issueId = issueIdLine && issueIdLine[1] ? issueIdLine[1].trim() : "";
@@ -622,9 +626,9 @@ export function parseToolCall(
         : payloadMatch[1]?.trim(),
     };
   } catch (err) {
-    logger.error("Failed to parse tool call log", { 
-      log, 
-      error: err instanceof Error ? err.message : String(err) 
+    logger.error("Failed to parse tool call log", {
+      log,
+      error: err instanceof Error ? err.message : String(err),
     });
     return null;
   }
@@ -682,42 +686,42 @@ export function extractPath(filePath: string) {
 /**
  * Removes line number annotations from code blocks.
  * Handles patterns like "1|", "2|", "123|" at the beginning of lines.
- * 
+ *
  * @param code - The code string that may contain line number annotations
  * @returns The code string with line number annotations removed
- * 
+ *
  * @example
  * const annotatedCode = `1| import React from 'react';
  * 2| import { useState } from 'react';
- * 3| 
+ * 3|
  * 4| function UserAuth() {
  * 5|   const [user, setUser] = useState(null);
  * 6| }`;
- * 
+ *
  * const cleanCode = removeLineNumberAnnotations(annotatedCode);
  * // Result:
  * // import React from 'react';
  * // import { useState } from 'react';
- * // 
+ * //
  * // function UserAuth() {
  * //   const [user, setUser] = useState(null);
  * // }
  */
 export function removeLineNumberAnnotations(code: string): string {
-  if (!code || typeof code !== 'string') {
+  if (!code || typeof code !== "string") {
     return code;
   }
 
   // Split into lines and process each line
-  const lines = code.split('\n');
-  const cleanedLines = lines.map(line => {
+  const lines = code.split("\n");
+  const cleanedLines = lines.map((line) => {
     // Match line number pattern at the start: optional whitespace, digits, pipe, optional space
     // Examples: "1|", "  2|", "123| ", "  456|  "
     const lineNumberPattern = /^\s*\d+\|\s?/;
-    return line.replace(lineNumberPattern, '');
+    return line.replace(lineNumberPattern, "");
   });
 
-  return cleanedLines.join('\n');
+  return cleanedLines.join("\n");
 }
 
 /**
@@ -734,7 +738,7 @@ export interface ThinkingBlock {
  */
 export interface ProcessedTextContent {
   segments: Array<{
-    type: 'text' | 'thinking';
+    type: "text" | "thinking";
     content: string;
     originalIndex: number;
   }>;
@@ -747,7 +751,7 @@ export interface ProcessedTextContent {
  * @returns Array of thinking blocks found in the text
  */
 export function extractThinkingBlocks(text: string): ThinkingBlock[] {
-  if (!text || typeof text !== 'string') {
+  if (!text || typeof text !== "string") {
     return [];
   }
 
@@ -774,27 +778,29 @@ export function extractThinkingBlocks(text: string): ThinkingBlock[] {
  * @returns Processed content with thinking blocks separated
  */
 export function processTextWithThinking(text: string): ProcessedTextContent {
-  if (!text || typeof text !== 'string') {
+  if (!text || typeof text !== "string") {
     return {
-      segments: [{ type: 'text', content: text || '', originalIndex: 0 }],
+      segments: [{ type: "text", content: text || "", originalIndex: 0 }],
       hasThinking: false,
     };
   }
 
   const thinkingBlocks = extractThinkingBlocks(text);
-  
+
   if (thinkingBlocks.length === 0) {
     return {
-      segments: [{ type: 'text', content: text, originalIndex: 0 }],
+      segments: [{ type: "text", content: text, originalIndex: 0 }],
       hasThinking: false,
     };
   }
 
-  const segments: ProcessedTextContent['segments'] = [];
+  const segments: ProcessedTextContent["segments"] = [];
   let currentIndex = 0;
 
   // Sort thinking blocks by start index to process them in order
-  const sortedBlocks = thinkingBlocks.sort((a, b) => a.startIndex - b.startIndex);
+  const sortedBlocks = thinkingBlocks.sort(
+    (a, b) => a.startIndex - b.startIndex
+  );
 
   for (const block of sortedBlocks) {
     // Add text before thinking block
@@ -802,7 +808,7 @@ export function processTextWithThinking(text: string): ProcessedTextContent {
       const textContent = text.slice(currentIndex, block.startIndex).trim();
       if (textContent) {
         segments.push({
-          type: 'text',
+          type: "text",
           content: textContent,
           originalIndex: currentIndex,
         });
@@ -811,7 +817,7 @@ export function processTextWithThinking(text: string): ProcessedTextContent {
 
     // Add thinking block
     segments.push({
-      type: 'thinking',
+      type: "thinking",
       content: block.content,
       originalIndex: block.startIndex,
     });
@@ -824,7 +830,7 @@ export function processTextWithThinking(text: string): ProcessedTextContent {
     const remainingText = text.slice(currentIndex).trim();
     if (remainingText) {
       segments.push({
-        type: 'text',
+        type: "text",
         content: remainingText,
         originalIndex: currentIndex,
       });
@@ -843,9 +849,9 @@ export function processTextWithThinking(text: string): ProcessedTextContent {
  * @returns Text with thinking blocks removed
  */
 export function removeThinkingBlocks(text: string): string {
-  if (!text || typeof text !== 'string') {
+  if (!text || typeof text !== "string") {
     return text;
   }
 
-  return text.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
+  return text.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
 }

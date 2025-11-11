@@ -10,35 +10,51 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 
-type UpgradePlanDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-};
+export function UpgradePlanDialog() {
+  // Upgrade modal open state
+  const [open, setOpen] = useState(false);
 
-export function UpgradePlanDialog({ open, onOpenChange }: UpgradePlanDialogProps) {
   const [startupName, setStartupName] = useState("");
   const [startupUrl, setStartupUrl] = useState("");
   const [description, setDescription] = useState("");
-  const [requestStatus, setRequestStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [requestStatus, setRequestStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="w-full">Upgrade for free</Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90%] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Upgrade Plan request</DialogTitle>
           <DialogDescription>
-            Since we are in beta mode, upgradation are only for startups/companies. <br />
+            Since we are in beta mode, upgradation are only for
+            startups/companies. <br />
             <br />
-            <ul className="list-disc pl-5 text-sm mb-5">
-              <li>Create teams and invite members</li>
-              <li>Increase limits: PR analysis (20/day) and repo analysis (5/day)</li>
-            </ul>
-            For assistance or a quick demo,
-            <a href="https://cal.com/karanpraja902/ai-code-review" target="_blank" className="underline text-primary"> you can book a time </a>
-            — I’ll be happy to help.
           </DialogDescription>
+          <ul className="mb-5 list-disc pl-5 text-sm">
+            <li>Create teams and invite members</li>
+            <li>
+              Increase limits: PR analysis (20/day) and repo analysis (5/day)
+            </li>
+          </ul>
+          <span className="text-sm">
+            For assistance or a quick demo,{" "}
+            <a
+              href="https://cal.com/karanpraja902/ai-code-review"
+              target="_blank"
+              className="text-primary inline-block underline"
+            >
+              {" "}
+              you can book a time{" "}
+            </a>
+            — We’ll be happy to help.
+          </span>
         </DialogHeader>
 
         <div className="space-y-8 py-2">
@@ -64,21 +80,27 @@ export function UpgradePlanDialog({ open, onOpenChange }: UpgradePlanDialogProps
               placeholder="Briefly describe your organization and needs"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="border-input bg-background placeholder:text-muted-foreground focus:ring-primary w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
               rows={4}
             />
           </div>
           <div>
             <Button
               className="w-full"
-              disabled={requestStatus === "submitting" || !startupName || !startupUrl}
+              disabled={
+                requestStatus === "submitting" || !startupName || !startupUrl
+              }
               onClick={async () => {
                 try {
                   setRequestStatus("submitting");
-                  const res = await requestUpgrade({ startupName, startupUrl, description });
+                  const res = await requestUpgrade({
+                    startupName,
+                    startupUrl,
+                    description,
+                  });
                   if (res?.success) {
                     setRequestStatus("success");
-                    onOpenChange(false);
+                    setOpen(false);
                   } else {
                     setRequestStatus("error");
                   }
@@ -89,14 +111,19 @@ export function UpgradePlanDialog({ open, onOpenChange }: UpgradePlanDialogProps
             >
               {requestStatus === "submitting" ? "Requesting…" : "Request"}
             </Button>
-            <p className="text-xs text-muted-foreground mt-6">
-              Once requested, we will verify and your plan will be upgraded in 6–12 hours, Thanks for choosing AI Code Review.
+            <p className="text-muted-foreground mt-6 text-xs">
+              Once requested, we will verify and your plan will be upgraded in
+              6–12 hours, Thanks for choosing AI Code Review.
             </p>
             {requestStatus === "success" && (
-              <p className="text-xs text-green-600 mt-1">Request received — we’ll get back shortly.</p>
+              <p className="mt-1 text-xs text-green-600">
+                Request received — we’ll get back shortly.
+              </p>
             )}
             {requestStatus === "error" && (
-              <p className="text-xs text-red-600 mt-1">Failed to submit request, please try again.</p>
+              <p className="mt-1 text-xs text-red-600">
+                Failed to submit request, please try again.
+              </p>
             )}
           </div>
         </div>

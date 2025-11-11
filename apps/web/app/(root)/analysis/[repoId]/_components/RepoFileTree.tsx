@@ -9,11 +9,11 @@ import RenderTreeNode from "./RenderTreeNode";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 
-const RepoFileTree = ({ 
-  repoTree, 
-  onFileSelect, 
-  selectedFile 
-}: { 
+const RepoFileTree = ({
+  repoTree,
+  onFileSelect,
+  selectedFile,
+}: {
   repoTree: RepoTree;
   onFileSelect?: (filePath: string | null) => void;
   selectedFile?: string | null;
@@ -34,8 +34,10 @@ const RepoFileTree = ({
 
   return (
     <TreeProvider
-      onSelectionChange={(ids) => logger.debug("Tree selection changed", { selectedIds: ids })}
-      className="max-w-56 overflow-y-auto output-scrollbar border-r ">
+      onSelectionChange={(ids) =>
+        logger.debug("Tree selection changed", { selectedIds: ids })
+      }
+      className="hidden md:block max-w-56 overflow-y-auto output-scrollbar border-r">
       <TreeView className="!p-0">
         {repoTree && repoTree.repository && repoTree.repository.repo && (
           <Button
@@ -49,9 +51,9 @@ const RepoFileTree = ({
         )}
         {treeData && treeData.length > 0 ? (
           treeData.map((node, i) => (
-            <RenderTreeNode 
-              key={`${node.id}-${i}`} 
-              node={node} 
+            <RenderTreeNode
+              key={`${node.id}-${i}`}
+              node={node}
               onFileSelect={onFileSelect}
               selectedFile={selectedFile}
             />

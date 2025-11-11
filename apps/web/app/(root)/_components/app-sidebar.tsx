@@ -58,8 +58,6 @@ const AppSidebar = () => {
 
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [isFreePlan, setIsFreePlan] = useState(true);
-  // Upgrade modal open state
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,15 +72,18 @@ const AppSidebar = () => {
           return;
         }
         const token = await getToken();
-        const res = await fetch(`${_config.API_BASE_URL}/api/subscription/features`, {
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
+        const res = await fetch(
+          `${_config.API_BASE_URL}/api/subscription/features`,
+          {
+            headers: {
+              Authorization: token ? `Bearer ${token}` : "",
+            },
           },
-        });
+        );
         const data = await res.json();
         const hasSubscription = Boolean(data?.hasSubscription);
         const planName: string | undefined = data?.subscription?.planName;
-        const free = !hasSubscription || (planName?.toLowerCase() === "free");
+        const free = !hasSubscription || planName?.toLowerCase() === "free";
         if (!cancelled) {
           setIsFreePlan(Boolean(free));
           setLoadingPlan(false);
@@ -116,15 +117,17 @@ const AppSidebar = () => {
   };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar>
       <SidebarHeader>
         <SidebarMenu
           className={cn(
-            "p-0 flex-row items-center",
-            open ? "justify-between" : "justify-center"
-          )}>
+            "flex-row items-center p-0",
+            open ? "justify-between" : "justify-center",
+          )}
+        >
           <SidebarMenuItem
-            className={cn("p-0", open ? "not-sr-only" : "sr-only")}>
+            className={cn("p-0", open ? "not-sr-only" : "sr-only")}
+          >
             <SidebarMenuButton asChild>
               <Link href={"/dashboard"} className="flex items-center gap-1">
                 <AI Code ReviewLogo />
@@ -132,16 +135,13 @@ const AppSidebar = () => {
                 <span
                   className={cn(
                     "font-semibold",
-                    open ? "not-sr-only" : "sr-only"
-                  )}>
+                    open ? "not-sr-only" : "sr-only",
+                  )}
+                >
                   AI CODE REVIEW
                 </span>
               </Link>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarTrigger className="cursor-pointer" />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -157,9 +157,10 @@ const AppSidebar = () => {
                       href={item.url}
                       className={cn(
                         pathname === item.url
-                          ? "bg-primary/40 border-l-2 border-primary"
-                          : ""
-                      )}>
+                          ? "bg-primary/40 border-primary border-l-2"
+                          : "",
+                      )}
+                    >
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -173,13 +174,15 @@ const AppSidebar = () => {
 
       <SidebarFooter>
         <SidebarMenu
-          className={cn("items-center justify-between flex-col gap-4")}>
-          <div
+          className={cn("flex-col items-center justify-between gap-4")}
+        >
+          {/* <div
             className={cn(
-              "flex items-center justify-between w-full gap-4",
-              open ? "flex-row-reverse" : "flex-col-reverse"
-            )}>
-            <SidebarMenuItem className="items-center justify-center flex">
+              "flex w-full items-center justify-between gap-4",
+              open ? "flex-row-reverse" : "flex-col-reverse",
+            )}
+          >
+            <SidebarMenuItem className="flex items-center justify-center">
               <SidebarMenuButton asChild>
                 <UserButton
                   appearance={{
@@ -198,24 +201,29 @@ const AppSidebar = () => {
                 <ThemeToggle darkIconClassName="text-foreground fill-foreground" />
               </SidebarMenuButton>
             </SidebarMenuItem>
-          </div>
+          </div> */}
 
-          <SidebarMenuItem className="items-center justify-start flex w-full">
+          <SidebarMenuItem className="flex w-full items-center justify-start">
             {loadingPlan ? (
-              <div className={cn("w-full text-xs text-muted-foreground", open ? "px-1 py-2" : "px-0")}>Checking plan…</div>
+              <div
+                className={cn(
+                  "text-muted-foreground w-full text-xs",
+                  open ? "px-1 py-2" : "px-0",
+                )}
+              >
+                Checking plan…
+              </div>
             ) : isFreePlan ? (
               <>
-                <Button className="w-full" onClick={() => setUpgradeOpen(true)}>
-                  Upgrade for free
-                </Button>
-                <UpgradePlanDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+                <UpgradePlanDialog />
               </>
             ) : (
               <SidebarMenuButton asChild>
                 <OrganizationSwitcher
                   hidePersonal={false}
                   afterSelectOrganizationUrl={(organization) => {
-                    const currentPathWithoutSlug = getCurrentPathWithoutTeamSlug();
+                    const currentPathWithoutSlug =
+                      getCurrentPathWithoutTeamSlug();
                     return `/${organization.slug}${currentPathWithoutSlug}`;
                   }}
                   afterSelectPersonalUrl={() => {
@@ -229,7 +237,7 @@ const AppSidebar = () => {
                     elements: {
                       organizationSwitcherTrigger: cn(
                         "cursor-pointer",
-                        open ? "p-1" : "ml-1 w-7 h-7 overflow-hidden"
+                        open ? "p-1" : "ml-1 w-7 h-7 overflow-hidden",
                       ),
                     },
                   }}

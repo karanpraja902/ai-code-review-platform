@@ -8,6 +8,7 @@ import SyncRepositoriesButton from "./_components/SyncRepositoriesButton";
 import { Plus } from "lucide-react";
 import GithubOrgSwitcher from "./_components/GithubOrgSwitcher";
 import { logger } from "@/lib/logger";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 type RepoScope = "user" | "team";
 
@@ -20,19 +21,23 @@ const Page = async (props: {
   }>;
 }) => {
   const searchParams = await props.searchParams;
-  const orgSlug = searchParams?.orgSlug || "all"
+  const orgSlug = searchParams?.orgSlug || "all";
   const query = searchParams?.query || "";
   const scope = (searchParams?.scope as RepoScope) || "user";
   const teamId = searchParams?.teamId;
   logger.info(`Analysis page loaded with query:`, { query, scope, teamId });
 
   return (
-    <div className="h-svh max-w-8xl w-full mx-auto p-5">
-      <div className="h-full">
+    <div className="max-w-8xl mx-auto min-h-svh w-full">
+      <div className="h-full p-4">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
-          <h2 className="text-2xl font-medium">Repositories</h2>
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="md:hidden" />
 
-          <div className="flex-1 flex justify-end gap-3">
+            <h2 className="text-2xl font-medium">Repositories</h2>
+          </div>
+
+          <div className="flex justify-end gap-3">
             <GithubOrgSwitcher />
             <SearchRepositories />
 
@@ -42,18 +47,24 @@ const Page = async (props: {
               href={
                 "https://github.com/apps/ai-code-review-platform/installations/select_target"
               }
-              target="_blank">
+              target="_blank"
+            >
               <Button className="cursor-pointer text-xs">
                 <Plus />
-                <span>Add Repositories</span>
+                <span className="hidden lg:block">Add Repositories</span>
               </Button>
             </Link>
           </div>
         </div>
 
-        <div className="h-full">
+        <div className="output-scrollbar h-[calc(100%-3rem)] overflow-y-auto px-3">
           <Suspense key={query} fallback={<RepositoryListSkeleton />}>
-            <RepositoryList query={query} scope={scope} teamId={teamId} orgSlug={orgSlug}/>
+            <RepositoryList
+              query={query}
+              scope={scope}
+              teamId={teamId}
+              orgSlug={orgSlug}
+            />
           </Suspense>
         </div>
       </div>

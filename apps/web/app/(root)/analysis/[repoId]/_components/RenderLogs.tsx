@@ -27,12 +27,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { executeAnalysisStream, updateAnalysisStatus, stopAnalysis } from "@/lib/api/analysis";
+import {
+  executeAnalysisStream,
+  updateAnalysisStatus,
+  stopAnalysis,
+} from "@/lib/api/analysis";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createAnalysisRecord } from "../_actions/createAnalysis";
 import { triggerAnalysisListRefresh } from "@/lib/utils/analysisEvents";
 import { IconSandbox } from "@tabler/icons-react";
+import AnalysisSheet from "./AnalysisSheet";
 
 const RenderLogs = ({
   repoId,
@@ -44,30 +49,39 @@ const RenderLogs = ({
   repoId: string;
   analysisId?: string;
   repoTree: RepoTree;
-  branch?: string;  
+  branch?: string;
   teamId?: string;
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
- const [logs, setLogs] = useState<LogItem[]>([]);
- const [isLoading, setIsLoading] = useState(false);
- const [isLoadedFromDb, setIsLoadedFromDb] = useState(false);
- const [selectedFileFilter, setSelectedFileFilter] = useState<string | null>(null);
- const { getToken } = useAuth();
+  const [logs, setLogs] = useState<LogItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadedFromDb, setIsLoadedFromDb] = useState(false);
+  const [selectedFileFilter, setSelectedFileFilter] = useState<string | null>(
+    null,
+  );
+  const { getToken } = useAuth();
 
   const abortControllerRef = useRef<AbortController>(null);
   const parserStateRef = useRef<ParserState>(createParserState());
-  type AnalysisStatus = "draft" | "completed" | "interrupted" | "error" | "running";
-  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | undefined>(undefined);
+  type AnalysisStatus =
+    | "draft"
+    | "completed"
+    | "interrupted"
+    | "error"
+    | "running";
+  const [analysisStatus, setAnalysisStatus] = useState<
+    AnalysisStatus | undefined
+  >(undefined);
 
   const streamAnalysis = async (targetAnalysisId: string) => {
     try {
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
-     setLogs([]);
-     setIsLoading(true);
-     setIsLoadedFromDb(false);
-     setAnalysisStatus("running");
+      setLogs([]);
+      setIsLoading(true);
+      setIsLoadedFromDb(false);
+      setAnalysisStatus("running");
 
       const token = await getToken();
       if (!token) {
@@ -76,15 +90,16 @@ const RenderLogs = ({
       }
 
       console.log("Starting analysis stream for:", targetAnalysisId);
-      
+
       // Start the actual analysis with the pre-created ID
       const body = {
         github_repositoryId: repoId,
         branch: branch,
         teamId: teamId,
         model: "gemini-2.0-flash",
-        prompt: "Analyze this codebase for security vulnerabilities and code quality",
-        analysisId: targetAnalysisId // Pass the pre-created analysis ID
+        prompt:
+          "Analyze this codebase for security vulnerabilities and code quality",
+        analysisId: targetAnalysisId, // Pass the pre-created analysis ID
       };
 
       const res = await executeAnalysisStream(body, token, teamId);
@@ -155,7 +170,7 @@ const RenderLogs = ({
               headers: {
                 Authorization: `Bearer ${token}`,
               },
-            }
+            },
           );
           const json = await res.json();
           const statusFromDb = json?.data?.status as AnalysisStatus | undefined;
@@ -185,22 +200,24 @@ const RenderLogs = ({
         branch: branch,
         teamId: teamId,
         model: "gemini-2.0-flash",
-        prompt: "Analyze this codebase for security vulnerabilities and code quality"
+        prompt:
+          "Analyze this codebase for security vulnerabilities and code quality",
       });
 
       if (!analysisResult.success) {
-        throw new Error(analysisResult.error || "Failed to create analysis record");
+        throw new Error(
+          analysisResult.error || "Failed to create analysis record",
+        );
       }
 
       const newAnalysisId = analysisResult.analysisId;
-      
+
       // Trigger analysis list refresh to show the new draft analysis
       triggerAnalysisListRefresh();
-      
-      console.log('Routing to new analysis page:', newAnalysisId);
+
+      console.log("Routing to new analysis page:", newAnalysisId);
       // Step 2: Navigate to the new analysis page - user will manually start analysis
       router.push(`/analysis/${repoId}/${newAnalysisId}`);
-      
     } catch (error) {
       if (error instanceof Error) {
         toast.error(`${error.message}`);
@@ -221,10 +238,9 @@ const RenderLogs = ({
         if (!analysisId) {
           setIsLoading(false);
           return;
-        } 
+        }
 
         const token = await getToken();
-
 
         console.log("🔄 Loading analysis from db: ", analysisId);
 
@@ -234,9 +250,9 @@ const RenderLogs = ({
             method: "GET",
             credentials: "include",
             headers: {
-              "Authorization": `Bearer ${token}`  
-            }
-          }
+              Authorization: `Bearer ${token}`,
+            },
+          },
         );
 
         // if (!res.ok) {
@@ -281,8 +297,6 @@ const RenderLogs = ({
     loadFromDb();
   }, [analysisId]);
 
-
-
   // console.log("State Logs ====> ", logs);
 
   const handleStopAnalysis = async () => {
@@ -315,13 +329,15 @@ const RenderLogs = ({
       triggerAnalysisListRefresh();
       toast.success("Analysis stopped");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to stop analysis");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to stop analysis",
+      );
     }
   };
 
   const startCurrentAnalysis = async () => {
     if (!analysisId) return;
-    
+
     try {
       // First, update the analysis status from 'draft' to 'running'
       const token = await getToken();
@@ -330,9 +346,15 @@ const RenderLogs = ({
         return;
       }
 
-      const statusUpdateResult = await updateAnalysisStatus(analysisId, "running", token);
+      const statusUpdateResult = await updateAnalysisStatus(
+        analysisId,
+        "running",
+        token,
+      );
       if (!statusUpdateResult.success) {
-        toast.error(statusUpdateResult.error || "Failed to update analysis status");
+        toast.error(
+          statusUpdateResult.error || "Failed to update analysis status",
+        );
         return;
       }
 
@@ -349,7 +371,7 @@ const RenderLogs = ({
 
   const processedLogs = useMemo(() => {
     // First filter out INFO logs from all logs
-    let filteredLogs = logs.filter(log => log.type !== "INFO");
+    let filteredLogs = logs.filter((log) => log.type !== "INFO");
 
     // Apply file filter if selected
     if (selectedFileFilter) {
@@ -360,18 +382,18 @@ const RenderLogs = ({
 
       filteredLogs.forEach((log) => {
         // Check if this is a READ_FILE tool call that starts a new file context
-         if (log.type === "TOOL_CALL") {
-           const result = parseToolCall(log.messages.join("\n"));
-           if (result?.type === "READ_FILE" && result?.result?.file_path) {
-             const normalizedLogPath = extractPath(result.result.file_path);
-             if (normalizedLogPath) {
-               currentFileContext = normalizedLogPath;
-               if (!fileContextGroups[currentFileContext]) {
-                 fileContextGroups[currentFileContext] = [];
-               }
-             }
-           }
-         }
+        if (log.type === "TOOL_CALL") {
+          const result = parseToolCall(log.messages.join("\n"));
+          if (result?.type === "READ_FILE" && result?.result?.file_path) {
+            const normalizedLogPath = extractPath(result.result.file_path);
+            if (normalizedLogPath) {
+              currentFileContext = normalizedLogPath;
+              if (!fileContextGroups[currentFileContext]) {
+                fileContextGroups[currentFileContext] = [];
+              }
+            }
+          }
+        }
 
         // Add log to appropriate group
         if (currentFileContext) {
@@ -383,8 +405,10 @@ const RenderLogs = ({
 
       // Return logs for the selected file plus ungrouped logs (like INITIALISATION)
       const selectedFileLogs = fileContextGroups[selectedFileFilter] || [];
-      const initLogs = ungroupedLogs.filter(log => log.type === "INITIALISATION");
-      
+      const initLogs = ungroupedLogs.filter(
+        (log) => log.type === "INITIALISATION",
+      );
+
       console.log("File context groups:", Object.keys(fileContextGroups));
       console.log("Selected file filter:", selectedFileFilter);
       console.log("Selected file logs count:", selectedFileLogs.length);
@@ -392,8 +416,12 @@ const RenderLogs = ({
       filteredLogs = [...initLogs, ...selectedFileLogs];
     }
 
-    const initLogs = filteredLogs.filter((log) => log.type === "INITIALISATION");
-    const otherLogs = filteredLogs.filter((log) => log.type !== "INITIALISATION");
+    const initLogs = filteredLogs.filter(
+      (log) => log.type === "INITIALISATION",
+    );
+    const otherLogs = filteredLogs.filter(
+      (log) => log.type !== "INITIALISATION",
+    );
 
     if (initLogs.length === 0) {
       return filteredLogs;
@@ -409,27 +437,32 @@ const RenderLogs = ({
   }, [logs, selectedFileFilter]);
 
   return (
-    <main className=" flex w-full h-full">
-      <RepoFileTree 
-        repoTree={repoTree} 
+    <section className="flex h-full w-full">
+      <RepoFileTree
+        repoTree={repoTree}
         onFileSelect={setSelectedFileFilter}
         selectedFile={selectedFileFilter}
       />
 
-      <div className="h-full w-full flex flex-col overflow-hidden ">
-            
-        <div className="px-4 py-3 flex justify-between items-center flex-shrink-0">
+      <div className="mx-auto flex max-w-4xl min-w-0 flex-1 flex-col">
+        <div className="flex items-center justify-between px-2 py-3 md:px-4">
+          {/* <div className="md:hidden">
+            <AnalysisSheet />
+          </div> */}
+
           {/* File filter indicator */}
           <div className="flex items-center gap-2">
             {selectedFileFilter && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/50 rounded-md text-sm">
+              <div className="bg-accent/50 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm">
                 <span className="text-muted-foreground">Filtering:</span>
-                <span className="font-medium">{selectedFileFilter.split('/').pop()}</span>
+                <span className="font-medium">
+                  {selectedFileFilter.split("/").pop()}
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSelectedFileFilter(null)}
-                  className="h-auto p-1 hover:bg-accent"
+                  className="hover:bg-accent h-auto p-1"
                 >
                   ✕
                 </Button>
@@ -438,16 +471,14 @@ const RenderLogs = ({
           </div>
 
           {/* Action buttons */}
+
           <div className="flex gap-3">
-            <GithubIssuesSlider 
-              repoId={repoId} 
-              analysisId={analysisId || undefined} 
+            <GithubIssuesSlider
+              repoId={repoId}
+              analysisId={analysisId || undefined}
             />
-            <Button 
-              onClick={() => analyzeRepo()} 
-              className="cursor-pointer"
-            >
-              {'Start New Analysis'}
+            <Button onClick={() => analyzeRepo()} className="cursor-pointer">
+              {"Start New Analysis"}
             </Button>
 
             {/* <Button
@@ -457,48 +488,67 @@ const RenderLogs = ({
               Cancel Logs
             </Button> */}
 
-            {analysisId && (analysisStatus === "running" || analysisStatus === "interrupted" || analysisStatus === "error") && (
-              <Button
-                variant={analysisStatus === "running" ? "destructive" : "outline"}
-                onClick={analysisStatus === "running" ? handleStopAnalysis : startCurrentAnalysis}
-                className="cursor-pointer"
-              >
-                {analysisStatus === "running" ? "Stop Analysis" : "Restart Analysis"}
-              </Button>
-            )}
+            {analysisId &&
+              (analysisStatus === "running" ||
+                analysisStatus === "interrupted" ||
+                analysisStatus === "error") && (
+                <Button
+                  variant={
+                    analysisStatus === "running" ? "destructive" : "outline"
+                  }
+                  onClick={
+                    analysisStatus === "running"
+                      ? handleStopAnalysis
+                      : startCurrentAnalysis
+                  }
+                  className="cursor-pointer"
+                >
+                  {analysisStatus === "running"
+                    ? "Stop Analysis"
+                    : "Restart Analysis"}
+                </Button>
+              )}
           </div>
         </div>
-        <div className="flex-1 px-4 pb-3 max-w-4xl w-full mx-auto overflow-hidden">
-          <div className="w-full h-full py-3 overflow-y-auto output-scrollbar">
+
+        <div className="flex-1 overflow-hidden px-4 pb-3">
+          <div className="output-scrollbar h-full w-full overflow-y-auto py-3">
             {/* Show start analysis button when no logs exist and not loading */}
-            {processedLogs.length === 0 && !isLoading && analysisId && !selectedFileFilter && (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-                <div className="text-center space-y-4">
-                  <Button 
-                    onClick={startCurrentAnalysis}
-                    size="lg"
-                    className="px-8 py-3 text-base font-medium"
-                  >
-                    Start Analysis
-                  </Button>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    You are about to start a full repository analysis on your default branch. 
-                    This will analyze your codebase for security vulnerabilities and code quality.
-                  </p>
+            {processedLogs.length === 0 &&
+              !isLoading &&
+              analysisId &&
+              !selectedFileFilter && (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+                  <div className="space-y-4 text-center">
+                    <Button
+                      onClick={startCurrentAnalysis}
+                      size="lg"
+                      className="px-8 py-3 text-base font-medium"
+                    >
+                      Start Analysis
+                    </Button>
+                    <p className="text-muted-foreground max-w-md text-sm">
+                      You are about to start a full repository analysis on your
+                      default branch. This will analyze your codebase for
+                      security vulnerabilities and code quality.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Show message when no logs found for selected file */}
             {processedLogs.length === 0 && !isLoading && selectedFileFilter && (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-                <div className="text-center space-y-4">
-                  <p className="text-lg font-medium">No logs found for this file</p>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    The selected file "{selectedFileFilter.split('/').pop()}" doesn't have any analysis logs yet. 
-                    Try selecting a different file or clear the filter to see all logs.
+              <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+                <div className="space-y-4 text-center">
+                  <p className="text-lg font-medium">
+                    No logs found for this file
                   </p>
-                  <Button 
+                  <p className="text-muted-foreground max-w-md text-sm">
+                    The selected file "{selectedFileFilter.split("/").pop()}"
+                    doesn't have any analysis logs yet. Try selecting a
+                    different file or clear the filter to see all logs.
+                  </p>
+                  <Button
                     onClick={() => setSelectedFileFilter(null)}
                     variant="outline"
                   >
@@ -510,7 +560,7 @@ const RenderLogs = ({
 
             {/* Show logs when they exist */}
             {processedLogs.length > 0 && (
-              <div className="w-full flex flex-col items-start gap-3.5">
+              <div className="flex w-full flex-col items-start gap-3.5">
                 {processedLogs.map((log, i) => (
                   <React.Fragment key={i}>
                     {log.type === "TOOL_CALL" ? (
@@ -518,11 +568,14 @@ const RenderLogs = ({
                         // Only render READ_FILE_RESULT tool calls in main area
                         // Other tool calls are handled within READ_FILE_RESULT accordions
                         const result = parseToolCall(log.messages.join("\n"));
-                        if (result?.type === "READ_FILE_RESULT" && result?.result) {
+                        if (
+                          result?.type === "READ_FILE_RESULT" &&
+                          result?.result
+                        ) {
                           return (
-                            <div className="w-full whitespace-pre-wrap text-sm m-0">
-                              <RenderToolCall 
-                                log={log} 
+                            <div className="m-0 w-full text-sm whitespace-pre-wrap">
+                              <RenderToolCall
+                                log={log}
                                 allLogs={processedLogs}
                                 repoId={repoId}
                                 analysisId={analysisId}
@@ -534,17 +587,16 @@ const RenderLogs = ({
                         return null;
                       })()
                     ) : log.type === "INITIALISATION" ? (
-                      <div className="w-full px-2 mb-6 whitespace-pre-wrap dark:text-neutral-200 text-neutral-800 text-sm leading-7 m-0">
-                        <Accordion
-                          type="single"
-                          collapsible
-                          >
+                      <div className="m-0 mb-6 w-full px-2 text-sm leading-7 whitespace-pre-wrap text-neutral-800 dark:text-neutral-200">
+                        <Accordion type="single" collapsible>
                           <AccordionItem value="item-1" className="border-none">
-          <AccordionTrigger className=" p-2 border bg-neutral-800 border-input rounded-t-md data-[state=closed]:rounded-b-md hover:no-underline cursor-pointer">
-<span className="text-gray-400">
-            <IconSandbox className="inline-block w-4 h-4 mr-1"/> Bootstrapping AI Code Review Platform Sandbox
-        </span>                               </AccordionTrigger>
-                            <AccordionContent className="border border-input rounded-b-md bg-card p-3">
+                            <AccordionTrigger className="border-input cursor-pointer rounded-t-md border bg-neutral-800 p-2 hover:no-underline data-[state=closed]:rounded-b-md">
+                              <span className="text-gray-400">
+                                <IconSandbox className="mr-1 inline-block h-4 w-4" />{" "}
+                                Bootstrapping AI Code Review Platform Sandbox
+                              </span>{" "}
+                            </AccordionTrigger>
+                            <AccordionContent className="border-input bg-card rounded-b-md border p-3">
                               <div>{log.messages.join("\n")}</div>
                             </AccordionContent>
                           </AccordionItem>
@@ -558,17 +610,17 @@ const RenderLogs = ({
 
             {/* Show loading indicator */}
             {isLoading && (
-              <div className="flex items-center gap-2 ml-2 py-2">
-               <RefreshCcwDotIcon className="size-5 animate-spin text-primary" />
-               <span className="italic text-gray-400 text-sm">
-                 {isLoadedFromDb ? "Loading..." : "Analyzing..."}
-               </span>
-             </div>
-           )}
+              <div className="ml-2 flex items-center gap-2 py-2">
+                <RefreshCcwDotIcon className="text-primary size-5 animate-spin" />
+                <span className="text-sm text-gray-400 italic">
+                  {isLoadedFromDb ? "Loading..." : "Analyzing..."}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </main>
+    </section>
   );
 };
 

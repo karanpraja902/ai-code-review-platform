@@ -75,11 +75,7 @@ const SyncRepositoriesButton = () => {
   };
 
   return (
-    <Button
-      onClick={handleSync}
-      disabled={isLoading}
-      variant="outline"
-      size="sm">
+    <Button onClick={handleSync} disabled={isLoading} variant="outline">
       {isLoading ? (
         <RefreshCwIcon className="animate-spin" />
       ) : lastSyncStatus === "success" ? (

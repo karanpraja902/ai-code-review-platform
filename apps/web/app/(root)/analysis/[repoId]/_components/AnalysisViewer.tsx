@@ -11,7 +11,7 @@ const AnalysisViewer = ({
   repoId,
   repoTree,
   branch,
-  teamId
+  teamId,
 }: {
   repoId: string;
   repoTree: RepoTree;
@@ -21,8 +21,8 @@ const AnalysisViewer = ({
   const { analysisId } = useParams<{ repoId: string; analysisId?: string }>();
 
   return (
-    <div className="h-screen w-full flex relative overflow-hidden">
-      <div className="flex-1 h-full overflow-hidden ">
+    <div className="relative flex h-full w-full overflow-hidden">
+      <div className="flex-1 overflow-hidden">
         <RenderLogs
           repoId={repoId}
           analysisId={analysisId || undefined}
@@ -31,9 +31,8 @@ const AnalysisViewer = ({
           teamId={teamId}
         />
       </div>
-      
+
       {/* GitHub Issues Slider positioned in top-right */}
-  
     </div>
   );
 };

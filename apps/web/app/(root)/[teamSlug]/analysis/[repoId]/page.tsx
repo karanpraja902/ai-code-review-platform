@@ -21,12 +21,12 @@ const Page = async ({ params }: PageProps) => {
   const repoTree = await getRepoTree(decodeURIComponent(repoId), teamId);
 
   return (
-    <div className="h-svh flex">
+    <div className="flex h-full w-full">
       <div className="flex-1">
-        <AnalysisViewer 
-          repoId={decodeURIComponent(repoId)} 
-          repoTree={repoTree.data} 
-          teamId={teamId} 
+        <AnalysisViewer
+          repoId={decodeURIComponent(repoId)}
+          repoTree={repoTree.data}
+          teamId={teamId}
         />
       </div>
     </div>

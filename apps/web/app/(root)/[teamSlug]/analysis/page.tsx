@@ -6,6 +6,9 @@ import SyncRepositoriesButton from "../../analysis/_components/SyncRepositoriesB
 import { AddRepositoriesModal } from "./_components/add-repositories-modal";
 import { logger } from "@/lib/logger";
 
+import GithubOrgSwitcher from "../../analysis/_components/GithubOrgSwitcher";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+
 type RepoScope = "user" | "team";
 
 interface PageProps {
@@ -37,17 +40,20 @@ const Page = async (props: PageProps) => {
   });
 
   return (
-    <div className="h-svh max-w-8xl w-full mx-auto p-5">
-      <div className="h-full">
+    <div className="max-w-8xl mx-auto min-h-svh w-full">
+      <div className="h-full w-full p-4">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
-          <div>
-            <h2 className="text-xl lg:text-2xl font-medium">
-              Team Repositories
-            </h2>
-            <p className="text-sm text-gray-500">Team: {teamSlug}</p>
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="md:hidden" />
+            <div>
+              <h2 className="text-lg font-medium md:text-xl xl:text-2xl">
+                Team Repositories
+              </h2>
+              <p className="text-sm text-gray-500">Team: {teamSlug}</p>
+            </div>
           </div>
 
-          <div className="flex-1 flex justify-end gap-3">
+          <div className="flex justify-end gap-3">
             {/* <GithubOrgSwitcher /> */}
             <SearchRepositories />
 

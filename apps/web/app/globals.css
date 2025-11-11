@@ -68,6 +68,8 @@
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
   --tracking-wider: calc(var(--tracking-normal) + 0.05em);
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+
+  --container-8xl: var(--container-8xl);
 }
 
 :root {
@@ -123,6 +125,7 @@
   --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
   --tracking-normal: 0.025em;
   --spacing: 0.25rem;
+  --container-8xl: 1440px;
 }
 
 .dark {
@@ -301,7 +304,7 @@ body {
 .markdown-content h4,
 .markdown-content h5,
 .markdown-content h6 {
-  @apply font-bold text-gray-900 dark:text-white mb-2;
+  @apply mb-2 font-bold text-gray-900 dark:text-white;
 }
 
 .markdown-content h1 {
@@ -330,7 +333,7 @@ body {
 }
 
 .markdown-content code {
-  @apply bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono;
+  @apply rounded bg-gray-100 px-1 py-0.5 font-mono text-sm dark:bg-gray-700;
 }
 
 .markdown-content pre {
@@ -338,7 +341,7 @@ body {
 }
 
 .markdown-content blockquote {
-  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-600 dark:text-gray-400;
+  @apply border-l-4 border-gray-300 pl-4 text-gray-600 italic dark:border-gray-600 dark:text-gray-400;
 }
 
 /* Custom scrollbar for output */
@@ -352,7 +355,7 @@ body {
 }
 
 .output-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded;
+  @apply rounded bg-gray-300;
 }
 
 .output-scrollbar::-webkit-scrollbar-thumb:hover {

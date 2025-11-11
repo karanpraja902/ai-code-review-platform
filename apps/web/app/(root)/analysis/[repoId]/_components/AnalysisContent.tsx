@@ -15,24 +15,26 @@ import { useAnalysisList } from "@/hooks/useAnalysisList";
 const AnalysisContent = ({
   analysisList: initialAnalysisList,
   repoId,
+  isSheet,
 }: {
   analysisList: AnalysisItem[];
   repoId: string;
+  isSheet?: boolean;
 }) => {
   const pathname = usePathname();
   const containerRef = useRef<HTMLElement>(null);
   const [isNarrow, setIsNarrow] = useState(false);
-  
+
   // Use the custom hook for analysis list management
-  const { 
-    analysisList, 
-    isLoading: isRefreshing, 
-    error, 
-    refreshAnalysisList, 
-    hasRunningAnalyses 
-  } = useAnalysisList({ 
-    repoId, 
-    initialAnalysisList 
+  const {
+    analysisList,
+    isLoading: isRefreshing,
+    error,
+    refreshAnalysisList,
+    hasRunningAnalyses,
+  } = useAnalysisList({
+    repoId,
+    initialAnalysisList,
   });
 
   const analysis_id = pathname.split("/")[pathname.split("/").length - 1];
@@ -54,15 +56,16 @@ const AnalysisContent = ({
 
   useEffect(() => {
     if (!analysisList?.length) return;
+    console.log({ isSheet });
+    if (!isSheet) {
+      console.log("Here sheet is false");
+      const firstAnalysisId = analysisList[0]?._id;
 
-    const firstAnalysisId = analysisList[0]?._id;
+      const redirectUrl = `/analysis/${repoId}/${firstAnalysisId}${queryString ? `?${queryString}` : ""}`;
 
-    const redirectUrl = `/analysis/${repoId}/${firstAnalysisId}${queryString ? `?${queryString}` : ""}`;
-
-    router.replace(redirectUrl);
-  }, [analysisList, queryString, repoId, router]);
-
-
+      router.replace(redirectUrl);
+    }
+  }, [analysisList, queryString, repoId, router, isSheet]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -84,44 +87,50 @@ const AnalysisContent = ({
   }, []);
 
   return (
-    <aside ref={containerRef} className="w-full h-full flex flex-col">
-      <div className="flex items-center justify-between p-3 border-b">
+    <aside ref={containerRef} className="flex h-full w-full flex-col">
+      <div className="flex items-center justify-between border-b p-3">
         <h3 className="text-base font-medium">Analyses</h3>
         <Button
           size="sm"
           onClick={refreshAnalysisList}
-          className="cursor-pointer hidden">
+          className="hidden cursor-pointer"
+        >
           Refresh
         </Button>
       </div>
-      <div className="flex flex-col gap-2 flex-1 overflow-y-auto output-scrollbar p-3">
+      <div className="output-scrollbar flex flex-1 flex-col gap-2 overflow-y-auto p-3">
         {analysisList?.map((analysis, idx) => (
           <Button
             key={analysis._id}
             variant={"outline"}
             className={cn(
-              `flex-col h-auto items-start text-left border rounded p-3 transition cursor-pointer`,
-              analysis_id === analysis._id ? "border-primary" : "border-input"
+              `h-auto cursor-pointer flex-col items-start rounded border p-3 text-left transition`,
+              analysis_id === analysis._id ? "border-primary" : "border-input",
             )}
-            asChild>
+            asChild
+          >
             <Link
-              href={`/analysis/${repoId}/${analysis._id}${queryString ? `?${queryString}` : ""}`}>
-              <div className="flex items-center justify-between gap-2 w-full">
-                <span className="text-xs text-muted-foreground">
+              href={`/analysis/${repoId}/${analysis._id}${queryString ? `?${queryString}` : ""}`}
+            >
+              <div className="flex w-full items-center justify-between gap-2">
+                <span className="text-muted-foreground text-xs">
                   #{idx + 1}
                 </span>
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded border capitalize flex items-center gap-1 ${statusClasses(analysis.status)} ${isNarrow ? "hidden" : "block"}`}>
+                  className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] capitalize ${statusClasses(analysis.status)} ${isNarrow ? "hidden" : "block"}`}
+                >
                   {analysis.status === "running" && (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   )}
                   {analysis.status}
                 </span>
               </div>
-              <div className={cn(
-                "mt-1 text-sm font-medium truncate",
-                isNarrow ? "hidden" : "block"
-              )}>
+              <div
+                className={cn(
+                  "mt-1 truncate text-sm font-medium",
+                  isNarrow ? "hidden" : "block",
+                )}
+              >
                 {new Date(analysis.createdAt).toLocaleString()}{" "}
               </div>
             </Link>
