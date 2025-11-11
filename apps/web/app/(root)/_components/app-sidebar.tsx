@@ -234,12 +234,9 @@ const AppSidebar = () => {
                       ? {
                           createOrganizationMode: "navigation" as const,
                           createOrganizationUrl: "/upgrade",
-                          organizationProfileMode: "navigation" as const,
-                          organizationProfileUrl: "/organization",
                         }
                       : {
                           createOrganizationMode: "modal" as const,
-                          organizationProfileMode: "modal" as const,
                         })}
                     appearance={{
                       baseTheme: resolvedTheme === "dark" ? dark : undefined,
