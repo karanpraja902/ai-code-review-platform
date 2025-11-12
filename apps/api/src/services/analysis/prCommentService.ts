@@ -22,6 +22,7 @@ export interface ParsedSuggestion {
   originalComment: string;
   severity?: string;
   issueType?: string;
+  confidence?: string;
 }
 
 export class PRCommentService {
@@ -143,6 +144,9 @@ export class PRCommentService {
       const suggestionMatch = content.match(/```suggestion\s*\n([\s\S]*?)\n```/);
       const suggestionCode = suggestionMatch ? suggestionMatch[1].trim() : undefined;
       
+      const confidenceMatch = content.match(/\*\*Confidence\*\*:\s*(.+)/);
+      const confidence = confidenceMatch ? confidenceMatch[1].trim() : undefined;
+      
 
       
       return {
@@ -151,6 +155,7 @@ export class PRCommentService {
         lineEnd,
         suggestionCode,
         originalComment: content,
+        confidence,
       };
     } catch (error) {
       console.error('Error parsing suggestion comment:', error);
@@ -184,6 +189,17 @@ export class PRCommentService {
       if (suggestion.lineEnd && suggestion.lineEnd !== suggestion.lineStart) {
         const lineRangeInfo = `\n\n*📍 This suggestion applies to lines ${suggestion.lineStart}-${suggestion.lineEnd}*`;
         reviewBody = reviewBody + lineRangeInfo;
+      }
+
+      if (suggestion.confidence) {
+        const confidenceLine = `\n\n**Confidence**: ${suggestion.confidence}\n\n`;
+        if (reviewBody.includes('<details>')) {
+          reviewBody = reviewBody.replace('<details>', confidenceLine + '<details>');
+        } else if (reviewBody.includes('```suggestion')) {
+          reviewBody = reviewBody.replace('```suggestion', confidenceLine + '```suggestion');
+        } else {
+          reviewBody = reviewBody + confidenceLine;
+        }
       }
 
 
@@ -442,6 +458,25 @@ export class PRCommentService {
         `<details>\n<summary>Files Changed (${filesCount})</summary>\n\n${fileItems || '- No files found'}\n\n</details>`,
         '',
         `\`Step aside — I’m tearing through this PR 😈 -- You keep on building\``,
+        '',
+        `\`\`\`
+                                      
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠿⡇⠒⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠤⡇⠷⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠆⣧⣿⣇⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠄⣇⣿⣇⠆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠶⣿⣿⠿⠂⠄⠰⠿⣇⠷⠀⠀⠷⣇⠿⠰⠄⠂⡇⣿⣿⠶⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠁⠤⠿⣷⣷⣧⣿⣿⡇⠤⠄⠀⠀⠄⠰⡇⣿⣿⣧⣷⣷⠿⠤⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠆⣧⣿⣇⣧⣿⣇⠶⠄⠀⠀⠄⠷⣇⣿⣇⣇⣿⣧⠆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠒⣷⣿⠶⠀⠀⠆⣷⣿⡇⠀⠀⡇⣿⣧⠆⠀⠀⠶⣿⣷⠒⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠁⣧⣿⠿⠀⠀⠀⠀⣧⣿⠿⠀⠀⠿⣿⣇⠀⠀⠀⠀⠿⣿⣧⠁⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠒⣿⣿⠆⠀⠀⠀⠀⣧⣿⠿⠀⠀⠿⣿⣇⠀⠀⠀⠀⠒⣿⣿⠆⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠒⣿⣿⠆⠀⠀⠀⠀⣧⣿⠿⠀⠀⠿⣿⣇⠀⠀⠀⠀⠒⣿⣿⠒⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠁⣧⣿⠿⠀⠀⠀⠀⣧⣿⠿⠀⠀⠿⣿⣇⠀⠀⠀⠀⠿⣿⣧⠁⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠒⣷⣿⠶⠀⠀⠀⣧⣿⠿⠀⠀⠿⣿⣇⠀⠀⠀⠶⣿⣷⠒⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠒⣧⣿⣇⠒⠁⣇⣿⠿⠀⠀⠿⣿⣇⠁⠒⣇⣿⣧⠆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠰⣧⣿⣧⣷⣿⠿⠀⠀⡇⣿⣷⣧⣿⣧⠰⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠆⠰⠿⣇⠷⠀⠀⠷⣇⠿⠰⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+
+        \`\`\``,
         '',
         '---',
         `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,

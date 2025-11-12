@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton, OrganizationSwitcher, useAuth } from "@clerk/nextjs";
-import { ScanTextIcon, StarsIcon, BotIcon, GitPullRequest } from "lucide-react";
+import { ScanTextIcon, StarsIcon, BotIcon, GitPullRequest, Settings, Bug } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
@@ -48,6 +48,11 @@ const items = [
   //   url: "/agents",
   //   icon: BotIcon,
   // },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+  },
 ];
 
 const AppSidebar = () => {
@@ -108,7 +113,7 @@ const AppSidebar = () => {
     // If first segment looks like a team slug (not dashboard, analysis, agents, etc.)
     if (
       pathSegments.length > 0 &&
-      !["dashboard", "analysis", "agents", "repo"].includes(pathSegments[0])
+      !["dashboard", "analysis", "agents", "repo", "pr-analysis", "settings"].includes(pathSegments[0])
     ) {
       const pathWithoutSlug = "/" + pathSegments.slice(1).join("/");
       return pathWithoutSlug || "/dashboard";
@@ -215,6 +220,12 @@ const AppSidebar = () => {
               </div>
             ) : (
               <div className="flex flex-col">
+                <SidebarMenuButton asChild>
+                  <Link href="/report-issue" className={cn("flex items-center gap-2 mb-3", open ? "px-2" : "px-0")}> 
+                    <Bug className="h-4 w-4" />
+                    <span>Having an issue?</span>
+                  </Link>
+                </SidebarMenuButton>
                 <SidebarMenuButton asChild>
                   <OrganizationSwitcher
                     hidePersonal={false}
