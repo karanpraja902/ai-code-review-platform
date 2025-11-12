@@ -86,7 +86,7 @@ export class PRCommentService {
     let processedContent = problemMatch ? problemMatch[1] : content;
     
     // Step 2: Remove any remaining metadata lines that might appear anywhere
-    processedContent = processedContent.replace(/^(\*\*(File|Line_Start|Line_End|Severity)\*\*:.*|##\s*\[.*?\]:.*)$/gm, '');
+    processedContent = processedContent.replace(/^(\*\*(File|Line_Start|Line_End|Severity|Confidence)\*\*:.*|##\s*\[.*?\]:.*)$/gm, '');
     
     // Step 3: Remove line number annotations from ALL code blocks (not just suggestion blocks)
     processedContent = processedContent.replace(/```[\s\S]*?```/g, (match) => {
@@ -476,7 +476,8 @@ export class PRCommentService {
                         ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠰⣧⣿⣧⣷⣿⠿⠀⠀⡇⣿⣷⣧⣿⣧⠰⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
                         ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠆⠰⠿⣇⠷⠀⠀⠷⣇⠿⠰⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 
-        \`\`\``,
+\`\`\``,
+
         '',
         '---',
         `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
