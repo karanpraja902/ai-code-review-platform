@@ -134,7 +134,7 @@ export const startAnalysis = async (
       branch,
       teamId: bodyTeamId,
       analysisId, // Optional pre-created analysis ID
-      model = "gemini-2.0-flash",
+      model = "gemini-2.5-flash",
       prompt = "Analyze this codebase for security vulnerabilities and code quality",
     } = req.body;
     
@@ -232,6 +232,7 @@ export const startAnalysis = async (
       branchForAnalysis,
       userId,
       model,
+      "vertex",
       prompt,
       "full_repo_analysis", // analysisType
       callbacks,

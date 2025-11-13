@@ -30,6 +30,7 @@ export const executeAnalysis = async (
   branch: string,
   userId: string,
   model = "gemini-2.5-pro",
+  provider = "bedrock",
   prompt = "Analyze this codebase for security vulnerabilities and code quality",
   analysisType: string,
   callbacks?: StreamingCallbacks,
@@ -198,7 +199,7 @@ export const executeAnalysis = async (
     const dataParam = data ? JSON.stringify(data) : '{}';
     console.log("🔧 Formatted data parameter length:", dataParam.length);
     
-    const analysisCommand = `cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${github_repositoryId} --analysis-id "${_id.toString()}" --model "${model}" --mode ${analysisType} --api-key ${process.env.GOOGLE_API_KEY} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
+    const analysisCommand = `if [ -n "$GOOGLE_CREDENTIALS_JSON_BASE64" ]; then echo "$GOOGLE_CREDENTIALS_JSON_BASE64" | base64 -d > /workspace/google-credentials.json; export GOOGLE_APPLICATION_CREDENTIALS=/workspace/google-credentials.json; fi; cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${github_repositoryId} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${'$GOOGLE_APPLICATION_CREDENTIALS'} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
 
     if (callbacks?.onProgress) {
       await callbacks.onProgress("🚀 Starting workflow execution...");
@@ -208,8 +209,19 @@ export const executeAnalysis = async (
     const command = await sandbox.commands.run(analysisCommand, {
       background: true,
       onStdout: async (data) => {
-        // Strip ANSI color codes for cleaner client output
-        const cleanData = data.replace(/\x1b\[[0-9;]*m/g, "");
+        const redact = (input: string) => {
+          let s = input;
+          s = s.replace(/\x1b\[[0-9;]*m/g, "");
+          s = s.replace(/x-access-token:[^@]+@github\.com/gi, "x-access-token:***@github.com");
+          s = s.replace(/(Authorization:\s*(?:Bearer|token)\s*)([A-Za-z0-9._-]+)/gi, "$1***");
+          s = s.replace(/(GITHUB_TOKEN[=:\s]+)([A-Za-z0-9._-]+)/gi, "$1***");
+          s = s.replace(/(AWS_SECRET_ACCESS_KEY[=:\s]+)([A-Za-z0-9/+_=.-]+)/gi, "$1***");
+          s = s.replace(/(AWS_ACCESS_KEY_ID[=:\s]+)([A-Za-z0-9/+_=.-]+)/gi, "$1***");
+          s = s.replace(/(GOOGLE_CREDENTIALS_JSON_BASE64[=:\s]+)([A-Za-z0-9/+_=.-]+)/gi, "$1***");
+          s = s.replace(/ghp_[A-Za-z0-9]{20,}/gi, "ghp_***");
+          return s;
+        };
+        const cleanData = redact(data);
 
         // Buffer to Redis
         try {
@@ -224,7 +236,19 @@ export const executeAnalysis = async (
         }
       },
       onStderr: async (data) => {
-        const cleanData = data.replace(/\x1b\[[0-9;]*m/g, "");
+        const redact = (input: string) => {
+          let s = input;
+          s = s.replace(/\x1b\[[0-9;]*m/g, "");
+          s = s.replace(/x-access-token:[^@]+@github\.com/gi, "x-access-token:***@github.com");
+          s = s.replace(/(Authorization:\s*(?:Bearer|token)\s*)([A-Za-z0-9._-]+)/gi, "$1***");
+          s = s.replace(/(GITHUB_TOKEN[=:\s]+)([A-Za-z0-9._-]+)/gi, "$1***");
+          s = s.replace(/(AWS_SECRET_ACCESS_KEY[=:\s]+)([A-Za-z0-9/+_=.-]+)/gi, "$1***");
+          s = s.replace(/(AWS_ACCESS_KEY_ID[=:\s]+)([A-Za-z0-9/+_=.-]+)/gi, "$1***");
+          s = s.replace(/(GOOGLE_CREDENTIALS_JSON_BASE64[=:\s]+)([A-Za-z0-9/+_=.-]+)/gi, "$1***");
+          s = s.replace(/ghp_[A-Za-z0-9]{20,}/gi, "ghp_***");
+          return s;
+        };
+        const cleanData = redact(data);
 
         // Buffer to Redis
         try {

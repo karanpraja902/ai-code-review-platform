@@ -911,6 +911,7 @@ export const PrData = async (payload: any) => {
           branchForAnalysis,
           githubInstallation.userId,
           "gemini-2.5-pro", // model
+          "vertex",
           prAnalysisPrompt,
           "pr_analysis", // analysisType
           callbacks,
