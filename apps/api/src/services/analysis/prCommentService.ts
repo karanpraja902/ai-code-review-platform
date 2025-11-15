@@ -102,14 +102,44 @@ export class PRCommentService {
       );
     }
 
-    processedContent = processedContent.replace(/<details>[\s\S]*?<\/details>/g, (detailsBlock) => {
-      let block = detailsBlock.replace(/(<summary>[\s\S]*?<\/summary>)(\s*)/g, '$1\n\n');
-      block = block.replace(/(^|\n)(\s*)(```)/g, (match, p1, p2, p3) => {
-        const prefix = p1 ? p1 + '\n' : '\n';
-        return prefix + p2 + p3;
-      });
-      return block;
-    });
+    processedContent = processedContent.replace(
+  /<details>[\s\S]*?<\/details>/g,
+  (detailsBlock) => {
+    // 1. Add exactly one blank line after <summary>...</summary>
+    let block = detailsBlock.replace(
+      /(<summary>[\s\S]*?<\/summary>)[ \t\r]*\n*/g,
+      '$1\n\n'
+    );
+
+    const lines = block.split('\n');
+    const out: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // 2. Detect code fences ``` and enforce exactly one blank line before it
+      if (line.trim().startsWith('```')) {
+        // Walk backwards to find first non-empty line
+        let j = out.length - 1;
+
+        // Remove only EMPTY lines (not indentation lines)
+        while (j >= 0 && out[j].trim() === '') {
+          out.pop();
+          j--;
+        }
+
+        // Add exactly ONE blank line before ```
+        out.push('');
+        out.push(line);
+      } else {
+        out.push(line);
+      }
+    }
+
+    return out.join('\n');
+  }
+);
+
     
     // Step 5: Clean up any extra whitespace
     processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
