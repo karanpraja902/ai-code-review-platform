@@ -102,13 +102,14 @@ export class PRCommentService {
       );
     }
 
-    // Step 4.5: Ensure a blank line between </summary> and the ```suggestion code block inside <details>
-    // Some comments may have the suggestion block immediately after </summary> without a blank line.
-    // Normalize it to have exactly one blank line to render properly in GitHub.
-    processedContent = processedContent.replace(
-      /(<details>[\s\S]*?<summary>[\s\S]*?<\/summary>)(\s*)(```suggestion)/g,
-      '$1\n\n$3'
-    );
+    processedContent = processedContent.replace(/<details>[\s\S]*?<\/details>/g, (detailsBlock) => {
+      let block = detailsBlock.replace(/(<summary>[\s\S]*?<\/summary>)(\s*)/g, '$1\n\n');
+      block = block.replace(/(^|\n)(\s*)(```)/g, (match, p1, p2, p3) => {
+        const prefix = p1 ? p1 + '\n' : '\n';
+        return prefix + p2 + p3;
+      });
+      return block;
+    });
     
     // Step 5: Clean up any extra whitespace
     processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
