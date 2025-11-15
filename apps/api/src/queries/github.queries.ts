@@ -910,22 +910,20 @@ export const PrData = async (payload: any) => {
           repoUrl,
           branchForAnalysis,
           githubInstallation.userId,
-          "gemini-2.5-pro", // model
-          "vertex",
           prAnalysisPrompt,
-          "pr_analysis", // analysisType
+          "pr_analysis",
           callbacks,
-          {pr_data_id: prDataInsertedId, 
+          {
+            pr_data_id: prDataInsertedId,
             auth_token: sandbox_token.auth_token,
             base_url: "https://api.ai-code-review-platform.dev",
-            // Pass PR metadata for persistence
             pr_number: pull_request.number,
             pr_url: prUrl,
             pr_title: pull_request.title
           },
           user.email,
-          undefined, // teamId (not used here)
-          preAnalysisId // ensure executeAnalysis uses this ID when persisting
+          undefined,
+          preAnalysisId
         ).then(async (result) => {
           logger.info("PR analysis completed", { 
             repository: repository.full_name, 

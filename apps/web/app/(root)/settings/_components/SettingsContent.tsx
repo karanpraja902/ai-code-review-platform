@@ -5,10 +5,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { useUser, useOrganization, useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { _config } from "@/lib/_config";
 import { toast } from "sonner";
+ 
 
 type Scope = "user" | "team";
 
@@ -37,6 +39,14 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
   });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [repoModel, setRepoModel] = useState<string>("");
+  const [prModel, setPrModel] = useState<string>("");
+  const [repoModelName, setRepoModelName] = useState<string>("");
+  const [prModelName, setPrModelName] = useState<string>("");
+  const [availableRepoModels, setAvailableRepoModels] = useState<Array<{ _id: string; name: string; provider: string }>>([]);
+  const [availablePrModels, setAvailablePrModels] = useState<Array<{ _id: string; name: string; provider: string }>>([]);
+  const [loadingRepoModels, setLoadingRepoModels] = useState<boolean>(false);
+  const [loadingPrModels, setLoadingPrModels] = useState<boolean>(false);
 
   useEffect(() => {
     try {
@@ -46,6 +56,125 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
       }
     } catch (_) {}
   }, [storageKey]);
+
+
+  useEffect(() => {
+    const initUserModels = async () => {
+      try {
+        const token = await getToken();
+        const headers: Record<string, string> = {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
+        };
+        if (scope === "team" && orgId) {
+          headers["X-Team-Id"] = orgId;
+        }
+        if (scope === "team") {
+          const r = await fetch(`${_config.API_BASE_URL}/api/team/settings`, { headers });
+          if (r.ok) {
+            const j = await r.json();
+            const s = (j?.data || {}) as any;
+            const nameRepo = typeof s.defaultModelRepo === "string" ? s.defaultModelRepo : "";
+            const namePr = typeof s.defaultModelPr === "string" ? s.defaultModelPr : "";
+            setRepoModelName(nameRepo);
+            setPrModelName(namePr);
+          }
+          return;
+        }
+        const res = await fetch(`${_config.API_BASE_URL}/api/user`, { headers });
+        if (res.ok) {
+          const json = await res.json();
+          const u = (json?.user || {}) as any;
+          const s = (u?.settings || {}) as any;
+          const idRepo = typeof s.defaultModelRepoId === "string" ? s.defaultModelRepoId : "";
+          const idPr = typeof s.defaultModelPrId === "string" ? s.defaultModelPrId : "";
+          const nameRepo = typeof s.defaultModelRepo === "string" ? s.defaultModelRepo : "";
+          const namePr = typeof s.defaultModelPr === "string" ? s.defaultModelPr : "";
+          setRepoModel(idRepo);
+          setPrModel(idPr);
+          setRepoModelName(nameRepo);
+          setPrModelName(namePr);
+          if (!idRepo && nameRepo) {
+            setLoadingRepoModels(true);
+            try {
+              const mRes = await fetch(`${_config.API_BASE_URL}/api/ai/models?mode=full_repo_analysis`, { headers });
+              if (mRes.ok) {
+                const mj = await mRes.json();
+                const arr = Array.isArray(mj?.data) ? mj.data : [];
+                setAvailableRepoModels(arr);
+                const found = arr.find((x: any) => x.name === nameRepo);
+                if (found) setRepoModel(found._id);
+              }
+            } finally {
+              setLoadingRepoModels(false);
+            }
+          }
+          if (!idPr && namePr) {
+            setLoadingPrModels(true);
+            try {
+              const mRes = await fetch(`${_config.API_BASE_URL}/api/ai/models?mode=pr_analysis`, { headers });
+              if (mRes.ok) {
+                const mj = await mRes.json();
+                const arr = Array.isArray(mj?.data) ? mj.data : [];
+                setAvailablePrModels(arr);
+                const found = arr.find((x: any) => x.name === namePr);
+                if (found) setPrModel(found._id);
+              }
+            } finally {
+              setLoadingPrModels(false);
+            }
+          }
+        }
+      } catch (_) {}
+    };
+    initUserModels();
+  }, [getToken, scope, orgId]);
+
+  const fetchAvailableRepoModels = async () => {
+    try {
+      setLoadingRepoModels(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        Authorization: token ? `Bearer ${token}` : "",
+        "Content-Type": "application/json",
+      };
+      if (scope === "team" && orgId) {
+        headers["X-Team-Id"] = orgId;
+      }
+      const res = await fetch(`${_config.API_BASE_URL}/api/ai/models?mode=full_repo_analysis`, { headers });
+      if (res.ok) {
+        const json = await res.json();
+        const arr = Array.isArray(json?.data) ? json.data : [];
+        setAvailableRepoModels(arr);
+      }
+    } catch (_) {}
+    finally {
+      setLoadingRepoModels(false);
+    }
+  };
+
+  const fetchAvailablePrModels = async () => {
+    try {
+      setLoadingPrModels(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        Authorization: token ? `Bearer ${token}` : "",
+        "Content-Type": "application/json",
+      };
+      if (scope === "team" && orgId) {
+        headers["X-Team-Id"] = orgId;
+      }
+      const res = await fetch(`${_config.API_BASE_URL}/api/ai/models?mode=pr_analysis`, { headers });
+      if (res.ok) {
+        const json = await res.json();
+        const arr = Array.isArray(json?.data) ? json.data : [];
+        setAvailablePrModels(arr);
+      }
+    } catch (_) {}
+    finally {
+      setLoadingPrModels(false);
+    }
+  };
 
   const handleToggle = (key: keyof typeof bulkSettings, checked: boolean) => {
     setBulkSettings((prev) => ({ ...prev, [key]: checked }));
@@ -67,6 +196,27 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
       };
       if (scope === "team" && orgId) {
         headers["X-Team-Id"] = orgId;
+      }
+      const settingsUrl = scope === "team"
+        ? `${_config.API_BASE_URL}/api/team/settings`
+        : `${_config.API_BASE_URL}/api/user/settings`;
+      const payload = scope === "team"
+        ? {
+            ...(repoModel ? { defaultModelRepoId: repoModel } : {}),
+            ...(prModel ? { defaultModelPrId: prModel } : {}),
+            defaultModelRepo: repoModelName,
+            defaultModelPr: prModelName,
+          }
+        : { defaultModelRepoId: repoModel, defaultModelPrId: prModel };
+      const settingsRes = await fetch(settingsUrl, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (!settingsRes.ok) {
+        const err = await settingsRes.json().catch(() => ({}));
+        toast.error(err.message || "Failed to save model settings");
+        return;
       }
       const body = {
         scope,
@@ -155,8 +305,8 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                     <span className="text-muted-foreground">Your Role</span>
                     <span className="font-medium">{membership?.role || orgRole || "—"}</span>
                   </div>
-                  </CardContent>
-                </Card>
+          </CardContent>
+          </Card>
               )}
 
           <Card>
@@ -214,18 +364,67 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                   {scope === "team" ? "Automatically open PRs for simple fixes (team)" : "Automatically open PRs for simple fixes (personal)"}
                 </Label>
               </div> */}
-              <div className="flex items-center justify-center pt-2">
+             
+            
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Model Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="repo-model">Model for Repo Analysis</Label>
+                  <Select value={repoModel} onValueChange={(v) => { setRepoModel(v); const found = availableRepoModels.find((x) => x._id === v); if (found) setRepoModelName(found.name); setDirty(true); }} onOpenChange={(open) => { if (open && availableRepoModels.length === 0) { fetchAvailableRepoModels(); } }}>
+                    <SelectTrigger id="repo-model">
+                      <SelectValue placeholder={repoModelName || "Select model"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingRepoModels && (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      )}
+                      {!loadingRepoModels && availableRepoModels.length === 0 && (
+                        <SelectItem value="none" disabled>No models available</SelectItem>
+                      )}
+                      {availableRepoModels.map((m) => (
+                        <SelectItem key={m._id} value={m._id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pr-model">Model for PR Analysis</Label>
+                  <Select value={prModel} onValueChange={(v) => { setPrModel(v); const found = availablePrModels.find((x) => x._id === v); if (found) setPrModelName(found.name); setDirty(true); }} onOpenChange={(open) => { if (open && availablePrModels.length === 0) { fetchAvailablePrModels(); } }}>
+                    <SelectTrigger id="pr-model">
+                      <SelectValue placeholder={prModelName || "Select model"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingPrModels && (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      )}
+                      {!loadingPrModels && availablePrModels.length === 0 && (
+                        <SelectItem value="none" disabled>No models available</SelectItem>
+                      )}
+                      {availablePrModels.map((m) => (
+                        <SelectItem key={m._id} value={m._id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+            <div className="flex items-center justify-center pt-2">
                 <Button onClick={handleSave} disabled={!dirty || saving}>
                   {saving ? "Saving..." : "Save Settings"}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs m-auto text-muted-foreground">
                 {scope === "team"
                   ? "This applies to the current team’s repositories."
                   : "This applies to your personal repositories."}
               </p>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
