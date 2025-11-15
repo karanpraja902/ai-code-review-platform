@@ -9,6 +9,7 @@ import Analysis from "../../models/analysis.model.js";
 import mongoose from "mongoose";
 import { mailService } from "../mail/mail_service.js";
 import Team from "../../models/team.model.js";
+import User from "../../models/user.model.js";
 
 export interface StreamingCallbacks {
   onStdout?: (data: string) => Promise<void>;
@@ -29,15 +30,13 @@ export const executeAnalysis = async (
   repoUrl: string,
   branch: string,
   userId: string,
-  model = "gemini-2.5-pro",
-  provider = "bedrock",
   prompt = "Analyze this codebase for security vulnerabilities and code quality",
   analysisType: string,
   callbacks?: StreamingCallbacks,
-  data?: any, // Optional data parameter for PR analysis or other structured data
-  userEmail?: string, // Optional email parameter to send analysis results
+  data?: any,
+  userEmail?: string,
   teamId?: string,
-  preCreatedAnalysisId?: string // Optional pre-created analysis ID
+  preCreatedAnalysisId?: string
 ): Promise<AnalysisResult> => {
   // Hoisted context for streaming persistence
   let sandboxRef: any | undefined;
@@ -46,16 +45,16 @@ export const executeAnalysis = async (
   let _id: mongoose.Types.ObjectId = preCreatedAnalysisId 
     ? new mongoose.Types.ObjectId(preCreatedAnalysisId)
     : new mongoose.Types.ObjectId();
+    
+  // Ensure model/provider are available across try/catch
+  let model: string;
+  let provider: string;
 
   try {
-    const latestAnalysis = await Analysis.findOne({
-      github_repositoryId: new mongoose.Types.ObjectId(github_repositoryId),
-    }).sort({ createdAt: -1 });
-
-    let owner = userId;
+    let teamDoc: any = null;
     if (teamId && teamId !== 'null') {
-      const team = await Team.findById(teamId);
-      if (!team) {
+      teamDoc = await Team.findById(teamId);
+      if (!teamDoc) {
         return {
         success: false,
         exitCode: -1,
@@ -64,7 +63,41 @@ export const executeAnalysis = async (
         error: "Team not found",
       };;
       }
-      owner = team.ownerId;
+      const ts: any = teamDoc.settings || {};
+      if (analysisType === "full_repo_analysis") {
+        model = ts.defaultModelRepo;
+        provider = ts.defaultProviderRepo;
+      } else {
+        model = ts.defaultModelPr;
+        provider = ts.defaultProviderPr;
+      }
+    } else {
+      const userDoc = await User.findById(userId);
+      if (!userDoc) {
+        return {
+          success: false,
+          exitCode: -1,
+          sandboxId: null,
+          _id: new mongoose.Types.ObjectId().toString(),
+          error: "User not found",
+        };
+      }
+      const us: any = userDoc.settings || {};
+      if (analysisType === "full_repo_analysis") {
+        model = us.defaultModelRepo;
+        provider = us.defaultProviderRepo;
+      } else {
+        model = us.defaultModelPr;
+        provider = us.defaultProviderPr;
+      }
+    }
+    const latestAnalysis = await Analysis.findOne({
+      github_repositoryId: new mongoose.Types.ObjectId(github_repositoryId),
+    }).sort({ createdAt: -1 });
+
+    let owner = userId;
+    if (teamDoc) {
+      owner = teamDoc.ownerId;
       console.log("setting owner form team")
     }
     // Authenticate GitHub repository
@@ -411,7 +444,7 @@ export const executeAnalysis = async (
           repoUrl,
           github_repositoryId,
           sandboxId,
-          model,
+          model: "",
           prompt,
           status: "error",
           exitCode: runExitCode || -1,
