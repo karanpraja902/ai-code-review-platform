@@ -94,9 +94,16 @@ export class PRCommentService {
     });
     
     // Insert spacing before & after File Changes table
+// Add one blank line BEFORE the File Changes Summary heading
 processedContent = processedContent.replace(
-  /([^\n])\n\*\*File Changes Summary/,
-  "$1\n\n**File Changes Summary"
+  /\s*\*\*File Changes Summary/,
+  "\n\n**File Changes Summary"
+);
+
+// Add one blank line AFTER the entire table block
+processedContent = processedContent.replace(
+  /(\n\|.*?\|\s*\n(?:\|.*?\|\s*\n)+)(?=\S)/,
+  (match) => match.trimEnd() + "\n\n"
 );
 
 // Ensure one blank line after table (after last row)
