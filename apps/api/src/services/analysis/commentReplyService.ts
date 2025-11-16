@@ -1,4 +1,3 @@
-import { Console } from 'console';
 import { getInstallationOctokit } from '../../lib/githubApp.js';
 import { logger } from '../../utils/logger.js';
 import { GoogleGenAI } from '@google/genai';

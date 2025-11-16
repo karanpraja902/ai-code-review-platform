@@ -21,7 +21,6 @@ export function createApp(): Application {
 
   config({
     path: "./.env",
-    override: true,
   });
 
   app.use(
