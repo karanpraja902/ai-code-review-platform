@@ -94,26 +94,20 @@ export class PRCommentService {
     });
     
     // Insert spacing before & after File Changes table
-processedContent = processedContent.replace(
-  /(\*\*File Changes Summary[\s\S]*?\n)(\|[\s\S]*?\|\n)/,
-  (match, header, tableStart) => {
-    return header.trim() + "\n\n" + tableStart;
-  }
-);
+  processedContent = processedContent.replace(
+    /(\*\*File Changes Summary[\s\S]*?\n)(\|.*?-.*?\|\s*\n(?:\|.*?\|\s*\n)+)/,
+    (match, header, tableBlock) => {
+      const cleanHeader = header.trim() + "\n\n";
+      const cleanTable = tableBlock.trim() + "\n\n";
+      return cleanHeader + cleanTable;
+    }
+  );
 
 // Ensure one blank line after table (after last row)
-processedContent = processedContent.replace(
-  /(\|.*?\|\s*\n)(\S)/g,
-  (_match, tableEndLine, nextChar) => {
-    return tableEndLine.trimEnd() + "\n\n" + nextChar;
-  }
-);
-
-// Ensure exactly one blank line BEFORE Walkthrough
-processedContent = processedContent.replace(
-  /\n*\s*\*\*Walkthrough\*\*:/,
-  "\n\n**Walkthrough**:"
-);
+  processedContent = processedContent.replace(
+    /\n*\s*\*\*Walkthrough\*\*:/,
+    "\n\n**Walkthrough**:"
+  );
 
     // Step 4: If we have suggestion code, clean it and replace the suggestion block content
     if (suggestionCode) {
