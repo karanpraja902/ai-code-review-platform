@@ -21,7 +21,8 @@ services:
       
       # Application Configuration
       - PORT=${PORT:-3001}
-      - FRONTEND_URL=${FRONTEND_URL:-https://ai-code-review.vercel.app}
+      - FRONTEND_URL=${FRONTEND_URL:-https://ai-code-review-platform.dev}
+      - API_BASE_URL=${API_BASE_URL}
       - NODE_ENV=${NODE_ENV:-production}
       
       # Clerk Authentication
@@ -38,7 +39,10 @@ services:
       # Google API Configuration
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GOOGLE_CREDENTIALS_JSON_BASE64=${GOOGLE_CREDENTIALS_JSON_BASE64}
-      
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+      - GOOGLE_CLOUD_PROJECT_ID=${GOOGLE_CLOUD_PROJECT_ID}
+      - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION}
+
       # SMTP Configuration
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
