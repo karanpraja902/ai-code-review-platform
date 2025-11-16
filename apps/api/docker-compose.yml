@@ -39,7 +39,9 @@ services:
       # Google API Configuration
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GOOGLE_CREDENTIALS_JSON_BASE64=${GOOGLE_CREDENTIALS_JSON_BASE64}
-      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+      # GOOGLE_APPLICATION_CREDENTIALS is set by the entrypoint script from GOOGLE_CREDENTIALS_JSON_BASE64
+      # It will be /app/credentials/google-credentials.json inside the container
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/google-credentials.json
       - GOOGLE_CLOUD_PROJECT_ID=${GOOGLE_CLOUD_PROJECT_ID}
       - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION}
 
