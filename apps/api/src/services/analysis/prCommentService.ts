@@ -94,14 +94,10 @@ export class PRCommentService {
     });
     
     // Insert spacing before & after File Changes table
-  processedContent = processedContent.replace(
-    /(\*\*File Changes Summary[\s\S]*?\n)(\|.*?-.*?\|\s*\n(?:\|.*?\|\s*\n)+)/,
-    (match, header, tableBlock) => {
-      const cleanHeader = header.trim() + "\n\n";
-      const cleanTable = tableBlock.trim() + "\n\n";
-      return cleanHeader + cleanTable;
-    }
-  );
+processedContent = processedContent.replace(
+  /([^\n])\n\*\*File Changes Summary/,
+  "$1\n\n**File Changes Summary"
+);
 
 // Ensure one blank line after table (after last row)
   processedContent = processedContent.replace(
