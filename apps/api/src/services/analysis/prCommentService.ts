@@ -93,6 +93,25 @@ export class PRCommentService {
       return match.replace(/^\s*\d+\|\s*/gm, '');
     });
     
+    // Insert spacing before & after File Changes table
+// Add one blank line BEFORE the File Changes Summary heading
+processedContent = processedContent.replace(
+  /\s*\*\*File Changes Summary/,
+  "\n\n**File Changes Summary"
+);
+
+// Add one blank line AFTER the entire table block
+processedContent = processedContent.replace(
+  /(\n\|.*?\|\s*\n(?:\|.*?\|\s*\n)+)(?=\S)/,
+  (match) => match.trimEnd() + "\n\n"
+);
+
+// Ensure one blank line after table (after last row)
+  processedContent = processedContent.replace(
+    /\n*\s*\*\*Walkthrough\*\*:/,
+    "\n\n**Walkthrough**:"
+  );
+
     // Step 4: If we have suggestion code, clean it and replace the suggestion block content
     if (suggestionCode) {
       const cleanSuggestionCode = suggestionCode.replace(/^\s*\d+\|\s*/gm, '').trim();
@@ -143,8 +162,9 @@ export class PRCommentService {
     
     // Step 5: Clean up any extra whitespace
     processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+    
     // Step 6: Normalize Markdown tables only (disable mermaid/HTML/code-fence auto-fixes)
-    processedContent = this.fixMarkdownTables(processedContent);
+    // processedContent = this.fixMarkdownTables(processedContent);
 
     return processedContent;
   }

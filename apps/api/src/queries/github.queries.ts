@@ -916,7 +916,7 @@ export const PrData = async (payload: any) => {
           {
             pr_data_id: prDataInsertedId,
             auth_token: sandbox_token.auth_token,
-            base_url: "https://api.ai-code-review-platform.dev",
+            base_url: process.env.API_BASE_URL || "https://api.ai-code-review-platform.dev",
             pr_number: pull_request.number,
             pr_url: prUrl,
             pr_title: pull_request.title
