@@ -161,7 +161,7 @@ export class PRCommentService {
     processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
     
     // Step 6: Normalize Markdown tables only (disable mermaid/HTML/code-fence auto-fixes)
-    processedContent = this.fixMarkdownTables(processedContent);
+    // processedContent = this.fixMarkdownTables(processedContent);
 
     return processedContent;
   }
