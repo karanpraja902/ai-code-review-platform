@@ -679,7 +679,8 @@ export const PrData = async (payload: any) => {
       'woff','woff2','ttf','otf'
     ]);
     const isAnalyzable = (filename: string, patch?: string) => {
-      const ext = (filename?.split('.').pop() || '').toLowerCase();
+const ext = (filename?.split('.')?.pop() || '').toLowerCase();
+
       if (ignoredExtensions.has(ext)) return false;
       if (!patch) return false;
       return true;
