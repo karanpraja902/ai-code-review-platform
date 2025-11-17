@@ -514,7 +514,7 @@ processedContent = processedContent.replace(
         '',
         `<details>\n<summary>Files Changed (${filesCount})</summary>\n\n${fileItems || '- No files found'}\n\n</details>`,
         '',
-        `<details>\n<summary>Ignored Files (${ignoredCount})</summary>\n\n${ignoredItems || '- No files ignored'}\n\n</details>`,
+        ignoredCount > 0 ? `<details>\n<summary>Ignored Files (${ignoredCount})</summary>\n\n${ignoredItems}\n\n</details>` : '',
         '',
         `\`Step aside — I’m tearing through this PR 😈 -- You keep on building\``,
         '',
