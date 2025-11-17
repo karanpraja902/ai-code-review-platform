@@ -478,7 +478,7 @@ processedContent = processedContent.replace(
    * Create a friendly, immediately visible status comment indicating analysis started.
    * Includes collapsible sections for commits and files.
    */
-  async postAnalysisStartedComment(commits?: any[], files?: any[]): Promise<boolean> {
+  async postAnalysisStartedComment(commits?: any[], files?: any[], ignoredFiles?: any[]): Promise<boolean> {
     try {
       // Always create a fresh status comment for each analysis run
 
@@ -497,8 +497,14 @@ processedContent = processedContent.replace(
         return `- \`${name}\`${status}${stats}`;
       }).join('\n');
 
+      const ignoredItems = (ignoredFiles || []).slice(0, 50).map((f: any) => {
+        const name = f?.filename || f;
+        return `- \`${name}\``;
+      }).join('\n');
+
       const commitsCount = (commits || []).length;
       const filesCount = (files || []).length;
+      const ignoredCount = (ignoredFiles || []).length;
 
       const body = [
         PRCommentService.STATUS_MARKER,
@@ -507,6 +513,8 @@ processedContent = processedContent.replace(
         `<details>\n<summary>Commits (${commitsCount})</summary>\n\n${commitItems || '- No commits found'}\n\n</details>`,
         '',
         `<details>\n<summary>Files Changed (${filesCount})</summary>\n\n${fileItems || '- No files found'}\n\n</details>`,
+        '',
+        `<details>\n<summary>Ignored Files (${ignoredCount})</summary>\n\n${ignoredItems || '- No files ignored'}\n\n</details>`,
         '',
         `\`Step aside — I’m tearing through this PR 😈 -- You keep on building\``,
         '',
