@@ -1,12 +1,23 @@
 "use client";
 
-import { UserButton, OrganizationSwitcher, useAuth } from "@clerk/nextjs";
-import { ScanTextIcon, StarsIcon, BotIcon, GitPullRequest, Settings, Bug } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
+
+import { OrganizationSwitcher, useAuth } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
+
+import {
+  ScanTextIcon,
+  StarsIcon,
+  BotIcon,
+  GitPullRequest,
+  Settings,
+  Bug,
+} from "lucide-react";
+
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
-import ThemeToggle from "@/components/shared/theme-toggle";
-import { Button } from "@/components/ui/button";
 import { UpgradePlanDialog } from "@/components/shared/UpgradePlanDialog";
 import {
   Sidebar,
@@ -21,10 +32,8 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+
 import { cn } from "@/lib/utils";
-import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
-import { dark } from "@clerk/themes";
 import { _config } from "@/lib/_config";
 
 const items = [
@@ -113,7 +122,14 @@ const AppSidebar = () => {
     // If first segment looks like a team slug (not dashboard, analysis, agents, etc.)
     if (
       pathSegments.length > 0 &&
-      !["dashboard", "analysis", "agents", "repo", "pr-analysis", "settings"].includes(pathSegments[0])
+      ![
+        "dashboard",
+        "analysis",
+        "agents",
+        "repo",
+        "pr-analysis",
+        "settings",
+      ].includes(pathSegments[0])
     ) {
       const pathWithoutSlug = "/" + pathSegments.slice(1).join("/");
       return pathWithoutSlug || "/dashboard";
@@ -219,9 +235,15 @@ const AppSidebar = () => {
                 Checking plan…
               </div>
             ) : (
-              <div className="flex flex-col">
+              <div className="flex w-full flex-col">
                 <SidebarMenuButton asChild>
-                  <Link href="/report-issue" className={cn("flex items-center gap-2 mb-3", open ? "px-2" : "px-0")}> 
+                  <Link
+                    href="/report-issue"
+                    className={cn(
+                      "mb-3 flex items-center gap-2",
+                      open ? "px-2" : "px-0",
+                    )}
+                  >
                     <Bug className="h-4 w-4" />
                     <span>Having an issue?</span>
                   </Link>
@@ -254,7 +276,7 @@ const AppSidebar = () => {
                       elements: {
                         organizationSwitcherTrigger: cn(
                           "cursor-pointer",
-                          open ? "p-1" : "ml-1 w-7 h-7 overflow-hidden",
+                          open ? "p-1 w-full" : "ml-1 w-7 h-7 overflow-hidden",
                         ),
                       },
                     }}
@@ -262,7 +284,7 @@ const AppSidebar = () => {
                 </SidebarMenuButton>
 
                 {isFreePlan && (
-                  <div className={cn("mt-2 w-full", open ? "px-1" : "px-0")}> 
+                  <div className={cn("mt-2 w-full", open ? "px-1" : "px-0")}>
                     <UpgradePlanDialog />
                   </div>
                 )}
