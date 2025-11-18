@@ -257,7 +257,6 @@ export const executeAnalysis = async (
     const dataParam = data ? JSON.stringify(data) : '{}';
     console.log("🔧 Formatted data parameter length:", dataParam.length);
     
-    console.log("🔧 Provider:", provider, model, process.env.AWS_BEDROCK_API_KEY);
     // Build command based on provider
     let analysisCommand: string;
     if (provider === 'vertex') {
