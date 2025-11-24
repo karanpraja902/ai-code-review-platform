@@ -45,7 +45,7 @@ const Page = async (props: {
 
             <Link
               href={
-                "https://github.com/apps/ai-code-review-platform/installations/select_target"
+                "https://github.com/apps/ai-code-review/installations/select_target"
               }
               target="_blank"
             >
