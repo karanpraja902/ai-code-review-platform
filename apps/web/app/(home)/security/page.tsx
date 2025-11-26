@@ -119,15 +119,32 @@ export default function SecurityPage() {
                       </p>
                     </div>
 
-                    <p className="leading-relaxed">
-                      This infrastructure for AI Code Review is provided and hosted by
-                      Amazon Web Services, Inc. ("AWS"). Information about
-                      security provided by AWS is available from the AWS
-                      Security website. Information about security and
-                      privacy-related audits and certifications received by AWS,
-                      including information on SOC reports, is available from
-                      the AWS Compliance website.
-                    </p>
+<p className="leading-relaxed">
+This infrastructure for AI Code Review is provided and hosted by
+Amazon Web Services, Inc. ("AWS"). Information about
+security provided by AWS is available from the{" "}
+<a
+href="https://aws.amazon.com/security/"
+target="_blank"
+rel="noopener noreferrer"
+className="text-primary hover:underline"
+>
+AWS Security website
+</a>
+. Information about security and privacy-related audits
+and certifications received by AWS, including information
+on SOC reports, is available from the{" "}
+<a
+href="https://aws.amazon.com/compliance/"
+target="_blank"
+rel="noopener noreferrer"
+className="text-primary hover:underline"
+>
+AWS Compliance website
+</a>
+.
+</p>
+
                   </div>
                 </div>
               </section>
