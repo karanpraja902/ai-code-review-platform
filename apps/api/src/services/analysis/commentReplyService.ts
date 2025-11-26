@@ -94,17 +94,7 @@ export function parseReplyClassification(aiResponse: string): ReplyIntent | null
   return null;
 }
 
-/**
- * Format acknowledgment message for feedback/suggestions
- */
-export function formatFeedbackAcknowledgment(intent: ReplyIntent): string {
-  if (intent === 'FEEDBACK') {
-    return '📝 Taking note of this!';
-  } else if (intent === 'SUGGESTION') {
-    return '💡 Thanks for the suggestion!';
-  }
-  return '';
-}
+
 
 /**
  * Save user feedback to database
@@ -272,9 +262,14 @@ FIRST, classify the user's reply intent. Start your response with ONE of these t
 - [INTENT: FEEDBACK] - if the user is reporting that something didn't work or providing negative feedback
 - [INTENT: SUGGESTION] - if the user is offering a suggestion or alternative approach
 
-THEN, craft your response:
+THEN, craft your response based on the intent:
 - For QUESTION or DISCUSSION: Answer directly without acknowledgment
-- For FEEDBACK or SUGGESTION: Start with an acknowledgment (this will be added automatically), then respond
+- For FEEDBACK: Start with a brief acknowledgment using an emoji like ✍️, 📝, or similar, followed by your response to their feedback
+- For SUGGESTION: Start with a brief appreciation using an emoji like 💡, 🙏, or similar, followed by your response to their suggestion
+
+The acknowledgment should be natural and contextual to what the user said, not generic. Examples:
+- FEEDBACK: "Taking note of this! ✍️" or "Noted, thanks for the feedback! 📝"
+- SUGGESTION: "Great idea! 💡" or "Thanks for the suggestion! 🙏"
 
 Understand AI Code Review's original comment and the user's intent in the reply.
 Check the referenced code (diff hunks) if it's a review comment.
@@ -446,19 +441,8 @@ export async function respondToAI Code ReviewCommentReply(opts: {
     // Ensure the reply starts with an @mention of the replying user
     const mention = opts.replyAuthorLogin ? `@${opts.replyAuthorLogin}` : '';
     
-    // Add acknowledgment message for feedback/suggestions
+    // The AI now generates acknowledgments directly for feedback/suggestions
     let finalReplyBody = cleanedReplyText;
-    if (isFeedbackOrSuggestion && intent) {
-      const acknowledgment = formatFeedbackAcknowledgment(intent);
-      if (acknowledgment) {
-        // Insert acknowledgment after the mention
-        if (mention && cleanedReplyText.trim().startsWith(mention)) {
-          finalReplyBody = cleanedReplyText.replace(mention, `${mention} ${acknowledgment}`);
-        } else {
-          finalReplyBody = `${acknowledgment}\n\n${cleanedReplyText}`;
-        }
-      }
-    }
     
     // Ensure mention is present
     if (mention && !finalReplyBody.trim().startsWith(mention)) {
