@@ -44,7 +44,7 @@ const Page = async (props: {
             <SyncRepositoriesButton />
 
             <Link
-              href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME}/installations/select_target`}
+              href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME || "ai-code-review"}/installations/select_target`}
               target="_blank"
             >
               <Button className="cursor-pointer text-xs">
