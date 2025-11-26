@@ -942,7 +942,8 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
             base_url: process.env.API_BASE_URL || "https://api.ai-code-review-platform.dev",
             pr_number: pull_request.number,
             pr_url: prUrl,
-            pr_title: pull_request.title
+            pr_title: pull_request.title,
+            repo_url: repoUrl,
           },
           user.email,
           undefined,
