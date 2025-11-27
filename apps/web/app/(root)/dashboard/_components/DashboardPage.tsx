@@ -10,6 +10,7 @@ import NoInstallationOnboarding from "@/app/(root)/dashboard/_components/NoInsta
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getDashboardData } from "../_actions/getDashboardData";
 import { getUserInstallations } from "@/_actions/user-actions";
+import { FullRepoReviewChart } from "./FullRepoReviewChart";
 
 const DashboardPage = () => {
   const [days, setDays] = useState<number>(7);
@@ -66,18 +67,19 @@ const DashboardPage = () => {
           {/* Dashboard Metrics */}
           <DashboardMetrics data={dashboardData.data} />
 
-          {/* Bento Layout: Charts on left, Recent Activity on right */}
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Left side - Recent Activity (takes 2 columns) */}
-            <div className="w-full">
-              <RecentActivity data={dashboardData.data} />
-            </div>
-
-            {/* Right side - Charts stacked (takes 1 column) */}
-            <div className="w-full flex flex-col gap-4">
-              <GitHubIssuesChart data={dashboardData.data} />
-              <PullRequestsChart data={dashboardData.data} />
-            </div>
+          {/* 2x2 Grid Layout: 4 Charts in 2 columns, 2 rows */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Row 1, Column 1 - Recent Activity */}
+            <RecentActivity data={dashboardData.data} />
+            
+            {/* Row 1, Column 2 - Full Repo Review */}
+            <FullRepoReviewChart data={dashboardData.data} />
+            
+            {/* Row 2, Column 1 - Pull Requests Chart */}
+            <PullRequestsChart data={dashboardData.data} />
+            
+            {/* Row 2, Column 2 - GitHub Issues Chart */}
+            <GitHubIssuesChart data={dashboardData.data} />
           </div>
 
           {/* Activity Overview Chart - Full width below */}
