@@ -28,6 +28,7 @@ import { createUser, CreateUserData } from "../queries/user.queries.js";
 import mongoose from "mongoose";
 import { logger } from "../utils/logger.js";
 import { upsertMailerLiteSubscriber } from "../services/mail/mailerlite/upsert_subscriber.js";
+import jwt from "jsonwebtoken";
 
 declare global {
   namespace Express {
@@ -106,106 +107,185 @@ export const baseAuth = async (
   next: NextFunction
 ) => {
   logger.info("baseAuth middleware execution started");
+  
+  // 1. Try Clerk Authentication
   try {
     const { userId } = getAuth(req);
     logger.debug("Auth context extracted", { userId });
 
-    if (!userId) {
-      logger.error("Authentication failed: No userId found in request.");
-      return res.status(401).json({ message: "Authentication required" });
-    }
+    if (userId) {
+      // Check database first to avoid unnecessary Clerk API calls
+      let user = await User.findById(userId);
 
-    // Check database first to avoid unnecessary Clerk API calls
-    let user = await User.findById(userId);
-
-    if (!user) {
-      logger.warn(
-        `User not found in DB for clerkId: ${userId}. Creating new user.`
-      );
-
-      // Only call Clerk API when we need to create a new user
-      let clerkUser;
-      try {
-        clerkUser = await retryClerkApiCall(() =>
-          clerkClient.users.getUser(userId)
-        );
-      } catch (clerkError: any) {
-        logger.error(
-          `Failed to fetch user from Clerk after retries: ${clerkError}`
+      if (!user) {
+        logger.warn(
+          `User not found in DB for clerkId: ${userId}. Creating new user.`
         );
 
-        // Check if it's a rate limit error
-        if (
-          clerkError?.status === 429 ||
-          clerkError?.errors?.[0]?.code === "rate_limit_exceeded"
-        ) {
-          return res.status(429).json({
-            message: "Too many requests. Please try again in a moment.",
-            error: "Rate limit exceeded",
+        // Only call Clerk API when we need to create a new user
+        let clerkUser;
+        try {
+          clerkUser = await retryClerkApiCall(() =>
+            clerkClient.users.getUser(userId)
+          );
+        } catch (clerkError: any) {
+          logger.error(
+            `Failed to fetch user from Clerk after retries: ${clerkError}`
+          );
+
+          // Check if it's a rate limit error
+          if (
+            clerkError?.status === 429 ||
+            clerkError?.errors?.[0]?.code === "rate_limit_exceeded"
+          ) {
+            return res.status(429).json({
+              message: "Too many requests. Please try again in a moment.",
+              error: "Rate limit exceeded",
+            });
+          }
+
+          throw clerkError; // Throw to trigger fallback or error
+        }
+
+        // Fetch the free subscription plan
+        const freePlan = await SubscriptionPlan.findOne({
+          name: "free",
+          isActive: true,
+        });
+        if (!freePlan) {
+          logger.error("Free subscription plan not found in database");
+          return res.status(500).json({
+            message: "System configuration error: Free plan not available",
           });
         }
 
-        return res.status(401).json({ message: "Failed to authenticate user" });
+        const userData: CreateUserData = {
+          _id: clerkUser.id,
+          email: clerkUser.primaryEmailAddress?.emailAddress,
+          firstName:
+            clerkUser.firstName ||
+            clerkUser.username ||
+            clerkUser.primaryEmailAddress?.emailAddress.split("@")[0] ||
+            "User",
+          lastName: clerkUser.lastName || "",
+          username:
+            clerkUser.username ||
+            clerkUser.externalAccounts?.[0]?.username ||
+            clerkUser.id.split("_")[1],
+          avatarUrl: clerkUser.imageUrl,
+          subscriptionPlanId: freePlan._id,
+          subscriptionStatus: "free" as const,
+          subscriptionStartDate: new Date(),
+          // subscriptionEndDate is not set for free plan (unlimited)
+        };
+
+        user = await createUser(userData);
+        logger.info(
+          `New user created with username: ${user.username} and free subscription plan`
+        );
+
+        // Upsert user to MailerLite
+        if (user.email) {
+          upsertMailerLiteSubscriber(
+            user.email,
+            user.firstName || "",
+            user.lastName || ""
+          ).catch(() => {
+            logger.warn("Failed to upsert user to MailerLite");
+          });
+        }
+      } else {
+        logger.info(`User found in DB: ${user.username}`);
       }
 
-      // Fetch the free subscription plan
-      const freePlan = await SubscriptionPlan.findOne({
-        name: "free",
-        isActive: true,
-      });
-      if (!freePlan) {
-        logger.error("Free subscription plan not found in database");
-        return res.status(500).json({
-          message: "System configuration error: Free plan not available",
-        });
-      }
-
-      const userData: CreateUserData = {
-        _id: clerkUser.id,
-        email: clerkUser.primaryEmailAddress?.emailAddress,
-        firstName:
-          clerkUser.firstName ||
-          clerkUser.username ||
-          clerkUser.primaryEmailAddress?.emailAddress.split("@")[0] ||
-          "User",
-        lastName: clerkUser.lastName || "",
-        username:
-          clerkUser.username ||
-          clerkUser.externalAccounts?.[0]?.username ||
-          clerkUser.id.split("_")[1],
-        avatarUrl: clerkUser.imageUrl,
-        subscriptionPlanId: freePlan._id,
-        subscriptionStatus: "free" as const,
-        subscriptionStartDate: new Date(),
-        // subscriptionEndDate is not set for free plan (unlimited)
-      };
-
-      user = await createUser(userData);
-      logger.info(
-        `New user created with username: ${user.username} and free subscription plan`
-      );
-
-      // Upsert user to MailerLite
-      if (user.email) {
-        upsertMailerLiteSubscriber(
-          user.email,
-          user.firstName || "",
-          user.lastName || ""
-        ).catch(() => {
-          logger.warn("Failed to upsert user to MailerLite");
-        });
-      }
-    } else {
-      logger.info(`User found in DB: ${user.username}`);
+      req.user = user; // attach full user object for downstream handlers
+      logger.info(`User authenticated successfully via Clerk: ${user.email}`);
+      return next();
     }
-
-    req.user = user; // attach full user object for downstream handlers
-    logger.info(`User authenticated successfully: ${user.email}`);
-    next();
   } catch (err) {
-    logger.error(`Base auth error: ${err}`);
-    res.status(401).json({ message: "Unauthorized" });
+    logger.warn(`Clerk auth failed or skipped, trying extension auth. Error: ${err}`);
   }
+
+  // 2. Try Extension Authentication (Fallback)
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      const secret = process.env.EXTENSION_JWT_SECRET;
+
+      if (!secret) {
+        logger.error("EXTENSION_JWT_SECRET is not configured");
+        throw new Error("Server configuration error");
+      }
+
+      // Verify token
+      const decoded = jwt.verify(token, secret) as any;
+      const userId = decoded.userId;
+
+      logger.info(`Extension token verified for user: ${userId}`);
+
+      // Check if user exists in DB
+      let user = await User.findById(userId);
+
+      if (!user) {
+        // If user doesn't exist but has a valid token, we should create them
+        // We can use the data from the token payload
+        logger.warn(
+          `User not found in DB for extension user: ${userId}. Creating new user.`
+        );
+
+        const freePlan = await SubscriptionPlan.findOne({
+          name: "free",
+          isActive: true,
+        });
+        
+        if (!freePlan) {
+          logger.error("Free subscription plan not found in database");
+          return res.status(500).json({
+            message: "System configuration error: Free plan not available",
+          });
+        }
+
+        const userData: CreateUserData = {
+          _id: userId,
+          email: decoded.email,
+          firstName: decoded.firstName || "User",
+          lastName: decoded.lastName || "",
+          username: decoded.email?.split("@")[0] || `user_${userId.substring(0, 8)}`,
+          avatarUrl: decoded.imageUrl,
+          subscriptionPlanId: freePlan._id,
+          subscriptionStatus: "free" as const,
+          subscriptionStartDate: new Date(),
+        };
+
+        user = await createUser(userData);
+        logger.info(
+          `New extension user created: ${user.username}`
+        );
+        
+        // Upsert user to MailerLite
+        if (user.email) {
+          upsertMailerLiteSubscriber(
+            user.email,
+            user.firstName || "",
+            user.lastName || ""
+          ).catch(() => {
+            logger.warn("Failed to upsert user to MailerLite");
+          });
+        }
+      }
+
+      req.user = user;
+      logger.info(`Extension user authenticated: ${user.email}`);
+      return next();
+    }
+  } catch (tokenError) {
+    logger.warn(`Extension token verification failed: ${tokenError}`);
+  }
+
+  // 3. If both failed
+  logger.error("Authentication failed: No valid credentials found");
+  res.status(401).json({ message: "Unauthorized" });
 };
 
 /**

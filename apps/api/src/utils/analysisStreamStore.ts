@@ -65,7 +65,7 @@ export interface FinalizeParams {
   analysis_type: string;
   userId: string;
   repoUrl: string;
-  github_repositoryId: string;
+  github_repositoryId?: string;
   sandboxId: string;
   model: string;
   prompt: string;
@@ -100,7 +100,7 @@ export async function finalizeAnalysisAndPersist(params: FinalizeParams): Promis
         // Persist total PR comments posted during the run
         pr_comments_posted: prCommentsPosted,
         // Also persist immutable metadata when creating on finalize
-        ...(analysis_type && userId && repoUrl && github_repositoryId && sandboxId && model && prompt
+        ...(analysis_type && userId && repoUrl && sandboxId && model && prompt
           ? {
               analysis_type,
               userId,
