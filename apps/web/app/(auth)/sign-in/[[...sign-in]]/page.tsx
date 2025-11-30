@@ -1,13 +1,16 @@
 import { SignIn } from "@clerk/nextjs";
 
-export default function SignInPage({
+export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: { source?: string; scheme?: string };
+  searchParams: Promise<{ source?: string; scheme?: string }>;
 }) {
+  // Await searchParams in Next.js 15+
+  const params = await searchParams;
+  
   // Check if this is an extension login
-  const isExtensionAuth = searchParams.source === "extension";
-  const scheme = searchParams.source === "extension" ? searchParams.scheme : undefined;
+  const isExtensionAuth = params.source === "extension";
+  const scheme = params.source === "extension" ? params.scheme : undefined;
 
   // Construct callback URL with scheme if present
   const callbackUrl = isExtensionAuth 
