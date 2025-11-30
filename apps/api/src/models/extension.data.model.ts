@@ -98,7 +98,7 @@ const ExtensionDataSchema = new Schema<IExtensionData>(
       fullDiff: { type: String, required: true },
     },
     feedback: { type: String },
-    user_id: { type: String, required: true },
+    user_id: { type: String },
   },
   {
     timestamps: true,

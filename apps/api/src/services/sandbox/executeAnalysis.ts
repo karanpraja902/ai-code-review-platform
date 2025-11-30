@@ -70,8 +70,12 @@ export const executeAnalysis = async (
       const ts: any = teamDoc.settings || {};
       if (analysisType === "full_repo_analysis") {
         modelId = ts.defaultModelRepo;
-      } else {
+      } else if (analysisType === "pr_analysis") {
         modelId = ts.defaultModelPr;
+      } else if (analysisType === "extension_analysis") {
+        modelId = ts.defaultModelExtension;
+      } else { 
+        modelId = ts.defaultModelRepo;
       }
     } else {
       const userDoc = await User.findById(userId);
@@ -87,8 +91,12 @@ export const executeAnalysis = async (
       const us: any = userDoc.settings || {};
       if (analysisType === "full_repo_analysis") {
         modelId = us.defaultModelRepo;
-      } else {
+      } else if (analysisType === "pr_analysis") {
         modelId = us.defaultModelPr;
+      } else if (analysisType === "extension_analysis") {
+        modelId = us.defaultModelExtension;
+      } else { 
+        modelId = us.defaultModelRepo;
       }
     }
 
