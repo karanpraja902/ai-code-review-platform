@@ -131,21 +131,37 @@ export const executeAnalysis = async (
     let owner = userId;
     if (teamDoc) {
       owner = teamDoc.ownerId;
-      console.log("setting owner form team");
+      // console.log("setting owner form team");
     }
-    // Authenticate GitHub repository
-    const authResult = await authenticateGithubRepo(repoUrl, owner);
-    if (!authResult.success) {
-      return {
-        success: false,
-        exitCode: -1,
-        sandboxId: null,
-        _id: new mongoose.Types.ObjectId().toString(),
-        error: authResult.message,
-      };
+    
+    // For extension analysis, skip GitHub authentication as it runs locally
+    let repoUrlForAnalysis: string;
+    if (analysisType === "extension_analysis") {
+      console.log("🔄 Extension analysis mode - skipping GitHub authentication");
+      repoUrlForAnalysis = repoUrl; // Use original URL directly
+      
+      if (callbacks?.onProgress) {
+        await callbacks.onProgress("🔄 Extension analysis - using local workspace");
+      }
+    } else {
+      // Authenticate GitHub repository for other analysis types
+      console.log("🔐 Authenticating GitHub repository...");
+      const authResult = await authenticateGithubRepo(repoUrl, owner);
+      if (!authResult.success) {
+        return {
+          success: false,
+          exitCode: -1,
+          sandboxId: null,
+          _id: new mongoose.Types.ObjectId().toString(),
+          error: authResult.message,
+        };
+      }
+      repoUrlForAnalysis = authResult.repoUrl;
+      
+      if (callbacks?.onProgress) {
+        await callbacks.onProgress("✅ GitHub repository authenticated");
+      }
     }
-
-    const repoUrlForAnalysis = authResult.repoUrl;
 
     // Create analysis record upfront with 'running' status (only if not pre-created)
     if (!preCreatedAnalysisId) {
@@ -193,8 +209,13 @@ export const executeAnalysis = async (
           }
         }
 
+        // For extension analysis, include extension_data_id
+        if (analysisType === "extension_analysis" && data && data.extension_data_id) {
+          createPayload.extension_data_id = new mongoose.Types.ObjectId(data.extension_data_id);
+        }
+
         await Analysis.create(createPayload);
-        console.log(`📝 Analysis record created with ID: ${_id}`);
+        // console.log(`📝 Analysis record created with ID: ${_id}`);
       } catch (createError) {
         console.error("❌ Failed to create analysis record:", createError);
         return {
@@ -426,14 +447,15 @@ export const executeAnalysis = async (
 
     // Puase the sandbox
     await sandbox.betaPause();
-    // console.log(sameSandbox.sandboxId)
+    // console.log(sandbox.sandboxId)
 
     if (callbacks?.onProgress) {
       await callbacks.onProgress("🔒 Sandbox closed");
     }
 
     // Auto-persist analysis results if persistence parameters are provided
-    if (userId && repoUrl && github_repositoryId) {
+    // For extension_analysis, github_repositoryId can be null
+    if (userId && repoUrl) {
       try {
         const status: "completed" | "error" =
           result.exitCode === 0 ? "completed" : "error";
@@ -541,7 +563,8 @@ export const executeAnalysis = async (
     } catch (_) {}
 
     // Auto-persist analysis results even on error if persistence parameters are provided
-    if (userId && repoUrl && github_repositoryId) {
+    // For extension_analysis, github_repositoryId can be null
+    if (userId && repoUrl) {
       try {
         await finalizeAnalysisAndPersist({
           _id: _id.toString(),

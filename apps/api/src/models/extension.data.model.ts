@@ -42,6 +42,7 @@ export interface IExtensionData extends Document {
     fullDiff: string;
   };
   feedback?: string;
+  user_id: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -97,6 +98,7 @@ const ExtensionDataSchema = new Schema<IExtensionData>(
       fullDiff: { type: String, required: true },
     },
     feedback: { type: String },
+    user_id: { type: String, required: true },
   },
   {
     timestamps: true,
