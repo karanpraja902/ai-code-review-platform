@@ -23,6 +23,7 @@ services:
       # Application Configuration
       - PORT=${PORT:-3001}
       - FRONTEND_URL=${FRONTEND_URL:-https://ai-code-review-platform.dev}
+      - EXTENSION_JWT_SECRET=${EXTENSION_JWT_SECRET}
       - API_BASE_URL=${API_BASE_URL}
       - NODE_ENV=${NODE_ENV:-production}
       
