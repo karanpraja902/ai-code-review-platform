@@ -91,6 +91,18 @@ export default clerkMiddleware(async (auth, req) => {
 
   if (isAuthenticated && isPublicRoute(req)) {
     const pathname = req.nextUrl.pathname;
+    const searchParams = req.nextUrl.searchParams;
+    const isExtensionAuth = searchParams.get("source") === "extension";
+
+    // If authenticated and it's an extension auth request, redirect to callback
+    if (isExtensionAuth) {
+      const callbackUrl = new URL("/extension-auth-callback", req.url);
+      // Preserve all search params (scheme, source, etc.)
+      searchParams.forEach((value, key) => {
+        callbackUrl.searchParams.set(key, value);
+      });
+      return NextResponse.redirect(callbackUrl);
+    }
 
     // Allow access to security page without redirecting
     if (pathname.startsWith("/security")) {

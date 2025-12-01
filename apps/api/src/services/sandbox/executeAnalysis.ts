@@ -27,7 +27,7 @@ export interface AnalysisResult {
 }
 
 export const executeAnalysis = async (
-  github_repositoryId: string,
+  github_repositoryId: string | null,
   repoUrl: string,
   branch: string,
   userId: string,
@@ -70,8 +70,12 @@ export const executeAnalysis = async (
       const ts: any = teamDoc.settings || {};
       if (analysisType === "full_repo_analysis") {
         modelId = ts.defaultModelRepo;
-      } else {
+      } else if (analysisType === "pr_analysis") {
         modelId = ts.defaultModelPr;
+      } else if (analysisType === "extension_analysis") {
+        modelId = ts.defaultModelExtension;
+      } else { 
+        modelId = ts.defaultModelRepo;
       }
     } else {
       const userDoc = await User.findById(userId);
@@ -87,8 +91,12 @@ export const executeAnalysis = async (
       const us: any = userDoc.settings || {};
       if (analysisType === "full_repo_analysis") {
         modelId = us.defaultModelRepo;
-      } else {
+      } else if (analysisType === "pr_analysis") {
         modelId = us.defaultModelPr;
+      } else if (analysisType === "extension_analysis") {
+        modelId = us.defaultModelExtension;
+      } else { 
+        modelId = us.defaultModelRepo;
       }
     }
 
@@ -121,28 +129,47 @@ export const executeAnalysis = async (
         error: "Model ID not found in settings",
       };
     }
-    const latestAnalysis = await Analysis.findOne({
-      github_repositoryId: new mongoose.Types.ObjectId(github_repositoryId),
-    }).sort({ createdAt: -1 });
+    let latestAnalysis;
+    if (github_repositoryId) {
+      latestAnalysis = await Analysis.findOne({
+        github_repositoryId: new mongoose.Types.ObjectId(github_repositoryId),
+      }).sort({ createdAt: -1 });
+    }
 
     let owner = userId;
     if (teamDoc) {
       owner = teamDoc.ownerId;
-      console.log("setting owner form team");
+      // console.log("setting owner form team");
     }
-    // Authenticate GitHub repository
-    const authResult = await authenticateGithubRepo(repoUrl, owner);
-    if (!authResult.success) {
-      return {
-        success: false,
-        exitCode: -1,
-        sandboxId: null,
-        _id: new mongoose.Types.ObjectId().toString(),
-        error: authResult.message,
-      };
+    
+    // For extension analysis, skip GitHub authentication as it runs locally
+    let repoUrlForAnalysis: string;
+    if (analysisType === "extension_analysis") {
+      console.log("🔄 Extension analysis mode - skipping GitHub authentication");
+      repoUrlForAnalysis = repoUrl; // Use original URL directly
+      
+      if (callbacks?.onProgress) {
+        await callbacks.onProgress("🔄 Extension analysis - using local workspace");
+      }
+    } else {
+      // Authenticate GitHub repository for other analysis types
+      console.log("🔐 Authenticating GitHub repository...");
+      const authResult = await authenticateGithubRepo(repoUrl, owner);
+      if (!authResult.success) {
+        return {
+          success: false,
+          exitCode: -1,
+          sandboxId: null,
+          _id: new mongoose.Types.ObjectId().toString(),
+          error: authResult.message,
+        };
+      }
+      repoUrlForAnalysis = authResult.repoUrl;
+      
+      if (callbacks?.onProgress) {
+        await callbacks.onProgress("✅ GitHub repository authenticated");
+      }
     }
-
-    const repoUrlForAnalysis = authResult.repoUrl;
 
     // Create analysis record upfront with 'running' status (only if not pre-created)
     if (!preCreatedAnalysisId) {
@@ -153,7 +180,7 @@ export const executeAnalysis = async (
           analysis_type: analysisType,
           userId,
           repoUrl,
-          github_repositoryId,
+          github_repositoryId: github_repositoryId ? new mongoose.Types.ObjectId(github_repositoryId) : undefined,
           sandboxId: "", // Will be updated once sandbox is created
           model,
           prompt,
@@ -190,8 +217,13 @@ export const executeAnalysis = async (
           }
         }
 
+        // For extension analysis, include extension_data_id
+        if (analysisType === "extension_analysis" && data && data.extension_data_id) {
+          createPayload.extension_data_id = new mongoose.Types.ObjectId(data.extension_data_id);
+        }
+
         await Analysis.create(createPayload);
-        console.log(`📝 Analysis record created with ID: ${_id}`);
+        // console.log(`📝 Analysis record created with ID: ${_id}`);
       } catch (createError) {
         console.error("❌ Failed to create analysis record:", createError);
         return {
@@ -274,16 +306,17 @@ export const executeAnalysis = async (
     console.log("🔧 Formatted data parameter length:", dataParam.length);
 
     // Build command based on provider
+    const repoIdArg = github_repositoryId ? github_repositoryId : "null";
     let analysisCommand: string;
     if (provider === "vertex") {
       // Vertex provider: use Google credentials
-      analysisCommand = `if [ -n "$GOOGLE_CREDENTIALS_JSON_BASE64" ]; then echo "$GOOGLE_CREDENTIALS_JSON_BASE64" | base64 -d > /workspace/google-credentials.json; export GOOGLE_APPLICATION_CREDENTIALS=/workspace/google-credentials.json; fi; cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${github_repositoryId} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${"$GOOGLE_APPLICATION_CREDENTIALS"} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
+      analysisCommand = `if [ -n "$GOOGLE_CREDENTIALS_JSON_BASE64" ]; then echo "$GOOGLE_CREDENTIALS_JSON_BASE64" | base64 -d > /workspace/google-credentials.json; export GOOGLE_APPLICATION_CREDENTIALS=/workspace/google-credentials.json; fi; cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${repoIdArg} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${"$GOOGLE_APPLICATION_CREDENTIALS"} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
     } else if (provider === "bedrock") {
       // Bedrock provider: use AWS Bedrock API key (no --provider flag for bedrock)
-      analysisCommand = `cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${github_repositoryId} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${process.env.AWS_BEDROCK_API_KEY} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
+      analysisCommand = `cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${repoIdArg} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${process.env.AWS_BEDROCK_API_KEY} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
     } else if (provider === "google") {
       // Google provider: use Google API key
-      analysisCommand = `cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${github_repositoryId} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${process.env.GOOGLE_API_KEY} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
+      analysisCommand = `cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${repoIdArg} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${process.env.GOOGLE_API_KEY} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
     } else {
       return {
         success: false,
@@ -422,14 +455,15 @@ export const executeAnalysis = async (
 
     // Puase the sandbox
     await sandbox.betaPause();
-    // console.log(sameSandbox.sandboxId)
+    // console.log(sandbox.sandboxId)
 
     if (callbacks?.onProgress) {
       await callbacks.onProgress("🔒 Sandbox closed");
     }
 
     // Auto-persist analysis results if persistence parameters are provided
-    if (userId && repoUrl && github_repositoryId) {
+    // For extension_analysis, github_repositoryId can be null
+    if (userId && repoUrl) {
       try {
         const status: "completed" | "error" =
           result.exitCode === 0 ? "completed" : "error";
@@ -438,7 +472,7 @@ export const executeAnalysis = async (
           analysis_type: analysisType,
           userId,
           repoUrl,
-          github_repositoryId,
+          github_repositoryId: github_repositoryId || undefined,
           sandboxId,
           model,
           prompt,
@@ -537,14 +571,15 @@ export const executeAnalysis = async (
     } catch (_) {}
 
     // Auto-persist analysis results even on error if persistence parameters are provided
-    if (userId && repoUrl && github_repositoryId) {
+    // For extension_analysis, github_repositoryId can be null
+    if (userId && repoUrl) {
       try {
         await finalizeAnalysisAndPersist({
           _id: _id.toString(),
           analysis_type: analysisType,
           userId,
           repoUrl,
-          github_repositoryId,
+          github_repositoryId: github_repositoryId || undefined,
           sandboxId,
           model: "",
           prompt,

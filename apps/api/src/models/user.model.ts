@@ -106,6 +106,7 @@ const userSchema = new Schema<IUser>(
       default: {
         defaultModelRepo: new mongoose.Types.ObjectId('6916caa7984764bbefcf67d9'),
         defaultModelPr: new mongoose.Types.ObjectId('6916caa7984764bbefcf67dc'),
+        defaultModelExtension: new mongoose.Types.ObjectId('6916caa7984764bbefcf67dc'),
       },
     },
   },

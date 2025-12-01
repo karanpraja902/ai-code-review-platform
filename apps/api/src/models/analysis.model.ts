@@ -7,6 +7,7 @@ export interface IAnalysis {
   repoUrl: string;
   github_repositoryId: Schema.Types.ObjectId;
   sandboxId: string;
+  extension_data_id?: mongoose.Types.ObjectId; // For extension analysis
   model: string;
   prompt: string;
   status: 'draft' | 'running' | 'completed' | 'interrupted' | 'error';
@@ -34,8 +35,9 @@ const AnalysisSchema = new Schema<IAnalysis>(
     analysis_type: { type: String, required: true },
     userId: { type: String, required: true, index: true },
     repoUrl: { type: String, required: true },
-    github_repositoryId: { type: Schema.Types.ObjectId, ref: 'Github_Repository', required: true, index: true },
+    github_repositoryId: { type: Schema.Types.ObjectId, ref: 'Github_Repository', index: true },
     sandboxId: { type: String },
+    extension_data_id: { type: Schema.Types.ObjectId, ref: 'ExtensionData', index: true }, // For extension analysis
     model: { type: String, required: true },
     prompt: { type: String, required: true },
     status: {
