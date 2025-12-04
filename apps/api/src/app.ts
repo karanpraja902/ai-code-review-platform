@@ -54,7 +54,7 @@ export function createApp(): Application {
     if (req.path === "/api/webhooks") {
       next();
     } else {
-      express.json({limit: '100mb' })(req, res, next);
+      express.json({limit: '20mb' })(req, res, next);
     }
   });
 

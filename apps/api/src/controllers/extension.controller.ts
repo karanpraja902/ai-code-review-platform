@@ -7,6 +7,7 @@ import { Github_Repository, IGithub_Repository } from '../models/github_repostri
 import { createParserState, parseStreamingResponse, finalizeParsing, PRComment } from '../utils/responseParser.js';
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
+import { gunzipSync } from 'zlib';
 
 export const createExtensionReview = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -16,6 +17,54 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
         res.status(400).json({ message: 'Missing required fields' });
         return;
       }
+
+      // Decompress large fields in each file change if they were compressed
+      // Note: changes is an object with { summary, commits, files, fullDiff }
+      const decompressedFiles = changes.files.map((change: any) => {
+        if (change._compressed) {
+          const decompressed: any = { ...change };
+          let totalCompressedSize = 0;
+          let totalDecompressedSize = 0;
+          
+          // Decompress patch if present
+          if (change.patch_compressed) {
+            const buffer = Buffer.from(change.patch_compressed, 'base64');
+            const unzipped = gunzipSync(buffer);
+            decompressed.patch = unzipped.toString('utf-8');
+            delete decompressed.patch_compressed;
+            
+            totalCompressedSize += buffer.length;
+            totalDecompressedSize += unzipped.length;
+          }
+          
+          // Decompress content if present
+          if (change.content_compressed) {
+            const buffer = Buffer.from(change.content_compressed, 'base64');
+            const unzipped = gunzipSync(buffer);
+            decompressed.content = unzipped.toString('utf-8');
+            delete decompressed.content_compressed;
+            
+            totalCompressedSize += buffer.length;
+            totalDecompressedSize += unzipped.length;
+          }
+          
+          // Log decompression metrics
+          if (totalCompressedSize > 0) {
+            const ratio = ((1 - totalCompressedSize / totalDecompressedSize) * 100).toFixed(1);
+            logger.info(`Decompressed fields in ${change.filename}: ${(totalCompressedSize / 1024).toFixed(1)}KB → ${(totalDecompressedSize / 1024).toFixed(1)}KB (${ratio}% was saved)`);
+          }
+          
+          delete decompressed._compressed;
+          return decompressed;
+        }
+        return change;
+      });
+
+      // Reconstruct changes object with decompressed files
+      const decompressedChanges = {
+        ...changes,
+        files: decompressedFiles
+      };
 
       // @ts-ignore
       const userId = req.user?._id?.toString();
@@ -28,7 +77,7 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
       const extensionData = new ExtensionData({
         repository,
         branches,
-        changes,
+        changes: decompressedChanges,  // Use decompressed changes
         feedback,
         user_id: userId,
       });
