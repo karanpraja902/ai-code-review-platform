@@ -426,7 +426,7 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
       const isPrAuthorBot = (
         String(prAuthorType).toLowerCase() === 'bot' ||
         /\[bot\]$/i.test(prAuthorLogin) ||
-        /bot/i.test(prAuthorLogin)
+        /^bot-/i.test(prAuthorLogin) || /-bot$/i.test(prAuthorLogin)
       );
 
       if (isPrAuthorBot) {
@@ -773,8 +773,8 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
       const message = commit?.message || '';
 
       // Check if author or committer is a bot
-      const isAuthorBot = /\[bot\]$/i.test(authorLogin) || /bot/i.test(authorLogin);
-      const isCommitterBot = /\[bot\]$/i.test(committerLogin) || /bot/i.test(committerLogin);
+      const isAuthorBot = /\[bot\]$/i.test(authorLogin) || /^bot-/i.test(authorLogin) || /-bot$/i.test(authorLogin);
+      const isCommitterBot = /\[bot\]$/i.test(committerLogin) || /^bot-/i.test(committerLogin) || /-bot$/i.test(committerLogin);
 
       // Check for Co-authored-by trailer in commit message (AI Code Review suggestions)
       const hasBotCoAuthor = /Co-authored-by:.*\[bot\]/i.test(message) || 
