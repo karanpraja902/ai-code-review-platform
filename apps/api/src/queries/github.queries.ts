@@ -406,15 +406,52 @@ export const checkPullRequestPermission = (installation: any) => {
   }
 };
 
-export const PrData = async (payload: any) => {
+export const PrData = async (payload: any, options?: { skipBotCheck?: boolean }) => {
   try {
     const { pull_request, repository, installation, sender } = payload;
+    const skipBotCheck = options?.skipBotCheck || false;
    
     logger.debug("Processing PR data", { 
       installationId: installation?.id, 
       repositoryName: repository?.full_name,
-      prNumber: pull_request?.number 
+      prNumber: pull_request?.number,
+      skipBotCheck,
     });
+
+    // Early check: Is PR author a bot? Skip automatic review if so.
+    // Skip this check if triggered by @ai-code-review review command
+    if (!skipBotCheck) {
+      const prAuthorLogin = pull_request?.user?.login || '';
+      const prAuthorType = pull_request?.user?.type || '';
+      const isPrAuthorBot = (
+        String(prAuthorType).toLowerCase() === 'bot' ||
+        /\[bot\]$/i.test(prAuthorLogin) ||
+        /^bot-/i.test(prAuthorLogin) || /-bot$/i.test(prAuthorLogin)
+      );
+
+      if (isPrAuthorBot) {
+        logger.info("PR author is a bot; skipping automatic review", {
+          author: prAuthorLogin,
+          authorType: prAuthorType,
+          prNumber: pull_request?.number,
+          repository: repository?.full_name,
+        });
+
+        // Post a comment informing how to trigger review using PRCommentService
+        const [owner, repo] = repository.full_name.split('/');
+        const prCommentService = new PRCommentService({
+          installationId: installation.id,
+          owner,
+          repo,
+          pullNumber: pull_request.number,
+          commitSha: pull_request.head.sha,
+        });
+
+        await prCommentService.postBotAuthorSkippedComment();
+
+        return; // Skip automatic PR analysis for bot authors
+      }
+    }
 
     // Early check: daily PR analysis limit
     try {
@@ -655,7 +692,7 @@ export const PrData = async (payload: any) => {
       prKey,
       latestCommitSha,
       state: 'open', // Track PR state: open, closed, merged
-      
+      skipped: false,
       // Core Changes Data
       changes: {
         summary: {
@@ -728,6 +765,24 @@ export const PrData = async (payload: any) => {
     // Determine new commits by position AFTER last stored latestCommitSha
     const lastIndex = lastStoredSha ? commits.findIndex((c: any) => c.sha === lastStoredSha) : -1;
     const newCommitsOnly = lastIndex >= 0 ? commits.slice(lastIndex + 1) : commits;
+
+    // Helper to check if a commit is authored or co-authored by a bot (e.g., AI Code Review)
+    const isBotCommit = (commit: any): boolean => {
+      const authorLogin = commit?.author?.login || '';
+      const committerLogin = commit?.committer?.login || '';
+      const message = commit?.message || '';
+
+      // Check if author or committer is a bot
+      const isAuthorBot = /\[bot\]$/i.test(authorLogin) || /^bot-/i.test(authorLogin) || /-bot$/i.test(authorLogin);
+      const isCommitterBot = /\[bot\]$/i.test(committerLogin) || /^bot-/i.test(committerLogin) || /-bot$/i.test(committerLogin);
+
+      // Check for Co-authored-by trailer in commit message (AI Code Review suggestions)
+      const hasBotCoAuthor = /Co-authored-by:.*\[bot\]/i.test(message) || 
+                             /Co-authored-by:.*ai-code-review/i.test(message);
+
+      return isAuthorBot || isCommitterBot || hasBotCoAuthor;
+    };
+
     let prDataInsertedId: string | undefined;
 
     const ignoredExtensions = new Set([
@@ -751,25 +806,66 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         latestCommitSha
       });
       return
-    } else {
-      console.log(newCommitsOnly.map(el => el.message))
+    }
+
+       // If we have at least some human commits, analyze ALL commits (including bot ones)
+    console.log(newCommitsOnly.map(el => el.message))
       
-      modelAnalysisData.changes.commits = newCommitsOnly.map((commit: any) => {
-        const filteredFiles = (commit.files || []).filter((file: any) => isAnalyzable(file.filename, file.patch));
-        return {
-          sha: commit.sha,
-          message: commit.message,
-          author: commit.author.name || commit.author.login,
-          date: commit.author.date,
-          files: filteredFiles.map((file: any) => ({
-            filename: file.filename,
-            status: file.status,
-            additions: file.additions,
-            deletions: file.deletions,
-            patch: file.patch
-          }))
-        };
-      });
+
+    modelAnalysisData.changes.commits = newCommitsOnly.map((commit: any) => {
+    const filteredFiles = (commit.files || []).filter((file: any) => isAnalyzable(file.filename, file.patch));
+    return {
+      sha: commit.sha,
+      message: commit.message,
+      author: commit.author.name || commit.author.login,
+      date: commit.author.date,
+      files: filteredFiles.map((file: any) => ({
+        filename: file.filename,
+        status: file.status,
+        additions: file.additions,
+        deletions: file.deletions,
+        patch: file.patch
+      }))
+    };
+  });
+
+    // Check if ALL new commits are bot-authored/co-authored - skip review entirely if so
+    // Skip this check if triggered by @ai-code-review review command
+    if (!skipBotCheck) {
+      const allCommitsAreBot = newCommitsOnly.every((commit: any) => isBotCommit(commit));
+      if (allCommitsAreBot) {
+        logger.info("All new commits are bot-authored/co-authored; skipping review", {
+          prNumber: pull_request.number,
+          repository: repository.full_name,
+          totalNewCommits: newCommitsOnly.length,
+        });
+
+        // Post skip comment when all commits are from bots
+        const [owner, repo] = repository.full_name.split('/');
+        const prCommentService = new PRCommentService({
+          installationId: installation.id,
+          owner,
+          repo,
+          pullNumber: pull_request.number,
+          commitSha: pull_request.head.sha,
+        });
+        await prCommentService.postBotAuthorSkippedComment();
+        modelAnalysisData.skipped = true;
+
+        // Save skipped PR data to database
+        const insertResult = await prCollection?.insertOne(modelAnalysisData);
+        logger.info("Skipped PR data inserted into MongoDB", { 
+          prNumber: pull_request.number, 
+          repository: repository.full_name,
+          insertedId: insertResult?.insertedId,
+          skipped: true,
+        });
+
+        return;
+      }
+    }
+
+ 
 
       const insertResult = await prCollection?.insertOne(modelAnalysisData);
       prDataInsertedId = insertResult?.insertedId?.toString();
@@ -779,7 +875,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         insertedId: insertResult?.insertedId,
         newCommitsCount: newCommitsOnly.length
       });
-    }
+    
 
     const filesChangedForAnalysis = Array.from(new Set(
       (newCommitsOnly || [])
