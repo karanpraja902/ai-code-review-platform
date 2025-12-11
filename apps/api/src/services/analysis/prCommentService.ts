@@ -598,6 +598,41 @@ processedContent = processedContent.replace(
   }
 
   /**
+   * Post a comment when PR author is a bot and automatic review is skipped.
+   * Informs user how to trigger a manual review.
+   */
+  async postBotAuthorSkippedComment(): Promise<boolean> {
+    try {
+      const body = [
+        PRCommentService.STATUS_MARKER,
+        '> [!IMPORTANT]',
+        '> **Review skipped**',
+        '>',
+        '> Bot user detected.',
+        '>',
+        '> To trigger a single review, invoke the `@ai-code-review review` command.',
+        '',
+        '---',
+        `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
+      ].join('\n');
+
+      const response = await this.octokit.issues.createComment({
+        owner: this.context.owner,
+        repo: this.context.repo,
+        issue_number: this.context.pullNumber,
+        body,
+      });
+
+      this.statusCommentId = response.data.id;
+      return true;
+    } catch (error) {
+      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post bot author skipped comment:`, error);
+      return false;
+    }
+  }
+
+
+  /**
    * Find the existing AI Code Review status/main comment on the PR by hidden marker.
    */
   private async findExistingStatusCommentId(): Promise<number | undefined> {

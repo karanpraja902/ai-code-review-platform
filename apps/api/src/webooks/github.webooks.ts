@@ -161,6 +161,84 @@ export const webhooks = new Webhooks({ secret: process.env.GITHUB_WEBHOOK_SECRET
     await handlePrMerged(payload);
   });
 
+  // Handle PR comment commands for triggering review via @ai-code-review review or @ai-code-review review
+  webhooks.on('issue_comment.created', async ({ payload }) => {
+    try {
+      // Only process comments on pull requests
+      if (!payload.issue?.pull_request) {
+        return;
+      }
+
+      const commentBody = payload.comment?.body || '';
+      const commentAuthorType = payload.comment?.user?.type || '';
+      const commentAuthorLogin = payload.comment?.user?.login || '';
+
+      // Ignore comments from bots to prevent loops
+      const isCommentFromBot = (
+        String(commentAuthorType).toLowerCase() === 'bot' ||
+        /\[bot\]$/i.test(commentAuthorLogin) ||
+        /bot/i.test(commentAuthorLogin)
+      );
+
+      if (isCommentFromBot) {
+        logger.debug('Comment authored by bot; ignoring review trigger check.', {
+          commentAuthorLogin,
+          commentId: payload.comment?.id,
+        });
+        return;
+      }
+
+      // Check for review trigger commands: @ai-code-review review or @ai-code-review review
+      const reviewTriggerPattern = /@(ai-code-review|ai-code-review)\s+review\b/i;
+      if (!reviewTriggerPattern.test(commentBody)) {
+        return;
+      }
+
+      logger.info('Review trigger command detected in PR comment', {
+        repository: payload.repository?.full_name,
+        prNumber: payload.issue?.number,
+        commentAuthor: commentAuthorLogin,
+        commentBody: commentBody.slice(0, 100),
+      });
+
+      // Fetch the full PR data to construct the payload for PrData
+      const installationId = payload.installation?.id;
+      if (!installationId) {
+        logger.warn('Missing installation ID for issue_comment');
+        return;
+      }
+
+      const octokit = getInstallationOctokit(installationId);
+      const [owner, repo] = payload.repository.full_name.split('/');
+      const prNumber = payload.issue.number;
+
+      const prResponse = await octokit.pulls.get({
+        owner,
+        repo,
+        pull_number: prNumber,
+      });
+
+      // Construct a payload similar to pull_request webhook
+      const prPayload = {
+        action: 'comment_triggered',
+        pull_request: prResponse.data,
+        repository: payload.repository,
+        installation: payload.installation,
+        sender: payload.sender,
+      };
+
+      // Call handlePullRequestAnalysis with skipBotCheck since it was explicitly requested
+      await PrData(prPayload, { skipBotCheck: true });
+
+    } catch (error) {
+      logger.error('Error handling issue_comment.created for review trigger', {
+        error: error instanceof Error ? error.message : error,
+        prNumber: payload.issue?.number,
+        repository: payload.repository?.full_name,
+      });
+    }
+  });
+
   // Handle replies to PR review comments and respond when replying to AI Code Review comments
   webhooks.on('pull_request_review_comment.created', async ({ payload }) => {
     try {
