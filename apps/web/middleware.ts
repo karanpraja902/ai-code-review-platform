@@ -146,6 +146,7 @@ export default clerkMiddleware(async (auth, req) => {
       "/analysis",
       "/agents",
       "/pr-analysis",
+      "/custom-context",
       "/settings",
     ];
     const isTeamRoute = teamRoutes.some(
