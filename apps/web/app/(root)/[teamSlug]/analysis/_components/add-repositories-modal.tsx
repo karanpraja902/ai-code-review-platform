@@ -19,9 +19,10 @@ import { GithubRepository } from "@/types/types";
 
 interface AddRepositoriesModalProps {
   teamSlug: string;
+  teamId?: string;
 }
 
-export function AddRepositoriesModal({ teamSlug }: AddRepositoriesModalProps) {
+export function AddRepositoriesModal({ teamSlug, teamId }: AddRepositoriesModalProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [repositories, setRepositories] = useState<GithubRepository[]>([]);
@@ -89,6 +90,19 @@ export function AddRepositoriesModal({ teamSlug }: AddRepositoriesModalProps) {
     }
   };
 
+  const handleAddFromGitHub = () => {
+    // Store the team ID in localStorage so we can associate newly synced repos with this team
+    if (teamId) {
+      localStorage.setItem("ai-code-review_pending_team_id", teamId);
+      localStorage.setItem("ai-code-review_pending_team_slug", teamSlug);
+    }
+    // Open GitHub app installation page
+    window.open(
+      `https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME || "ai-code-review"}/installations/select_target`,
+      "_blank"
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -100,16 +114,14 @@ export function AddRepositoriesModal({ teamSlug }: AddRepositoriesModalProps) {
       <DialogContent className="flex max-h-[80vh] max-w-4xl flex-col overflow-hidden">
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle>Add Repositories to Team</DialogTitle>
-          <Button variant="outline" size="sm" asChild className="ml-auto">
-            <a
-              href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME || "ai-code-review"}/installations/select_target`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Add from GitHub
-            </a>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="ml-auto flex items-center gap-2"
+            onClick={handleAddFromGitHub}
+          >
+            <ExternalLink className="h-4 w-4" />
+            Add from GitHub
           </Button>
         </DialogHeader>
 

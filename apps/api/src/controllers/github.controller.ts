@@ -1407,12 +1407,13 @@ export const getIssueStates = async (
 export const syncRepositories = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?._id;
+    const { teamId } = req.body as { teamId?: string };
 
     if (!userId) {
       return next(new CustomError("User not authenticated", 401));
     }
 
-    logger.debug("Syncing repositories for all user installations", { userId });
+    logger.debug("Syncing repositories for all user installations", { userId, teamId });
 
     // Find all GitHub installations for this user
     const installations = await Github_Installation.find({ userId: userId });
@@ -1427,6 +1428,7 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
           removed: 0,
           totalRepositories: 0,
           totalInstallations: 0,
+          addedToTeam: 0,
           errors: []
         }
       });
@@ -1443,8 +1445,12 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
       removed: 0,
       totalRepositories: 0,
       totalInstallations: installations.length,
+      addedToTeam: 0,
       errors: [] as string[]
     };
+
+    // Track newly created repository IDs for team assignment
+    const newlyCreatedRepoIds: number[] = [];
 
     // Process each installation
     for (const installation of installations) {
@@ -1548,6 +1554,7 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
               const newRepo = new Github_Repository(repoData);
               await newRepo.save();
               overallSyncResults.created++;
+              newlyCreatedRepoIds.push(repo.id);
               logger.debug("Created new repository", { 
                 repositoryId: repo.id, 
                 fullName: repo.full_name,
@@ -1612,6 +1619,26 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
       totalRepositories: overallSyncResults.totalRepositories,
       errors: overallSyncResults.errors.length 
     });
+
+    // If a teamId was provided and new repos were created, add them to the team
+    if (teamId && newlyCreatedRepoIds.length > 0) {
+      try {
+        const result = await Github_Repository.updateMany(
+          { repositoryId: { $in: newlyCreatedRepoIds } },
+          { $addToSet: { teams: teamId } }
+        );
+        overallSyncResults.addedToTeam = result.modifiedCount || newlyCreatedRepoIds.length;
+        logger.info("Added newly created repos to team", { 
+          teamId, 
+          repoCount: overallSyncResults.addedToTeam,
+          repoIds: newlyCreatedRepoIds
+        });
+      } catch (teamError) {
+        const errorMessage = `Failed to add repositories to team ${teamId}: ${teamError instanceof Error ? teamError.message : teamError}`;
+        overallSyncResults.errors.push(errorMessage);
+        logger.error("Error adding repos to team", { teamId, error: errorMessage });
+      }
+    }
 
     res.json({
       success: true,

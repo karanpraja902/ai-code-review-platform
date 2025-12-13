@@ -35,15 +35,18 @@ const Page = async (props: PageProps) => {
 
   // Determine if the current user is an admin of this team
   const myTeams = await getMyTeams();
-  const isTeamAdmin = Array.isArray(myTeams)
-    ? myTeams.some((t: any) => t?.slug === teamSlug && t?.role === "admin")
-    : false;
+  const currentTeam = Array.isArray(myTeams)
+    ? myTeams.find((t: any) => t?.slug === teamSlug)
+    : null;
+  const isTeamAdmin = currentTeam?.role === "admin";
+  const currentTeamId = currentTeam?._id;
 
   logger.info(`Team analysis page loaded with query:`, {
     query,
     scope,
     teamId,
     teamSlug,
+    currentTeamId,
   });
 
   return (
@@ -67,7 +70,7 @@ const Page = async (props: PageProps) => {
             <SyncRepositoriesButton />
 
             {isTeamAdmin ? (
-              <AddRepositoriesModal teamSlug={teamSlug} />
+              <AddRepositoriesModal teamSlug={teamSlug} teamId={currentTeamId} />
             ) : null}
           </div>
         </div>
