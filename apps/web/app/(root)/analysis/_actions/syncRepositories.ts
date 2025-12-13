@@ -13,16 +13,18 @@ export interface SyncRepositoriesResult {
     removed: number;
     totalRepositories: number;
     totalInstallations: number;
+    addedToTeam?: number;
     errors: string[];
   };
 }
 
-export const syncRepositories = async (): Promise<SyncRepositoriesResult> => {
+export const syncRepositories = async (teamId?: string): Promise<SyncRepositoriesResult> => {
   try {
-    logger.info("Starting repository synchronization");
+    logger.info("Starting repository synchronization", { teamId });
 
     // Call the new sync endpoint that handles all installations
-    const syncResponse = await apiPost("/api/github/sync");
+    // Pass teamId if provided so newly created repos can be added to the team
+    const syncResponse = await apiPost("/api/github/sync", { teamId });
     
     if (!syncResponse.ok) {
       throw new Error(`Sync request failed: ${syncResponse.status}`);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCwIcon, CheckIcon, AlertCircleIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -18,12 +18,21 @@ const SyncRepositoriesButton = () => {
   >(null);
   const router = useRouter();
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     setIsLoading(true);
     setLastSyncStatus(null);
 
     try {
-      const result: SyncRepositoriesResult = await syncRepositories();
+      // Check if there's a pending team ID from GitHub redirect
+      const pendingTeamId = localStorage.getItem("ai-code-review_pending_team_id");
+      
+      const result: SyncRepositoriesResult = await syncRepositories(pendingTeamId || undefined);
+
+      // Clear the pending team ID after sync
+      if (pendingTeamId) {
+        localStorage.removeItem("ai-code-review_pending_team_id");
+        localStorage.removeItem("ai-code-review_pending_team_slug");
+      }
 
       if (result.success) {
         setLastSyncStatus("success");
@@ -31,13 +40,15 @@ const SyncRepositoriesButton = () => {
 
         // Show additional details if available
         if (result.details && result.details.totalInstallations > 0) {
-          const { updated, created, totalRepositories, totalInstallations } =
+          const { updated, created, totalRepositories, totalInstallations, addedToTeam } =
             result.details;
 
           if (updated > 0 || created > 0) {
-            toast.success(
-              `Synced ${totalRepositories} repositories across ${totalInstallations} installation(s). Updated: ${updated}, Created: ${created}`
-            );
+            let message = `Synced ${totalRepositories} repositories across ${totalInstallations} installation(s). Updated: ${updated}, Created: ${created}`;
+            if (addedToTeam && addedToTeam > 0) {
+              message += `, Added to team: ${addedToTeam}`;
+            }
+            toast.success(message);
           }
         }
 
@@ -72,7 +83,16 @@ const SyncRepositoriesButton = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
+
+  // Check for pending team ID on mount and trigger sync if found
+  useEffect(() => {
+    const pendingTeamId = localStorage.getItem("ai-code-review_pending_team_id");
+    if (pendingTeamId) {
+      // Auto-trigger sync when returning from GitHub with a pending team
+      handleSync();
+    }
+  }, [handleSync]);
 
   return (
     <Button onClick={handleSync} disabled={isLoading} variant="outline">
