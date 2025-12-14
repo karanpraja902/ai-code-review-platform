@@ -1,7 +1,7 @@
 import { getInstallationOctokit } from '../../lib/githubApp.js';
 import { logger } from '../../utils/logger.js';
-import { GoogleGenAI } from '@google/genai';
 import Feedback from '../../models/feedback.model.js';
+import { generateWithGemini } from '../../utils/gemini.helper.js';
 
 export interface AI Code ReviewSuggestionContext {
   filePath?: string;
@@ -297,55 +297,20 @@ If a code fix helps, present it inside a collapsible dropdown:
 }
 
 export async function generateReplyWithGemini(prompt: string, model?: string): Promise<string> {
-  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
-  const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
-  const chosenModel = model || 'gemini-2.5-pro';
-  
-  if (!credentialsPath) {
-    logger.warn('GOOGLE_APPLICATION_CREDENTIALS is not set; cannot call Vertex AI.');
-    return 'I\'m unable to process your reply right now due to missing configuration. Please try again later.';
-  }
-  
-  if (!projectId) {
-    logger.warn('GOOGLE_CLOUD_PROJECT_ID or GCP_PROJECT_ID is not set; cannot call Vertex AI.');
-    return 'I\'m unable to process your reply right now due to missing project configuration. Please try again later.';
-  }
-  
   try {
-    logger.info('Calling Vertex AI Gemini SDK generateContent', { 
-      model: chosenModel, 
-      promptLength: prompt.length,
-      projectId,
-      location 
-    });
-    
-    // Initialize GoogleGenAI for Vertex AI
-    const ai = new GoogleGenAI({
-      vertexai: true,
-      project: projectId,
-      location: location,
-    });
-    
-    const response = await ai.models.generateContent({
-      model: chosenModel,
-      contents: prompt,
-    });
-    
-    const text = String((response as any)?.text || '').trim();
-    const firstCandidate = (response as any)?.candidates?.[0];
-    const finishReason = firstCandidate?.finishReason;
-    const safety = firstCandidate?.safetyRatings;
-    
-    logger.info('Vertex AI Gemini SDK response received', {
-      finishReason,
-      responseLength: text.length,
-      safetyBlocked: Array.isArray(safety) ? safety.some((s: any) => s?.blocked) : false,
-    });
-    
+    const text = await generateWithGemini(prompt, model);
     return text || 'Missing context; share relevant code or details.';
   } catch (error) {
-    logger.error('Vertex AI Gemini SDK call failed', { error: error instanceof Error ? error.message : error });
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logger.error('generateReplyWithGemini failed', { error: errorMsg });
+    
+    // Return user-friendly messages for configuration errors
+    if (errorMsg.includes('Missing Vertex AI configuration')) {
+      return 'I\'m unable to process your reply right now due to missing configuration. Please try again later.';
+    }
+    if (errorMsg.includes('Missing project configuration')) {
+      return 'I\'m unable to process your reply right now due to missing project configuration. Please try again later.';
+    }
     return 'I encountered an error while generating a response. Please try again.';
   }
 }

@@ -15,6 +15,7 @@ import {
   GitPullRequest,
   Settings,
   Bug,
+  FileText,
 } from "lucide-react";
 
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
@@ -57,6 +58,11 @@ const items = [
   //   url: "/agents",
   //   icon: BotIcon,
   // },
+  {
+    title: "Custom Rules",
+    url: "/custom-context",
+    icon: FileText,
+  },
   {
     title: "Settings",
     url: "/settings",
@@ -129,6 +135,7 @@ const AppSidebar = () => {
         "repo",
         "pr-analysis",
         "settings",
+        "custom-context",
       ].includes(pathSegments[0])
     ) {
       const pathWithoutSlug = "/" + pathSegments.slice(1).join("/");
