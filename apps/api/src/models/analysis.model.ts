@@ -17,6 +17,8 @@ export interface IAnalysis {
   pr_title?: string;
   // Total number of PR comments posted during this analysis
   pr_comments_posted?: number;
+  // Total lines of code reviewed (additions + deletions)
+  reviewedLinesOfCode?: number;
   // Options field only for PR review context
   options?: Record<string, any>;
   exitCode?: number | null;
@@ -45,11 +47,11 @@ const AnalysisSchema = new Schema<IAnalysis>(
       enum: ['draft', 'running', 'completed', 'interrupted', 'error'],
       required: true,
     },
-    // Optional PR-specific fields
     pr_number: { type: Number },
     pr_url: { type: String },
     pr_title: { type: String },
     pr_comments_posted: { type: Number, default: 0 },
+    reviewedLinesOfCode: { type: Number, default: 0 },
     // Options field used only for PR review context
     options: { type: Schema.Types.Mixed },
     exitCode: { type: Number },

@@ -8,6 +8,7 @@ import {
   patchCustomContext,
   deleteCustomContext,
   getDefaultPrompts,
+  optimizePrompt,
 } from '../controllers/custom_context.controller.js';
 
 const router: Router = express.Router();
@@ -18,6 +19,7 @@ router.get('/', getCustomContexts);
 router.get('/default-prompts', getDefaultPrompts);
 router.get('/:id', getCustomContextById);
 router.post('/', createCustomContext);
+router.post('/optimize', optimizePrompt);
 router.put('/:id', updateCustomContext);
 router.patch('/:id', patchCustomContext);
 router.delete('/:id', deleteCustomContext);

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import CustomContext, { ICustomContext, DEFAULT_REVIEW_PROMPTS } from '../models/custom_context.model.js';
+import { sanitizePrompt, optimizeCustomRules } from '../utils/gemini.helper.js';
 
 export const getCustomContexts = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -111,7 +112,7 @@ export const createCustomContext = async (req: Request, res: Response, next: Nex
       name: name.trim(),
       createdBy: userId,
       team: teamId || userId,
-      customPrompt: customPrompt || '',
+      customPrompt: sanitizePrompt(customPrompt || ''),
       repositories: repositories || [],
       styleReviews: createReviewConfig(styleReviews, DEFAULT_REVIEW_PROMPTS.styleReviews, false),
       securityReviews: createReviewConfig(securityReviews, DEFAULT_REVIEW_PROMPTS.securityReviews, true),
@@ -197,7 +198,7 @@ export const updateCustomContext = async (req: Request, res: Response, next: Nex
 
     const updateData: Partial<ICustomContext> = {};
     if (name !== undefined) updateData.name = name.trim();
-    if (customPrompt !== undefined) updateData.customPrompt = customPrompt;
+    if (customPrompt !== undefined) updateData.customPrompt = sanitizePrompt(customPrompt);
     if (repositories !== undefined) updateData.repositories = repositories;
     
     // For review types, only update enabled status and always use default prompts
@@ -294,6 +295,28 @@ export const deleteCustomContext = async (req: Request, res: Response, next: Nex
 export const getDefaultPrompts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.status(200).json({ status: 'success', data: DEFAULT_REVIEW_PROMPTS });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const optimizePrompt = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ status: 'error', message: 'Unauthorized' });
+    }
+
+    const { prompt } = req.body;
+
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Prompt is required' });
+    }
+
+    const optimized = await optimizeCustomRules(prompt);
+
+    res.status(200).json({ status: 'success', data: { optimizedPrompt: optimized } });
   } catch (error) {
     next(error);
   }

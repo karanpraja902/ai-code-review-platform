@@ -47,6 +47,7 @@ import {
   Check,
   X,
   Trash2,
+  Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
@@ -271,6 +272,7 @@ const CustomContextContent: React.FC<CustomContextContentProps> = ({ scope = "us
 
   const [availableRepos, setAvailableRepos] = useState<Repository[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
 
   const debouncedSetQuery = useDebouncedCallback((val: string) => {
     setPage(1);
@@ -527,13 +529,56 @@ const CustomContextContent: React.FC<CustomContextContentProps> = ({ scope = "us
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="inline-custom-prompt" className="text-xs text-muted-foreground uppercase">
-                  Custom Rules
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="inline-custom-prompt" className="text-xs text-muted-foreground uppercase">
+                    Custom Rules
+                  </Label>
+                  {editingRule.customPrompt.trim().length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          setOptimizing(true);
+                          const headers = await getHeaders();
+                          const res = await fetch(`${_config.API_BASE_URL}/api/custom-context/optimize`, {
+                            method: "POST",
+                            headers,
+                            body: JSON.stringify({ prompt: editingRule.customPrompt }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data?.data?.optimizedPrompt) {
+                              setEditingRule((prev) => ({ ...prev, customPrompt: data.data.optimizedPrompt }));
+                              toast.success("Rules optimized!");
+                            }
+                          } else {
+                            toast.error("Failed to optimize rules");
+                          }
+                        } catch {
+                          toast.error("Failed to optimize rules");
+                        } finally {
+                          setOptimizing(false);
+                        }
+                      }}
+                      disabled={optimizing}
+                      className="text-xs gap-1 h-7"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      {optimizing ? "Optimizing..." : "Optimize"}
+                    </Button>
+                  )}
+                </div>
                 <Textarea
                   id="inline-custom-prompt"
-                  placeholder="Enter custom instructions for the AI reviewer..."
-                  className="min-h-[120px] resize-y bg-muted/50"
+                  placeholder={`# Rule 1: Check for hardcoded secrets
+Flag any hardcoded API keys, passwords, or tokens in the code.
+
+# Rule 2: Enforce error handling
+Ensure all async functions have proper try-catch blocks.
+
+# Rule 3: Your custom instruction here...`}
+                  className="min-h-[160px] resize-y bg-muted/50 font-mono text-sm"
                   value={editingRule.customPrompt}
                   onChange={(e) => setEditingRule((prev) => ({ ...prev, customPrompt: e.target.value }))}
                 />
@@ -762,6 +807,9 @@ const CustomContextContent: React.FC<CustomContextContentProps> = ({ scope = "us
         availableRepos={availableRepos}
         loadingRepos={loadingRepos}
         onFetchRepos={fetchRepos}
+        getHeaders={getHeaders}
+        optimizing={optimizing}
+        setOptimizing={setOptimizing}
       />
     </div>
   );
@@ -779,6 +827,9 @@ interface RuleSheetProps {
   availableRepos: Repository[];
   loadingRepos: boolean;
   onFetchRepos: () => void;
+  getHeaders: () => Promise<Record<string, string>>;
+  optimizing: boolean;
+  setOptimizing: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const RuleSheet: React.FC<RuleSheetProps> = ({
@@ -793,6 +844,9 @@ const RuleSheet: React.FC<RuleSheetProps> = ({
   availableRepos,
   loadingRepos,
   onFetchRepos,
+  getHeaders,
+  optimizing,
+  setOptimizing,
 }) => {
   const handleToggle = (key: keyof CustomRule | ReviewTypeKey, checked: boolean) => {
     if (key === 'isActive' || key === 'isDefault') {
@@ -847,13 +901,56 @@ const RuleSheet: React.FC<RuleSheetProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="custom-prompt" className="text-xs text-muted-foreground uppercase">
-              Custom Rules
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="custom-prompt" className="text-xs text-muted-foreground uppercase">
+                Custom Rules
+              </Label>
+              {rule.customPrompt.trim().length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      setOptimizing(true);
+                      const headers = await getHeaders();
+                      const res = await fetch(`${_config.API_BASE_URL}/api/custom-context/optimize`, {
+                        method: "POST",
+                        headers,
+                        body: JSON.stringify({ prompt: rule.customPrompt }),
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (data?.data?.optimizedPrompt) {
+                          setRule((prev) => ({ ...prev, customPrompt: data.data.optimizedPrompt }));
+                          toast.success("Rules optimized!");
+                        }
+                      } else {
+                        toast.error("Failed to optimize rules");
+                      }
+                    } catch {
+                      toast.error("Failed to optimize rules");
+                    } finally {
+                      setOptimizing(false);
+                    }
+                  }}
+                  disabled={optimizing}
+                  className="text-xs gap-1 h-7"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  {optimizing ? "Optimizing..." : "Optimize"}
+                </Button>
+              )}
+            </div>
             <Textarea
               id="custom-prompt"
-              placeholder="Enter custom instructions for the AI reviewer..."
-              className="min-h-[120px] resize-y bg-muted/50"
+              placeholder={`# Rule 1: Check for hardcoded secrets
+Flag any hardcoded API keys, passwords, or tokens in the code.
+
+# Rule 2: Enforce error handling
+Ensure all async functions have proper try-catch blocks.
+
+# Rule 3: Your custom instruction here...`}
+              className="min-h-[160px] resize-y bg-muted/50 font-mono text-sm"
               value={rule.customPrompt}
               onChange={(e) => setRule((prev) => ({ ...prev, customPrompt: e.target.value }))}
             />

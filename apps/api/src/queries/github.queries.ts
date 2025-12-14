@@ -1008,6 +1008,8 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         // Pre-create analysis record with running status and PR metadata
         try {
           const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
+          // Calculate total lines of code reviewed (additions + deletions)
+          const reviewedLinesOfCode = (pull_request.additions || 0) + (pull_request.deletions || 0);
           const createPayload: any = {
             _id: preAnalysisId,
             analysis_type: "pr_analysis",
@@ -1021,6 +1023,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
             pr_number: pull_request.number,
             pr_url: prUrl,
             pr_title: pull_request.title,
+            reviewedLinesOfCode,
           };
           await Analysis.create(createPayload);
           logger.info("Pre-created analysis record", { analysisId: preAnalysisId, repo: repository.full_name, prNumber: pull_request.number });
