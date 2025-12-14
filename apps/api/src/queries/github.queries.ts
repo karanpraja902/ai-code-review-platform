@@ -926,6 +926,10 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
       const githubRepo = await Github_Repository.findOne({ 
         fullName: repository.full_name 
       }).populate('github_installationId');
+      console.log("🚀 Repository found in database", { 
+        repository: repository.full_name, 
+        prNumber: pull_request.number 
+      });
 
       if (githubRepo && githubRepo.trackGithubPullRequests) {
         logger.info("Starting PR analysis for repository", { 
@@ -1082,6 +1086,8 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
 
         // Start analysis in background (don't await to avoid blocking webhook response)
         const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
+        // Get the team ID from the repository's teams array (first team if multiple)
+        const teamIdForAnalysis = githubRepo.teams && githubRepo.teams.length > 0 ? githubRepo.teams[0] : undefined;
         executeAnalysis(
           githubRepo._id as string,
           repoUrl,
@@ -1100,7 +1106,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
             repo_url: repoUrl,
           },
           user.email,
-          undefined,
+          teamIdForAnalysis,
           preAnalysisId
         ).then(async (result) => {
           logger.info("PR analysis completed", { 

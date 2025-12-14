@@ -86,7 +86,6 @@ export const createCustomContext = async (req: Request, res: Response, next: Nex
       performanceReviews,
       codeQualityReviews,
       documentationReviews,
-      testingReviews,
       accessibilityReviews,
       bestPracticesReviews,
       isActive,
@@ -97,52 +96,30 @@ export const createCustomContext = async (req: Request, res: Response, next: Nex
       return res.status(400).json({ status: 'error', message: 'Name is required' });
     }
 
+    // Helper to create review config - only uses 'enabled' from request, always uses defaults for description/prompt
+    const createReviewConfig = (
+      requestConfig: { enabled?: boolean } | undefined,
+      defaultConfig: { description: string; prompt: string },
+      defaultEnabled: boolean
+    ) => ({
+      enabled: requestConfig?.enabled ?? defaultEnabled,
+      description: defaultConfig.description,
+      prompt: defaultConfig.prompt,
+    });
+
     const contextData: Partial<ICustomContext> = {
       name: name.trim(),
       createdBy: userId,
       team: teamId || userId,
       customPrompt: customPrompt || '',
       repositories: repositories || [],
-      styleReviews: styleReviews || {
-        enabled: true,
-        description: DEFAULT_REVIEW_PROMPTS.styleReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.styleReviews.prompt,
-      },
-      securityReviews: securityReviews || {
-        enabled: true,
-        description: DEFAULT_REVIEW_PROMPTS.securityReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.securityReviews.prompt,
-      },
-      performanceReviews: performanceReviews || {
-        enabled: true,
-        description: DEFAULT_REVIEW_PROMPTS.performanceReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.performanceReviews.prompt,
-      },
-      codeQualityReviews: codeQualityReviews || {
-        enabled: true,
-        description: DEFAULT_REVIEW_PROMPTS.codeQualityReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.codeQualityReviews.prompt,
-      },
-      documentationReviews: documentationReviews || {
-        enabled: false,
-        description: DEFAULT_REVIEW_PROMPTS.documentationReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.documentationReviews.prompt,
-      },
-      testingReviews: testingReviews || {
-        enabled: false,
-        description: DEFAULT_REVIEW_PROMPTS.testingReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.testingReviews.prompt,
-      },
-      accessibilityReviews: accessibilityReviews || {
-        enabled: false,
-        description: DEFAULT_REVIEW_PROMPTS.accessibilityReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.accessibilityReviews.prompt,
-      },
-      bestPracticesReviews: bestPracticesReviews || {
-        enabled: true,
-        description: DEFAULT_REVIEW_PROMPTS.bestPracticesReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.bestPracticesReviews.prompt,
-      },
+      styleReviews: createReviewConfig(styleReviews, DEFAULT_REVIEW_PROMPTS.styleReviews, false),
+      securityReviews: createReviewConfig(securityReviews, DEFAULT_REVIEW_PROMPTS.securityReviews, true),
+      performanceReviews: createReviewConfig(performanceReviews, DEFAULT_REVIEW_PROMPTS.performanceReviews, true),
+      codeQualityReviews: createReviewConfig(codeQualityReviews, DEFAULT_REVIEW_PROMPTS.codeQualityReviews, true),
+      documentationReviews: createReviewConfig(documentationReviews, DEFAULT_REVIEW_PROMPTS.documentationReviews, false),
+      accessibilityReviews: createReviewConfig(accessibilityReviews, DEFAULT_REVIEW_PROMPTS.accessibilityReviews, false),
+      bestPracticesReviews: createReviewConfig(bestPracticesReviews, DEFAULT_REVIEW_PROMPTS.bestPracticesReviews, true),
       isActive: isActive ?? true,
       isDefault: isDefault ?? false,
     };
@@ -187,7 +164,6 @@ export const updateCustomContext = async (req: Request, res: Response, next: Nex
       performanceReviews,
       codeQualityReviews,
       documentationReviews,
-      testingReviews,
       accessibilityReviews,
       bestPracticesReviews,
       isActive,
@@ -205,18 +181,47 @@ export const updateCustomContext = async (req: Request, res: Response, next: Nex
       );
     }
 
+    // Helper to update review config - only uses 'enabled' from request, always uses defaults for description/prompt
+    const updateReviewConfig = (
+      requestConfig: { enabled?: boolean } | undefined,
+      existingConfig: { enabled: boolean },
+      defaultConfig: { description: string; prompt: string }
+    ) => {
+      if (requestConfig === undefined) return undefined;
+      return {
+        enabled: requestConfig.enabled ?? existingConfig.enabled,
+        description: defaultConfig.description,
+        prompt: defaultConfig.prompt,
+      };
+    };
+
     const updateData: Partial<ICustomContext> = {};
     if (name !== undefined) updateData.name = name.trim();
     if (customPrompt !== undefined) updateData.customPrompt = customPrompt;
     if (repositories !== undefined) updateData.repositories = repositories;
-    if (styleReviews !== undefined) updateData.styleReviews = styleReviews;
-    if (securityReviews !== undefined) updateData.securityReviews = securityReviews;
-    if (performanceReviews !== undefined) updateData.performanceReviews = performanceReviews;
-    if (codeQualityReviews !== undefined) updateData.codeQualityReviews = codeQualityReviews;
-    if (documentationReviews !== undefined) updateData.documentationReviews = documentationReviews;
-    if (testingReviews !== undefined) updateData.testingReviews = testingReviews;
-    if (accessibilityReviews !== undefined) updateData.accessibilityReviews = accessibilityReviews;
-    if (bestPracticesReviews !== undefined) updateData.bestPracticesReviews = bestPracticesReviews;
+    
+    // For review types, only update enabled status and always use default prompts
+    const styleUpdate = updateReviewConfig(styleReviews, existingContext.styleReviews, DEFAULT_REVIEW_PROMPTS.styleReviews);
+    if (styleUpdate) updateData.styleReviews = styleUpdate;
+    
+    const securityUpdate = updateReviewConfig(securityReviews, existingContext.securityReviews, DEFAULT_REVIEW_PROMPTS.securityReviews);
+    if (securityUpdate) updateData.securityReviews = securityUpdate;
+    
+    const performanceUpdate = updateReviewConfig(performanceReviews, existingContext.performanceReviews, DEFAULT_REVIEW_PROMPTS.performanceReviews);
+    if (performanceUpdate) updateData.performanceReviews = performanceUpdate;
+    
+    const codeQualityUpdate = updateReviewConfig(codeQualityReviews, existingContext.codeQualityReviews, DEFAULT_REVIEW_PROMPTS.codeQualityReviews);
+    if (codeQualityUpdate) updateData.codeQualityReviews = codeQualityUpdate;
+    
+    const documentationUpdate = updateReviewConfig(documentationReviews, existingContext.documentationReviews, DEFAULT_REVIEW_PROMPTS.documentationReviews);
+    if (documentationUpdate) updateData.documentationReviews = documentationUpdate;
+    
+    const accessibilityUpdate = updateReviewConfig(accessibilityReviews, existingContext.accessibilityReviews, DEFAULT_REVIEW_PROMPTS.accessibilityReviews);
+    if (accessibilityUpdate) updateData.accessibilityReviews = accessibilityUpdate;
+    
+    const bestPracticesUpdate = updateReviewConfig(bestPracticesReviews, existingContext.bestPracticesReviews, DEFAULT_REVIEW_PROMPTS.bestPracticesReviews);
+    if (bestPracticesUpdate) updateData.bestPracticesReviews = bestPracticesUpdate;
+    
     if (isActive !== undefined) updateData.isActive = isActive;
     if (isDefault !== undefined) updateData.isDefault = isDefault;
 

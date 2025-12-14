@@ -83,7 +83,7 @@ interface CustomRule {
   performanceReviews: ReviewTypeConfig;
   codeQualityReviews: ReviewTypeConfig;
   documentationReviews: ReviewTypeConfig;
-  testingReviews: ReviewTypeConfig;
+  // testingReviews: ReviewTypeConfig;
   accessibilityReviews: ReviewTypeConfig;
   bestPracticesReviews: ReviewTypeConfig;
   isActive: boolean;
@@ -92,18 +92,18 @@ interface CustomRule {
   updatedAt?: string;
 }
 
-type ReviewTypeKey = 'styleReviews' | 'securityReviews' | 'performanceReviews' | 'codeQualityReviews' | 'documentationReviews' | 'testingReviews' | 'accessibilityReviews' | 'bestPracticesReviews';
+type ReviewTypeKey = 'styleReviews' | 'securityReviews' | 'performanceReviews' | 'codeQualityReviews' | 'documentationReviews' | 'accessibilityReviews' | 'bestPracticesReviews';
 
 // Review type definitions with descriptions (prompts come from DB)
 const reviewTypes: { key: ReviewTypeKey; label: string; description: string; icon: typeof Shield; color: string; defaultEnabled: boolean }[] = [
   { key: "securityReviews", label: "Security Reviews", description: "Identify security vulnerabilities and potential exploits", icon: Shield, color: "text-red-500", defaultEnabled: true },
-  { key: "styleReviews", label: "Style Reviews", description: "Check for code formatting, naming conventions, and style consistency", icon: Palette, color: "text-purple-500", defaultEnabled: true },
   { key: "performanceReviews", label: "Performance Reviews", description: "Identify performance bottlenecks and optimization opportunities", icon: Zap, color: "text-yellow-500", defaultEnabled: true },
   { key: "codeQualityReviews", label: "Code Quality Reviews", description: "Evaluate code maintainability, readability, and design patterns", icon: Code, color: "text-blue-500", defaultEnabled: true },
+  { key: "bestPracticesReviews", label: "Best Practices Reviews", description: "Ensure adherence to industry best practices and standards", icon: CheckCircle, color: "text-emerald-500", defaultEnabled: false },
+  { key: "styleReviews", label: "Style Reviews", description: "Check for code formatting, naming conventions, and style consistency", icon: Palette, color: "text-purple-500", defaultEnabled: false },
   { key: "documentationReviews", label: "Documentation Reviews", description: "Check for adequate comments, JSDoc, and documentation", icon: FileText, color: "text-green-500", defaultEnabled: false },
-  { key: "testingReviews", label: "Testing Reviews", description: "Evaluate test coverage and testing practices", icon: TestTube, color: "text-cyan-500", defaultEnabled: false },
+  // { key: "testingReviews", label: "Testing Reviews", description: "Evaluate test coverage and testing practices", icon: TestTube, color: "text-cyan-500", defaultEnabled: false },
   { key: "accessibilityReviews", label: "Accessibility Reviews", description: "Check for accessibility compliance (WCAG, ARIA, etc.)", icon: Accessibility, color: "text-orange-500", defaultEnabled: false },
-  { key: "bestPracticesReviews", label: "Best Practices Reviews", description: "Ensure adherence to industry best practices and standards", icon: CheckCircle, color: "text-emerald-500", defaultEnabled: true },
 ];
 
 // Helper to get default review config (minimal - prompts come from DB)
@@ -122,7 +122,7 @@ const defaultRule: CustomRule = {
   performanceReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'performanceReviews')!),
   codeQualityReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'codeQualityReviews')!),
   documentationReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'documentationReviews')!),
-  testingReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'testingReviews')!),
+  // testingReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'testingReviews')!),
   accessibilityReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'accessibilityReviews')!),
   bestPracticesReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'bestPracticesReviews')!),
   isActive: true,

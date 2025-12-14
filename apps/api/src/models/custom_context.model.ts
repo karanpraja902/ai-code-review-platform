@@ -17,7 +17,7 @@ export interface ICustomContext extends Document {
   performanceReviews: IReviewTypeConfig;
   codeQualityReviews: IReviewTypeConfig;
   documentationReviews: IReviewTypeConfig;
-  testingReviews: IReviewTypeConfig;
+  // testingReviews: IReviewTypeConfig;
   accessibilityReviews: IReviewTypeConfig;
   bestPracticesReviews: IReviewTypeConfig;
   isActive: boolean;
@@ -28,15 +28,15 @@ export interface ICustomContext extends Document {
 
 export const DEFAULT_REVIEW_PROMPTS = {
   styleReviews: {
-    description: 'Check for code formatting, naming conventions, and style consistency',
-    prompt: `Review the code for style and formatting issues:
-- Check for consistent naming conventions (camelCase, PascalCase, snake_case as appropriate)
-- Verify proper indentation and code formatting
-- Look for consistent use of quotes (single vs double)
-- Check line length and code readability
-- Identify any style guide violations
-- Review import organization and ordering
-- Check for consistent spacing and bracing styles`,
+    description: 'Review CSS, Tailwind, and UI styling for critical issues',
+    prompt: `Review styling changes for critical UI issues:
+- Check for broken layouts, missing responsive design, or overflow issues
+- Identify incorrect Tailwind class usage or conflicting styles
+- Look for hardcoded values that should use design tokens or CSS variables
+- Check for accessibility issues (contrast, focus states, touch targets)
+- Identify z-index conflicts or stacking context problems
+- Review animations/transitions that could cause performance issues
+- Check for missing dark mode or theme support where applicable`,
   },
   securityReviews: {
     description: 'Identify security vulnerabilities and potential exploits',
@@ -93,20 +93,20 @@ export const DEFAULT_REVIEW_PROMPTS = {
 - Check for proper type annotations
 - Review changelog and version documentation`,
   },
-  testingReviews: {
-    description: 'Evaluate test coverage and testing practices',
-    prompt: `Review the testing practices:
-- Check for adequate test coverage
-- Verify unit tests for critical functions
-- Look for edge case testing
-- Review integration test completeness
-- Check for test isolation and independence
-- Verify mock and stub usage appropriateness
-- Look for flaky or unreliable tests
-- Review test naming and organization
-- Check for assertion quality and specificity
-- Identify missing test scenarios`,
-  },
+//   testingReviews: {
+//     description: 'Evaluate test coverage and testing practices',
+//     prompt: `Review the testing practices:
+// - Check for adequate test coverage
+// - Verify unit tests for critical functions
+// - Look for edge case testing
+// - Review integration test completeness
+// - Check for test isolation and independence
+// - Verify mock and stub usage appropriateness
+// - Look for flaky or unreliable tests
+// - Review test naming and organization
+// - Check for assertion quality and specificity
+// - Identify missing test scenarios`,
+//   },
   accessibilityReviews: {
     description: 'Check for accessibility compliance (WCAG, ARIA, etc.)',
     prompt: `Review the code for accessibility compliance:
@@ -188,7 +188,7 @@ const CustomContextSchema = new Schema<ICustomContext>(
     styleReviews: {
       type: ReviewTypeConfigSchema,
       default: () => ({
-        enabled: true,
+        enabled: false,
         description: DEFAULT_REVIEW_PROMPTS.styleReviews.description,
         prompt: DEFAULT_REVIEW_PROMPTS.styleReviews.prompt,
       }),
@@ -225,14 +225,14 @@ const CustomContextSchema = new Schema<ICustomContext>(
         prompt: DEFAULT_REVIEW_PROMPTS.documentationReviews.prompt,
       }),
     },
-    testingReviews: {
-      type: ReviewTypeConfigSchema,
-      default: () => ({
-        enabled: false,
-        description: DEFAULT_REVIEW_PROMPTS.testingReviews.description,
-        prompt: DEFAULT_REVIEW_PROMPTS.testingReviews.prompt,
-      }),
-    },
+    // testingReviews: {
+    //   type: ReviewTypeConfigSchema,
+    //   default: () => ({
+    //     enabled: false,
+    //     description: DEFAULT_REVIEW_PROMPTS.testingReviews.description,
+    //     prompt: DEFAULT_REVIEW_PROMPTS.testingReviews.prompt,
+    //   }),
+    // },
     accessibilityReviews: {
       type: ReviewTypeConfigSchema,
       default: () => ({
@@ -244,7 +244,7 @@ const CustomContextSchema = new Schema<ICustomContext>(
     bestPracticesReviews: {
       type: ReviewTypeConfigSchema,
       default: () => ({
-        enabled: true,
+        enabled: false,
         description: DEFAULT_REVIEW_PROMPTS.bestPracticesReviews.description,
         prompt: DEFAULT_REVIEW_PROMPTS.bestPracticesReviews.prompt,
       }),
