@@ -28,112 +28,32 @@ export interface ICustomContext extends Document {
 
 export const DEFAULT_REVIEW_PROMPTS = {
   styleReviews: {
-    description: 'Review CSS, Tailwind, and UI styling for critical issues',
-    prompt: `Review styling changes for critical UI issues:
-- Check for broken layouts, missing responsive design, or overflow issues
-- Identify incorrect Tailwind class usage or conflicting styles
-- Look for hardcoded values that should use design tokens or CSS variables
-- Check for accessibility issues (contrast, focus states, touch targets)
-- Identify z-index conflicts or stacking context problems
-- Review animations/transitions that could cause performance issues
-- Check for missing dark mode or theme support where applicable`,
+    description: 'Review CSS/UI styling for critical layout-breaking issues',
+    prompt: `Only report styling issues that cause broken layouts, overflow bugs, or render the UI unusable. Skip minor style preferences.`,
   },
   securityReviews: {
-    description: 'Identify security vulnerabilities and potential exploits',
-    prompt: `Perform a security review of the code:
-- Check for SQL injection vulnerabilities
-- Look for XSS (Cross-Site Scripting) vulnerabilities
-- Identify potential CSRF issues
-- Review authentication and authorization logic
-- Check for sensitive data exposure (API keys, passwords, tokens)
-- Look for insecure direct object references
-- Review input validation and sanitization
-- Check for secure communication (HTTPS, encryption)
-- Identify potential denial of service vulnerabilities
-- Review error handling for information leakage`,
+    description: 'Identify exploitable security vulnerabilities',
+    prompt: `Only report security issues that are exploitable: SQL/NoSQL injection, XSS, authentication bypass, exposed secrets/credentials, or missing authorization checks. Skip theoretical vulnerabilities.`,
   },
   performanceReviews: {
-    description: 'Identify performance bottlenecks and optimization opportunities',
-    prompt: `Review the code for performance issues:
-- Identify N+1 query problems
-- Look for unnecessary loops or nested iterations
-- Check for memory leaks or excessive memory usage
-- Review database query efficiency
-- Identify opportunities for caching
-- Check for blocking operations in async contexts
-- Look for redundant computations
-- Review resource cleanup and disposal
-- Check for efficient data structure usage
-- Identify potential concurrency issues`,
+    description: 'Identify performance issues causing outages or degradation',
+    prompt: `Only report performance issues that can cause outages or severe degradation: N+1 queries, memory leaks, blocking async operations, or missing resource cleanup. Skip minor optimizations.`,
   },
   codeQualityReviews: {
-    description: 'Evaluate code maintainability, readability, and design patterns',
-    prompt: `Evaluate the overall code quality:
-- Check for code duplication (DRY principle)
-- Review function and class complexity
-- Verify single responsibility principle adherence
-- Look for proper error handling
-- Check for magic numbers and hardcoded values
-- Review variable and function naming clarity
-- Identify dead or unreachable code
-- Check for proper abstraction levels
-- Review dependency management
-- Look for code smells and anti-patterns`,
+    description: 'Identify code issues causing bugs or maintainability risks',
+    prompt: `Only report code quality issues that can cause bugs or long-term maintainability risks: missing error handling, logic errors, race conditions, or severe code duplication. Skip style preferences and minor refactoring.`,
   },
   documentationReviews: {
-    description: 'Check for adequate comments, JSDoc, and documentation',
-    prompt: `Review the code documentation:
-- Check for missing function/method documentation
-- Verify JSDoc/docstring completeness and accuracy
-- Look for outdated or misleading comments
-- Review README and inline documentation
-- Check for self-documenting code practices
-- Verify API documentation completeness
-- Look for TODO comments that need addressing
-- Check for proper type annotations
-- Review changelog and version documentation`,
+    description: 'Check for critically missing documentation',
+    prompt: `Only report missing documentation for public APIs, complex business logic, or security-critical functions. Skip minor documentation gaps.`,
   },
-//   testingReviews: {
-//     description: 'Evaluate test coverage and testing practices',
-//     prompt: `Review the testing practices:
-// - Check for adequate test coverage
-// - Verify unit tests for critical functions
-// - Look for edge case testing
-// - Review integration test completeness
-// - Check for test isolation and independence
-// - Verify mock and stub usage appropriateness
-// - Look for flaky or unreliable tests
-// - Review test naming and organization
-// - Check for assertion quality and specificity
-// - Identify missing test scenarios`,
-//   },
   accessibilityReviews: {
-    description: 'Check for accessibility compliance (WCAG, ARIA, etc.)',
-    prompt: `Review the code for accessibility compliance:
-- Check for proper ARIA labels and roles
-- Verify keyboard navigation support
-- Look for appropriate alt text on images
-- Review color contrast ratios
-- Check for semantic HTML usage
-- Verify form label associations
-- Look for focus management issues
-- Review screen reader compatibility
-- Check for responsive design accessibility
-- Verify skip links and landmark regions`,
+    description: 'Check for critical accessibility violations',
+    prompt: `Only report accessibility issues that block users: missing form labels, broken keyboard navigation, or missing alt text on functional images. Skip minor ARIA enhancements.`,
   },
   bestPracticesReviews: {
-    description: 'Ensure adherence to industry best practices and standards',
-    prompt: `Review adherence to best practices:
-- Check for SOLID principles compliance
-- Verify proper version control practices
-- Look for environment-specific configurations
-- Review logging and monitoring practices
-- Check for proper dependency injection
-- Verify configuration management
-- Look for proper secrets management
-- Review API design patterns (REST, GraphQL)
-- Check for proper error boundaries
-- Verify backwards compatibility considerations`,
+    description: 'Check for critical best practice violations',
+    prompt: `Only report best practice violations that cause bugs or security risks: hardcoded secrets, missing error boundaries, or broken backwards compatibility. Skip minor pattern preferences.`,
   },
 };
 
