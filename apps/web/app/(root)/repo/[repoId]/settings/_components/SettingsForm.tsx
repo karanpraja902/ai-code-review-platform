@@ -58,9 +58,6 @@ const SettingsFormSchema = z
     ]),
     analysisIntervalDays: z
       .string()
-      .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-        message: "Analysis interval days must be a positive number",
-      })
       .optional(),
     analysisIsRequired: z.boolean(),
     raiseIssues: z.boolean(),
@@ -68,12 +65,6 @@ const SettingsFormSchema = z
     trackGitHubIssues: z.boolean(),
     trackGitHubPullRequests: z.boolean(),
   })
-  .refine((data) => {
-    if (data.analysisFrequency === "custom" && !data.analysisIntervalDays) {
-      return false;
-    }
-    return true;
-  });
 
 const SettingsForm = () => {
   const [saving, setSaving] = useState(false);

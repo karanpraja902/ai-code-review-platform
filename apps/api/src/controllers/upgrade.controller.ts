@@ -57,10 +57,16 @@ export const requestUpgrade = async (req: Request, res: Response, _next: NextFun
       // proceed even if email fails, since we can still flag the user request
     }
 
-    user.requestedUpgrade = true;
+    user.requestedUpgrade = {
+      status: true,
+      startupName,
+      startupUrl,
+      description,
+      requestedAt,
+    };
     await user.save();
 
-    return res.status(200).json({ success: true, message: "Upgrade request submitted", data: { requestedUpgrade: true } });
+    return res.status(200).json({ success: true, message: "Upgrade request submitted", data: { requestedUpgrade: user.requestedUpgrade } });
   } catch (error) {
     logger.error("Error handling upgrade request", { error });
     return res.status(500).json({ success: false, message: "Internal server error" });

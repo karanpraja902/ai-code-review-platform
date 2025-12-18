@@ -98,8 +98,7 @@ const userSchema = new Schema<IUser>(
       type: Date,
     },
     requestedUpgrade: {
-      type: Boolean,
-      default: false,
+      type: Schema.Types.Mixed,
     },
     settings: {
       type: Schema.Types.Mixed,
