@@ -290,7 +290,7 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
           </Card>
               )}
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="text-lg">Pull Request Settings</CardTitle>
             </CardHeader>
@@ -305,7 +305,7 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                   {scope === "team" ? "Allow PR analysis for all team repositories" : "Allow PR analysis for all personal repositories"}
                 </Label>
               </div>
-              {/* <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                 <Checkbox
                   id="track-github-issues"
                   checked={bulkSettings.trackGithubIssues}
@@ -344,11 +344,11 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                 <Label htmlFor="auto-fix-bugs" className="cursor-pointer">
                   {scope === "team" ? "Automatically open PRs for simple fixes (team)" : "Automatically open PRs for simple fixes (personal)"}
                 </Label>
-              </div> */}
+              </div>
              
             
             </CardContent>
-          </Card>
+          </Card> */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Model Settings</CardTitle>
