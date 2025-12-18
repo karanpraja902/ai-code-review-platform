@@ -166,7 +166,7 @@ const SettingsForm = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Analysis Configuration */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Analysis Configuration</CardTitle>
               <CardDescription>
@@ -274,10 +274,10 @@ const SettingsForm = () => {
                 )}
               />
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Automation Settings */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Automation Settings</CardTitle>
               <CardDescription>
@@ -326,7 +326,7 @@ const SettingsForm = () => {
                 )}
               />
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Tracking Settings */}
           <Card>
@@ -337,7 +337,7 @@ const SettingsForm = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
+              {/* <FormField
                 control={form.control}
                 name="trackGitHubIssues"
                 render={({ field }) => (
@@ -354,7 +354,7 @@ const SettingsForm = () => {
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              /> */}
 
               <FormField
                 control={form.control}
