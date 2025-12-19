@@ -1,6 +1,7 @@
 import {
   appendToRedisBuffer,
   initRedisBuffer,
+  initAnalysisCommentCounter,
   finalizeAnalysisAndPersist,
 } from "../../utils/analysisStreamStore.js";
 import { connectSandbox, createSandbox } from "../../config/sandbox.js";
@@ -217,9 +218,14 @@ export const executeAnalysis = async (
           }
         }
 
-        // For extension analysis, include extension_data_id
+        // For extension analysis, include extension_data_id and reviewedLinesOfCode
         if (analysisType === "extension_analysis" && data && data.extension_data_id) {
           createPayload.extension_data_id = new mongoose.Types.ObjectId(data.extension_data_id);
+          
+          // Include reviewedLinesOfCode if provided
+          if (typeof data.reviewedLinesOfCode === 'number') {
+            createPayload.reviewedLinesOfCode = data.reviewedLinesOfCode;
+          }
         }
 
         await Analysis.create(createPayload);
@@ -297,6 +303,7 @@ export const executeAnalysis = async (
     }
 
     await initRedisBuffer(_id.toString());
+    await initAnalysisCommentCounter(_id.toString());
 
     // Debug: Log the data being passed
     // console.log("📊 Data parameter being passed to sandbox:", JSON.stringify(data, null, 2));

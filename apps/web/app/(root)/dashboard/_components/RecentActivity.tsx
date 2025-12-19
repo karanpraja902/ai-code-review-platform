@@ -9,6 +9,8 @@ import {
   GitPullRequest,
   MessageSquare,
   Github,
+  Monitor,
+  Code2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -30,18 +32,24 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
       pr_title?: string;
       pr_number?: number;
     };
+  type ExtensionActivityUI =
+    DashboardData["recent_activity"]["extension"][number] & {
+      type: "extension";
+    };
 
   const ActivityHeader = ({
     activity,
   }: {
-    activity: RepoActivityUI | PRAcitivityUI;
+    activity: RepoActivityUI | PRAcitivityUI | ExtensionActivityUI;
   }) => (
     <div className="flex-1">
       <div className="mb-1 flex items-center gap-2">
         {activity.type === "pull_request" ? (
-          <GitPullRequest className="text-primary h-3 w-3" />
+          <><GitPullRequest className="text-primary h-3 w-3" /> <span className="text-xs font-semibold text-primary">PR Review</span></>
+        ) : activity.type === "extension" ? (
+          <><Monitor className="text-primary h-3 w-3" /> <span className="text-xs font-semibold text-primary">Extension Review</span></>
         ) : (
-          <Github className="h-3 w-3" />
+          <><Github className="text-primary h-3 w-3" /> <span className="text-xs font-semibold text-primary">Repo Review</span></>
         )}
       </div>
       {activity.type === "pull_request" ? (
@@ -61,10 +69,12 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
       ) : (
         <>
           <h4 className="text-sm font-medium">{activity.repo_name}</h4>
-          <p className="mt-1 flex items-center gap-1 text-xs">
-            <GitBranch className="h-3 w-3" />
-            {activity.branch}
-          </p>
+          {activity.type === "repository" && (
+            <p className="mt-1 flex items-center gap-1 text-xs">
+              <GitBranch className="h-3 w-3" />
+              {activity.branch}
+            </p>
+          )}
         </>
       )}
     </div>
@@ -89,7 +99,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
   };
 
   // Merge and sort all activities by date (typed union)
-  const mergedActivities: Array<RepoActivityUI | PRAcitivityUI> = [
+  const mergedActivities: Array<RepoActivityUI | PRAcitivityUI | ExtensionActivityUI> = [
     ...data.recent_activity.full_repo.map((repo) => ({
       ...repo,
       type: "repository" as const,
@@ -97,6 +107,10 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
     ...data.recent_activity.pull_request.map((pr) => ({
       ...pr,
       type: "pull_request" as const,
+    })),
+    ...(data.recent_activity.extension || []).map((ext) => ({
+      ...ext,
+      type: "extension" as const,
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -162,7 +176,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                     </div>
                     <div className="flex items-center gap-1">
                       <GitPullRequest className="h-3 w-3" />
-                      PRs: {
+                      Pull Requests: {
                         activity.total_pull_request_suggested
                       } suggested, {activity.pull_request_opened} opened
                     </div>
@@ -173,6 +187,34 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                     {formatDate(activity.date)}
                   </p>
                 </Link>
+              ) : activity.type === "extension" && activity.analysis_id ? (
+                <div
+                  key={index}
+                  className="block cursor-default rounded-md border p-4 transition-colors hover:bg-neutral-100 hover:dark:bg-neutral-800"
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <ActivityHeader activity={activity} />
+                    <Badge className={statusClasses(activity.state)}>
+                      {activity.state}
+                    </Badge>
+                  </div>
+
+                  <div className="mb-2 grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3" />
+                      Comments: {activity.total_comments}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Code2 className="h-3 w-3" />
+                      Lines Reviewed: {activity.reviewed_lines}
+                    </div>
+                  </div>
+
+                  <p className="flex items-center gap-1 text-xs">
+                    <Clock className="h-3 w-3" />
+                    {formatDate(activity.date)}
+                  </p>
+                </div>
               ) : (
                 <p className="py-4 text-center">No recent activity</p>
               ),

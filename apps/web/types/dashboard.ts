@@ -14,6 +14,7 @@ export interface DashboardData {
   recent_activity: {
     pull_request: PullRequestActivity[];
     full_repo: FullRepoActivity[];
+    extension: ExtensionActivity[];
   };
   trends?: {
     daily_full_repo_reviews: Array<{ date: string; count: number }>;
@@ -47,6 +48,16 @@ export interface FullRepoActivity {
   pull_request_opened: number;
   repo_id?: string;
   analysis_id?: string;
+}
+
+export interface ExtensionActivity {
+  repo_name: string;
+  state: string;
+  date: string;
+  total_comments: number;
+  reviewed_lines: number;
+  repo_id?: string;
+  analysis_id: string;
 }
 
 export interface DashboardResponse {
