@@ -598,6 +598,13 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
             ref: commits[i].sha
           });
           
+          // Update stats from individual commit details (pulls.listCommits doesn't include stats)
+          commits[i].stats = {
+            additions: commitDetail?.data?.stats?.additions || 0,
+            deletions: commitDetail?.data?.stats?.deletions || 0,
+            total: commitDetail?.data?.stats?.total || 0
+          };
+          
           commits[i].files = commitDetail?.data?.files?.map((file: any) => ({
             filename: file.filename,
             status: file.status, // added, modified, removed, renamed
@@ -1008,8 +1015,12 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         // Pre-create analysis record with running status and PR metadata
         try {
           const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
-          // Calculate total lines of code reviewed (additions + deletions)
-          const reviewedLinesOfCode = (pull_request.additions || 0) + (pull_request.deletions || 0);
+          // Calculate lines of code from NEW commits only (not entire PR)
+          const reviewedLinesOfCode = newCommitsOnly.reduce((total, commit) => {
+            const commitAdditions = commit.stats?.additions || 0;
+            const commitDeletions = commit.stats?.deletions || 0;
+            return total + commitAdditions + commitDeletions;
+          }, 0);
           const createPayload: any = {
             _id: preAnalysisId,
             analysis_type: "pr_analysis",
