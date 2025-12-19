@@ -8,6 +8,7 @@ import { createParserState, parseStreamingResponse, finalizeParsing, PRComment }
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
 import { gunzipSync } from 'zlib';
+import { initAnalysisCommentCounter, incrementAnalysisCommentCounter } from '../utils/analysisStreamStore.js';
 
 export const createExtensionReview = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -74,6 +75,17 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
         return;
       }
 
+      // Calculate total lines of code reviewed (additions + deletions)
+      let reviewedLinesOfCode = 0;
+      if (decompressedChanges.files && Array.isArray(decompressedChanges.files)) {
+        reviewedLinesOfCode = decompressedChanges.files.reduce((total: number, file: any) => {
+          const additions = file.additions || 0;
+          const deletions = file.deletions || 0;
+          return total + additions + deletions;
+        }, 0);
+      }
+      logger.info(`Extension analysis - Total lines of code to review: ${reviewedLinesOfCode}`);
+
       const extensionData = new ExtensionData({
         repository,
         branches,
@@ -87,6 +99,54 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
       // Find repository by fullName
       const githubRepo: IGithub_Repository | null = await Github_Repository.findOne({ fullName: repository.fullName });
       const githubRepoId = githubRepo?._id?.toString() ?? null;
+
+      // Pre-create Analysis record to get the Analysis ID for comment counter tracking
+      const analysisId = new mongoose.Types.ObjectId();
+      const analysisRecord = new Analysis({
+        _id: analysisId,
+        analysis_type: 'extension_analysis',
+        userId,
+        repoUrl: repository.url,
+        github_repositoryId: githubRepoId ? new mongoose.Types.ObjectId(githubRepoId) : undefined,
+        extension_data_id: extensionData._id,
+        sandboxId: '', // Will be updated by executeAnalysis
+        model: "gemini-2.5-pro",
+        prompt: `Analyze this code changes for security vulnerabilities, code quality issues, and potential bugs. Provide inline comments and suggestions.`,
+        status: 'running',
+        reviewedLinesOfCode
+      });
+      await analysisRecord.save();
+      logger.info(`Pre-created Analysis record with ID: ${analysisId}`);
+
+      // Helper function to save comments and increment counter
+      const saveCommentsAndIncrementCounter = async (prComments: PRComment[], source: 'stdout' | 'stderr') => {
+        try {
+          const commentDocs = prComments.map(comment => ({
+            extension_data_id: extensionData._id,
+            user_id: userId,
+            file_path: extractFilePath(comment.content),
+            line_start: extractLineStart(comment.content),
+            line_end: extractLineEnd(comment.content),
+            severity: extractSeverity(comment.content),
+            confidence: extractConfidence(comment.content),
+            title: extractTitle(comment.content),
+            content: comment.content,
+            fetched: false
+          }));
+
+          await ExtensionComment.insertMany(commentDocs);
+          logger.info(`Saved ${commentDocs.length} comments from ${source} to database`);
+          
+          // Increment the comment counter using the Analysis ID
+          try {
+            await incrementAnalysisCommentCounter(analysisId.toString(), commentDocs.length);
+          } catch (counterError) {
+            logger.error('Failed to increment comment counter', counterError);
+          }
+        } catch (dbError) {
+          logger.error(`Failed to save ${source} comments to DB`, dbError);
+        }
+      };
 
       // Execute Analysis
       const prompt = `Analyze this code changes for security vulnerabilities, code quality issues, and potential bugs. Provide inline comments and suggestions.`;
@@ -102,27 +162,7 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
           Object.assign(parserState, state);
           if (prComments.length > 0) {
             comments.push(...prComments);
-            
-            // Save comments to database immediately
-            try {
-              const commentDocs = prComments.map(comment => ({
-                extension_data_id: extensionData._id,
-                user_id: userId,
-                file_path: extractFilePath(comment.content),
-                line_start: extractLineStart(comment.content),
-                line_end: extractLineEnd(comment.content),
-                severity: extractSeverity(comment.content),
-                confidence: extractConfidence(comment.content),
-                title: extractTitle(comment.content),
-                content: comment.content,
-                fetched: false
-              }));
-
-              await ExtensionComment.insertMany(commentDocs);
-              logger.info(`Saved ${commentDocs.length} comments to database`);
-            } catch (dbError) {
-              logger.error('Failed to save comments to DB', dbError);
-            }
+            await saveCommentsAndIncrementCounter(prComments, 'stdout');
           }
         },
         onStderr: async (data: string) => {
@@ -131,26 +171,7 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
           Object.assign(parserState, state);
           if (prComments.length > 0) {
             comments.push(...prComments);
-            
-            // Save stderr comments to database
-            try {
-              const commentDocs = prComments.map(comment => ({
-                extension_data_id: extensionData._id,
-                user_id: userId,
-                file_path: extractFilePath(comment.content),
-                line_start: extractLineStart(comment.content),
-                line_end: extractLineEnd(comment.content),
-                severity: extractSeverity(comment.content),
-                confidence: extractConfidence(comment.content),
-                title: extractTitle(comment.content),
-                content: comment.content,
-                fetched: false
-              }));
-
-              await ExtensionComment.insertMany(commentDocs);
-            } catch (dbError) {
-              logger.error('Failed to save stderr comments to DB', dbError);
-            }
+            await saveCommentsAndIncrementCounter(prComments, 'stderr');
           }
         },
         onProgress: async (message: string) => {
@@ -186,13 +207,16 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
         {
           extension_data_id: extensionData._id,
           repo_url: repository.url,
+          reviewedLinesOfCode, // Pass lines of code reviewed
         },
         // @ts-ignore
-        req.user?.email
+        req.user?.email,
+        undefined, // teamId  
+        analysisId.toString() // preCreatedAnalysisId - use the Analysis ID we created above
       ).then(async () => {
-        logger.info('Background analysis completed', { extension_data_id: extensionData._id });
+        logger.info('Background analysis completed', { extension_data_id: extensionData._id, analysis_id: analysisId });
       }).catch(async (error) => {
-        logger.error('Background analysis failed', { extension_data_id: extensionData._id, error });
+        logger.error('Background analysis failed', { extension_data_id: extensionData._id, analysis_id: analysisId, error });
       });
 
       // Don't wait for analysis - it runs in background

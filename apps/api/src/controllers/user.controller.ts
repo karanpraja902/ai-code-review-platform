@@ -331,6 +331,16 @@ export const getUserDashboardInfo = async (req: Request, res: Response, next: Ne
         .populate('github_repositoryId', 'fullName defaultBranch')
         .lean();
 
+        const recentExtensionAnalyses = await Analysis.find({
+            userId: userId,
+            analysis_type: 'extension_analysis',
+            createdAt: { $gte: rangeStart, $lte: now }
+        })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('github_repositoryId', 'fullName defaultBranch')
+        .lean();
+
         // Format recent activity data
         const recent_full_repo = recentFullRepoAnalyses.map(analysis => {
             const repo = analysis.github_repositoryId as any;
@@ -377,6 +387,19 @@ export const getUserDashboardInfo = async (req: Request, res: Response, next: Ne
             };
         });
 
+        const recent_extensions = recentExtensionAnalyses.map(analysis => {
+            const repo = analysis.github_repositoryId as any;
+            return {
+                repo_name: repo?.fullName || analysis.repoUrl || 'Unknown',
+                state: analysis.status,
+                date: analysis.createdAt,
+                total_comments: typeof (analysis as any).pr_comments_posted === 'number' ? (analysis as any).pr_comments_posted : 0,
+                reviewed_lines: typeof analysis.reviewedLinesOfCode === 'number' ? analysis.reviewedLinesOfCode : 0,
+                repo_id: repo?._id ? String(repo._id) : undefined,
+                analysis_id: String(analysis._id)
+            };
+        });
+
         // Calculate merge time trends
         const repoFullNames = repositories.map(repo => repo.fullName);
         const daily_pr_merge_time_avg = await buildDailyAvgMergeTime(repoFullNames);
@@ -398,7 +421,8 @@ export const getUserDashboardInfo = async (req: Request, res: Response, next: Ne
             },
             recent_activity: {
                 pull_request: recent_pull_requests,
-                full_repo: recent_full_repo
+                full_repo: recent_full_repo,
+                extension: recent_extensions
             },
             trends: {
                 daily_full_repo_reviews: buildDailyCounts(fullRepoAnalyses),
