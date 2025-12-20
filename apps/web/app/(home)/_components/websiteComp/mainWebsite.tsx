@@ -15,8 +15,8 @@ const MainWebsite = () => {
       <HeroSection />
       <OverviewSection />
       <FeaturesSection />
+      <SecuritySection /> 
       <IntegratedModels />
-      <SecuritySection />
       <FooterSection />
       <ParallaxAI Code Review />
     </main>

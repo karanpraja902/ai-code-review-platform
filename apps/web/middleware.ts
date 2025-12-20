@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/",
   "/security(.*)",
+  "/interact(.*)",
   "/_betterstack/(.*)",
 ]);
 const isEarlyAccessRoute = createRouteMatcher(["/early-access(.*)"]);
@@ -74,7 +75,8 @@ export default clerkMiddleware(async (auth, req) => {
             isEarlyAccessRoute(req) ||
             pathname.startsWith("/sign-in") ||
             pathname.startsWith("/sign-up") ||
-            pathname.startsWith("/security");
+            pathname.startsWith("/security") ||
+            pathname.startsWith("/interact");
 
           if (!isAllowedRoute) {
             return NextResponse.redirect(new URL("/early-access", req.url));
@@ -104,8 +106,8 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.redirect(callbackUrl);
     }
 
-    // Allow access to security page without redirecting
-    if (pathname.startsWith("/security")) {
+    // Allow access to security and interact pages without redirecting
+    if (pathname.startsWith("/security") || pathname.startsWith("/interact")) {
       return NextResponse.next();
     }
 

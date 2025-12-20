@@ -16,6 +16,7 @@ import {
   Settings,
   Bug,
   FileText,
+  AtSign,
 } from "lucide-react";
 
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
@@ -243,6 +244,18 @@ const AppSidebar = () => {
               </div>
             ) : (
               <div className="flex w-full flex-col">
+                <SidebarMenuButton asChild>
+                  <Link
+                    href="/interact"
+                    className={cn(
+                      "mb-3 flex items-center gap-2",
+                      open ? "px-2" : "px-0",
+                    )}
+                  >
+                    <AtSign className="h-4 w-4" />
+                    <span>How to interact</span>
+                  </Link>
+                </SidebarMenuButton>
                 <SidebarMenuButton asChild>
                   <Link
                     href="/report-issue"

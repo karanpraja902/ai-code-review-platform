@@ -11,6 +11,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { getDashboardData } from "../_actions/getDashboardData";
 import { getUserInstallations } from "@/_actions/user-actions";
 import { FullRepoReviewChart } from "./FullRepoReviewChart";
+import { ReviewedLinesChart } from "./ReviewedLinesChart";
 
 const DashboardPage = () => {
   const [days, setDays] = useState<number>(7);
@@ -72,14 +73,16 @@ const DashboardPage = () => {
             {/* Row 1, Column 1 - Recent Activity */}
             <RecentActivity data={dashboardData.data} />
             
+            <ReviewedLinesChart data={dashboardData.data} />
+
             {/* Row 1, Column 2 - Full Repo Review */}
-            <FullRepoReviewChart data={dashboardData.data} />
+            {/* <FullRepoReviewChart data={dashboardData.data} /> */}
             
             {/* Row 2, Column 1 - Pull Requests Chart */}
-            <PullRequestsChart data={dashboardData.data} />
+            {/* <PullRequestsChart data={dashboardData.data} /> */}
             
             {/* Row 2, Column 2 - GitHub Issues Chart */}
-            <GitHubIssuesChart data={dashboardData.data} />
+            {/* <GitHubIssuesChart data={dashboardData.data} /> */}
           </div>
 
           {/* Activity Overview Chart - Full width below */}
