@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { SignUpButton } from "@clerk/nextjs";
 import { ArrowUpRight } from "lucide-react";
 
-const heroSection = () => {
+const HeroSection = () => {
   return (
     <section>
       {/* Hero Section */}
@@ -64,7 +64,7 @@ const heroSection = () => {
                 ensuring your code is always a step ahead.
               </p>
 
-              <div className="flex flex-row gap-4">
+              <div className="flex flex-row gap-4 mb-10">
                 <SignUpButton>
                   <Button
                     size={"lg"}
@@ -91,4 +91,5 @@ const heroSection = () => {
   );
 };
 
-export default heroSection;
+export default HeroSection;
+
