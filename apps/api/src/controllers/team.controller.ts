@@ -382,6 +382,27 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
             return out;
         };
 
+        // Build daily total reviewed lines of code
+        const buildDailyReviewedLinesOfCode = (items: any[]) => {
+            const map: Record<string, number> = {};
+            for (const item of items) {
+                const created = new Date(item.createdAt);
+                if (created < rangeStart || created > now) continue;
+                if (item.status !== 'completed') continue;
+                const key = formatDateKey(created);
+                const lines = typeof item.reviewedLinesOfCode === 'number' ? item.reviewedLinesOfCode : 0;
+                map[key] = (map[key] ?? 0) + lines;
+            }
+            const out: { date: string; count: number }[] = [];
+            for (let i = 0; i < days; i++) {
+                const d = new Date(rangeStart);
+                d.setDate(rangeStart.getDate() + i);
+                const key = formatDateKey(d);
+                out.push({ date: key, count: map[key] ?? 0 });
+            }
+            return out;
+        };
+
         // Build daily average merge time for merged PRs
         const buildDailyAvgMergeTime = async (repoFullNames: string[]) => {
             if (repoFullNames.length === 0) {
@@ -604,6 +625,7 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
                 daily_full_repo_reviews: buildDailyCounts(fullRepoAnalyses),
                 daily_pr_reviews: buildDailyCounts(prAnalyses),
                 daily_pr_comments_avg: buildDailyAvgCommentsForUniquePRs(prAnalyses),
+                daily_reviewed_lines_of_code: buildDailyReviewedLinesOfCode(prAnalyses),
                 daily_pr_merge_time_avg,
                 range_days: days
             }

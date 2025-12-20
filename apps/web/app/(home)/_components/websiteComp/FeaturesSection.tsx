@@ -1,8 +1,10 @@
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { MultiStepLoader } from "@/components/ui/multi-step-loader";
 import { cn } from "@/lib/utils";
-import { Calendar, LucideIcon, MapIcon } from "lucide-react";
+import { ArrowRight, Calendar, LucideIcon, MapIcon } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { ReactNode } from "react";
 
 const loadingStates = [
@@ -82,6 +84,38 @@ export default function Features() {
            
             </div>
         </div>
+
+         <div
+          className="absolute inset-0 z-0"
+          style={{
+            background: "#000000",
+            backgroundImage: `
+              radial-gradient(circle, rgba(255, 255, 255, 0.1) 1.5px, transparent 1.5px)
+            `,
+            backgroundSize: "25px 25px",
+            backgroundPosition: "0 0",
+          }}
+        />
+
+        <div className="relative z-10">
+          <div className="mb-12 flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+            <div>
+              <h2 className="text-3xl leading-tight font-medium text-white md:text-4xl lg:text-5xl">
+                Interact with AI Code Review
+              </h2>
+            </div>
+            <Link href="/interact">
+              <Button
+                variant="outline"
+                className="group border-[#1a3d2f] bg-[#051810] text-white transition-colors hover:bg-[#0a2e20] hover:text-white"
+              >
+                See How to Interact with AI Code Review
+                <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+
 
         <div className="mx-auto grid gap-4 lg:grid-cols-2">
           <FeatureCard>
@@ -188,18 +222,18 @@ Start chatting and watch the workflow build itself. Code, tests, issues, reviews
               <CardHeader className="pb-3">
               <CardHeading
                 icon={MapIcon}
-                title="Full Repo Reviews"
+                title="AI Code Review IDE Extension"
                 description="Say hello to AI Code Review’s end-to-end repo analysis."
 
               />
             </CardHeader>
                   <div className="mb-6 w-full flex justify-center">
                     <Image
-                      src="/analysis-page.png"
+                      src="/ai-code-review_extension.jpeg"
                       alt="ai-code-review card"
                       width={1100}
                       height={700}
-                      className="rounded-md"
+                      className="rounded-md border-2"
                     />
                   </div>
                 {/* <h3 className="text-white text-2xl md:text-3xl font-semibold">

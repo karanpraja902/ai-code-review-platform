@@ -9,10 +9,12 @@ import { statusClasses } from "@/lib/utils/statusClasses";
 import { formatDistanceToNow } from "date-fns";
 import { IconBrandGithub } from "@tabler/icons-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useDebouncedCallback } from "use-debounce";
 import { useAuth } from "@clerk/nextjs";
 import { _config } from "@/lib/_config";
 import ConnectGithubCard from "../../_components/connect-github-card";
+import Link from "next/link";
 
 type RepoScope = "user" | "team";
 
@@ -250,8 +252,41 @@ const PrAnalysisList = ({ scope = "user" }: { scope?: RepoScope }) => {
           );
             })
           ) : (
-            <li className="min-h-[70vh] grid place-items-center text-base font-medium text-foreground">
-              {error ? `Error: ${error}` : "No PR analyses found"}
+            <li className="min-h-[70vh] grid place-items-center">
+              {error ? (
+                <span className="text-base font-medium text-foreground">Error: {error}</span>
+              ) : (
+                <div className="text-center max-w-md">
+                  <div className="mb-4">
+                    <GitPullRequestIcon className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No PR Analyses Yet</h3>
+                  <p className="text-muted-foreground text-sm mb-6">
+                    Your pull request analysis logs will appear here
+                  </p>
+                  <ul className="text-left text-sm text-muted-foreground space-y-3">
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-500 mt-0.5">•</span>
+                      <span>Once you open a PR in any of the connected repos, analysis triggers automatically</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-500 mt-0.5">•</span>
+                      <span>
+                        To trigger manually, comment{" "}
+                        <code className="bg-neutral-800 text-neutral-200 px-1.5 py-0.5 rounded text-xs font-mono">
+                          @ai-code-review review
+                        </code>{" "}
+                        on any PR
+                      </span>
+                    </li>
+                  </ul>
+                  <div className="mt-6">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/interact">See how to interact with AI Code Review</Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
             </li>
           )}
         </ul>

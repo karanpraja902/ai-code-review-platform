@@ -123,7 +123,7 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="no-scrollbar h-[450px] space-y-4 overflow-auto">
+        <div className="no-scrollbar max-h-[450px] space-y-4 overflow-auto">
           {mergedActivities.length > 0 ? (
             mergedActivities.map((activity, index) =>
               activity.type === "pull_request" ? (
@@ -216,12 +216,17 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                   </p>
                 </div>
               ) : (
-                <p className="py-4 text-center">No recent activity</p>
+                <div className="py-8 text-center">
+                  <p className="text-muted-foreground">You don&apos;t have any activity yet</p>
+                  <p className="text-muted-foreground text-sm mt-1">Once you run any analysis, your recent activities will appear here</p>
+                </div>
               ),
             )
           ) : (
-            <p className="py-4 text-center">No recent activity</p>
-          )}
+<div className="py-8 text-center">
+                  <p className="text-muted-foreground">You don&apos;t have any activity yet</p>
+                  <p className="text-muted-foreground text-sm mt-1">Once you run any analysis, your recent activities will appear here</p>
+                </div>          )}
         </div>
       </CardContent>
     </Card>

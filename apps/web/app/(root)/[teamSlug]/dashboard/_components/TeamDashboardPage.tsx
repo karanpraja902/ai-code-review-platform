@@ -11,6 +11,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { getTeamDashboardData } from "../_actions/getTeamDashboardData";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { FullRepoReviewChart } from "@/app/(root)/dashboard/_components/FullRepoReviewChart";
+import { ReviewedLinesChart } from "@/app/(root)/dashboard/_components/ReviewedLinesChart";
 
 const TeamDashboardPage = () => {
   const { teamSlug } = useParams<{ teamSlug: string }>();
@@ -60,14 +61,16 @@ const TeamDashboardPage = () => {
                   {/* Row 1, Column 1 - Recent Activity */}
                   <RecentActivity data={dashboardData.data} />
                   
+                  <ReviewedLinesChart data={dashboardData.data} />
+                  
                   {/* Row 1, Column 2 - Full Repo Review */}
-                  <FullRepoReviewChart data={dashboardData.data} />
+                  {/* <FullRepoReviewChart data={dashboardData.data} /> */}
                   
                   {/* Row 2, Column 1 - Pull Requests Chart */}
-                  <PullRequestsChart data={dashboardData.data} />
+                  {/* <PullRequestsChart data={dashboardData.data} /> */}
                   
                   {/* Row 2, Column 2 - GitHub Issues Chart */}
-                  <GitHubIssuesChart data={dashboardData.data} />
+                  {/* <GitHubIssuesChart data={dashboardData.data} /> */}
                 </div>
       
     </div>
