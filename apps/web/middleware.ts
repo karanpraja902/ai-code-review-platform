@@ -75,8 +75,8 @@ export default clerkMiddleware(async (auth, req) => {
             isEarlyAccessRoute(req) ||
             pathname.startsWith("/sign-in") ||
             pathname.startsWith("/sign-up") ||
-            pathname.startsWith("/security") ||
-            pathname.startsWith("/interact");
+pathname.startsWith("/security");
+
 
           if (!isAllowedRoute) {
             return NextResponse.redirect(new URL("/early-access", req.url));
