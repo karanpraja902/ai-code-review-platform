@@ -3,6 +3,7 @@ import {
   createAnalysis,
   startAnalysis,
   getAnalysisStatus,
+  getGlobalStats,
   getRepositoryAnalysis,
   getRepositoryAnalysisLogs,
   updateAnalysisStatus,
@@ -16,6 +17,7 @@ const router: Router = express.Router();
 
 // Public status endpoint
 router.get("/status", getAnalysisStatus);
+router.get("/global-stats", getGlobalStats);
 
 // Routes that need full auth (user + subscription + team)
 router.post("/create", 

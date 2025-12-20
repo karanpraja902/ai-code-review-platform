@@ -1,27 +1,76 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight } from "lucide-react";
 import { MacbookScroll } from "@/components/ui/macbook-scroll";
 import Link from "next/link";
+import { TypewriterEffect } from "@/components/ui/typewriter-effect";
+import { motion } from "motion/react";
+
+// Format numbers: 1M for >= 1,000,000, 10K for >= 10,000
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (num >= 10000) {
+    return `${(num / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  }
+  return num.toLocaleString();
+};
 
 const OverviewSection = () => {
+  const [stats, setStats] = useState<{ totalPrs: number; totalLinesReviewed: number } | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
+        const res = await fetch(`${apiUrl}/api/analysis/global-stats`);
+        const data = await res.json();
+        if (data.success) {
+          setStats(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Only create words array after stats are loaded
+  const words = stats ? [
+    { text: "We", className: "text-white" },
+    { text: "Have", className: "text-white" },
+    { text: "Reviewed", className: "text-white" },
+    { text: formatNumber(stats.totalLinesReviewed), className: "!text-primary" },
+    { text: "Lines", className: "text-white" },
+    { text: "Of", className: "text-white" },
+    { text: "Code", className: "text-white" },
+    { text: "across", className: "text-white" },
+    { text: formatNumber(stats.totalPrs), className: "!text-primary" },
+    { text: "Pull", className: "text-white" },
+    { text: "Requests", className: "text-white" },
+    { text: "so", className: "text-white" },
+    { text: "far", className: "text-white" },
+  ] : [];
+
   return (
     <section id="overview" className="pt-10">
       <div className="py-14 md:px-6 max-w-[1563px] w-full mx-auto border border-t-0 border-b-0 border-[#333333]">
         <div className="px-4 flex flex-col lg:flex-row gap-3 items-center justify-between">
           <div className="flex-1">
             <h2 className="text-white text-3xl font-semibold lg:max-w-xl leading-tight text-left mb-6">
-              Your repo, your rules — allows you to choose the model that hunts
-              down escaped bugs and heals your code before users notice{" "}
+              Your repo, your standards — define custom rules that review every change
+and heal your code before it hits production
+{" "}
             </h2>
           </div>
           <div className="flex flex-col gap-8 justify-end">
             <p className="text-white text-md font-medium lg:max-w-xl">
-              Empower your team to focus on building — we’ll hunt, fix, and
-              prevent bugs with full-repo analysis, not just PR reviews, so you
-              ship faster.{" "}
+              Let your team focus on building — AI Code Review reviews code with full-repo context,
+    not just PR diffs and with custom rules, preventing issues early so you ship faster with confidence..{" "}
             </p>
             <div>
               <Link href="/signin">
@@ -34,6 +83,31 @@ const OverviewSection = () => {
             </div>
           </div>
         </div>
+
+        <div className="min-h-[70vh] md:min-h-screen w-full flex flex-col items-center justify-center relative z-20 py-0 md:pt-25">
+          {stats ? (
+            <div className="font-bold font-mono text-center max-w-7xl leading-tight tracking-tight">
+              {/* Use TypewriterEffect for static words */}
+              <TypewriterEffect
+                words={words}
+                className="text-3xl md:text-5xl font-bold font-mono"
+                cursorClassName="bg-primary"
+              />
+            </div>
+          ) : (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{
+                duration: 0.8,
+                repeat: Infinity,
+                repeatType: "reverse",
+              }}
+              className="inline-block rounded-sm w-[4px] h-10 md:h-12 bg-primary"
+            />
+          )}
+        </div>
+
         <MacbookScroll src={"/dashboard-page.png"} />
         {/* <motion.div
           initial={{ opacity: 0, filter: "blur(5px)", y: 10 }}
@@ -57,3 +131,5 @@ const OverviewSection = () => {
 };
 
 export default OverviewSection;
+
+

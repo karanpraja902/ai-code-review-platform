@@ -659,3 +659,42 @@ export const stopAnalysis = async (
   }
 };
 
+
+export const getGlobalStats = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const stats = await Analysis.aggregate([
+      {
+        $match: {
+          analysis_type: "pr_analysis",
+          status: "completed",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalPrs: { $sum: 1 },
+          totalLines: { $sum: "$reviewedLinesOfCode" },
+        },
+      },
+    ]);
+
+    const result = stats.length > 0 ? stats[0] : { totalPrs: 0, totalLines: 0 };
+
+    res.json({
+      success: true,
+      data: {
+        totalPrs: result.totalPrs,
+        totalLinesReviewed: result.totalLines,
+      },
+    });
+  } catch (error: any) {
+    logger.error("Error fetching global stats", {
+      error: error instanceof Error ? error.message : error,
+    });
+    next(new CustomError("Failed to fetch global stats", 500));
+  }
+};
