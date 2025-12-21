@@ -530,7 +530,7 @@ processedContent = processedContent.replace(
       '<details>',
       '<summary>📖 User Guide</summary>',
       '',
-      '- Once repos are connected, PR analysis is automatically enabled. You can disable analysis for this repo from [ai-code-review-platform.dev/repositories](https://ai-code-review-platform.dev/repositories)',
+      '- Once repos are connected, PR analysis is automatically enabled. You can disable analysis for this repo from [ai-code-review-platform.dev/analysis](https://ai-code-review-platform.dev/analysis)',
       '- Comment `@ai-code-review review` on any PR to start analysis manually',
       '- Comment `@ai-code-review stop` to stop any ongoing analysis',
       '',
