@@ -13,7 +13,7 @@ export interface PRCommentContext {
   filesChanged?: string[]; // optional list of filenames (and previous filenames) from PR
   // Optional analysis ID to persist total posted comments
   analysisId?: string;
-  // Severity threshold for comment filtering: 0=all, 1=Medium+High+Critical, 2=Critical only
+  // Severity threshold for comment filtering: 0=all, 1=High+Critical, 2=Critical only
   severityThreshold?: number;
 }
 
@@ -37,17 +37,17 @@ export class PRCommentService {
   private severityThreshold: number;
   private static STATUS_MARKER = '<!-- ai-code-review:main-comment -->';
 
-  // Severity level mapping for comparison
+  // Severity level mapping - matches threshold values for simple comparison
   private static SEVERITY_LEVELS: Record<string, number> = {
-    'critical': 3,
-    'high': 2,
-    'medium': 1,
+    'medium': 0,
+    'high': 1,
+    'critical': 2,
   };
 
   constructor(context: PRCommentContext) {
     this.context = context;
     this.octokit = getInstallationOctokit(context.installationId);
-    // Default to 1 (MED) if not specified - show Medium+High+Critical
+    // Default to 1 if not specified - show High+Critical
     this.severityThreshold = context.severityThreshold ?? 1;
     if (Array.isArray(context.filesChanged) && context.filesChanged.length > 0) {
       // Normalize and store filenames for quick membership checks
@@ -61,29 +61,21 @@ export class PRCommentService {
 
   /**
    * Check if a comment should be posted based on its severity and the threshold setting.
-   * @param severity The severity string from the comment (Critical/High/Medium/Low)
+   * @param severity The severity string from the comment (Critical/High/Medium)
    * @returns true if should post, false if should skip
    */
   private shouldPostBySeverity(severity?: string): boolean {
     if (!severity) {
-      // If no severity, default to posting (treat as medium importance)
+      // If no severity, treat as high (level 1) - post for threshold 0 (all) and 1 (high+), skip for 2 (critical only)
       return this.severityThreshold <= 1;
     }
 
     const normalizedSeverity = severity.toLowerCase().trim();
     const severityLevel = PRCommentService.SEVERITY_LEVELS[normalizedSeverity] ?? 1;
 
-    // severityThreshold: 0=post all (LOW), 1=MED+ (severity >= 1), 2=HIGH+ (severity >= 3 i.e. Critical only)
-    switch (this.severityThreshold) {
-      case 0: // LOW - post all comments
-        return true;
-      case 1: // MED - post Medium, High, Critical (severity >= 1)
-        return severityLevel >= 1;
-      case 2: // HIGH - post Critical only (severity >= 3)
-        return severityLevel >= 3;
-      default:
-        return true;
-    }
+    // Simple comparison: post if severityLevel >= threshold
+    // threshold 0 = post all (medium+), threshold 1 = high+, threshold 2 = critical only
+    return severityLevel >= this.severityThreshold;
   }
 
   /**
@@ -357,7 +349,7 @@ processedContent = processedContent.replace(
       if (suggestion) {
         // Check severity threshold before posting
         if (!this.shouldPostBySeverity(suggestion.severity)) {
-          logger.info(`[PR-${this.context.pullNumber}] ⏭️ Comment skipped - severity: ${suggestion.severity || 'unknown'}, threshold: ${this.severityThreshold} (0=all, 1=med+, 2=critical only), file: ${suggestion.filePath}, lines: ${suggestion.lineStart}-${suggestion.lineEnd || suggestion.lineStart}`);
+          logger.info(`[PR-${this.context.pullNumber}] ⏭️ Comment skipped - severity: ${suggestion.severity || 'unknown'}, threshold: ${this.severityThreshold} (0=all, 1=high+, 2=critical only), file: ${suggestion.filePath}, lines: ${suggestion.lineStart}-${suggestion.lineEnd || suggestion.lineStart}`);
           return false;
         }
 
@@ -519,10 +511,10 @@ processedContent = processedContent.replace(
    */
   private getSeverityLabel(): string {
     switch (this.severityThreshold) {
-      case 0: return 'All — AI Code Review will post all comments including minor suggestions';
-      case 1: return 'Medium+ — AI Code Review will post Medium, High, and Critical comments';
+      case 0: return 'All — AI Code Review will post all comments (Medium, High, Critical)';
+      case 1: return 'High+ — AI Code Review will post High and Critical comments';
       case 2: return 'Critical Only — AI Code Review will post only Critical issues';
-      default: return 'Medium+ — AI Code Review will post Medium, High, and Critical comments';
+      default: return 'High+ — AI Code Review will post High and Critical comments';
     }
   }
 

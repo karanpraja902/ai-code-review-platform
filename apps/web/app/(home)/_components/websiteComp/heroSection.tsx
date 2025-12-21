@@ -69,7 +69,7 @@ const HeroSection = () => {
                   <Button
                     size={"lg"}
                     className="h-9 sm:h-12 px-2.5 sm:px-8 text-xs sm:text-sm rounded-md cursor-pointer text-black ">
-                    Start Analyzing Now <ArrowUpRight />
+                    Start For Free <ArrowUpRight />
                   </Button>
                 </SignUpButton>
 
