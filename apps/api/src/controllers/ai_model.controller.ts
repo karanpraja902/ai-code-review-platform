@@ -17,7 +17,7 @@ export const getAvailableModels = async (req: Request, res: Response) => {
     const filter: any = { isActive: true, allowedPlans: { $in: planObjectId } };
     if (mode) filter.allowedModes = { $in: mode };
     const models = await AIModel.find(filter)
-      .select('_id name provider')
+      .select('_id name provider input_context_limit')
       .sort({ name: 1 })
       .lean();
 

@@ -49,8 +49,8 @@ export const executeAnalysis = async (
     : new mongoose.Types.ObjectId();
 
   // Ensure model/provider are available across try/catch
-  let model: string;
-  let provider: string;
+  let model: string = "";
+  let provider: string = "";
   let modelDoc: IAIModel | null = null;
 
   try {
@@ -439,7 +439,7 @@ export const executeAnalysis = async (
       );
     }
 
-    // If analysis has already been marked as interrupted, skip finalization
+    // If analysis has already been marked as interrupted, persist data collected so far and return
     try {
       const current = await Analysis.findById(_id).lean();
       if (
@@ -449,9 +449,31 @@ export const executeAnalysis = async (
       ) {
         if (callbacks?.onProgress) {
           await callbacks.onProgress(
-            "⛔ Analysis was interrupted. Skipping finalize."
+            "⛔ Analysis was interrupted. Saving partial data..."
           );
         }
+        
+        // Still persist the data collected so far with 'interrupted' status
+        try {
+          await finalizeAnalysisAndPersist({
+            _id: _id.toString(),
+            analysis_type: analysisType,
+            userId,
+            repoUrl,
+            github_repositoryId: github_repositoryId || undefined,
+            sandboxId,
+            model,
+            prompt,
+            status: "interrupted",
+            exitCode: result.exitCode,
+          });
+          if (callbacks?.onProgress) {
+            await callbacks.onProgress("💾 Partial analysis data saved");
+          }
+        } catch (persistErr) {
+          console.error("Failed to persist interrupted analysis data:", persistErr);
+        }
+        
         return {
           success: false,
           exitCode: result.exitCode,
@@ -555,7 +577,7 @@ export const executeAnalysis = async (
       await callbacks.onProgress(`❌ Error: ${error.message}`);
     }
 
-    // If analysis has already been marked as interrupted, skip error finalization
+    // If analysis has already been marked as interrupted, persist data collected so far and return
     try {
       const current = await Analysis.findById(_id).lean();
       if (
@@ -565,9 +587,31 @@ export const executeAnalysis = async (
       ) {
         if (callbacks?.onProgress) {
           await callbacks.onProgress(
-            "⛔ Analysis was interrupted. Skipping error finalize."
+            "⛔ Analysis was interrupted. Saving partial data..."
           );
         }
+        
+        // Still persist the data collected so far with 'interrupted' status
+        try {
+          await finalizeAnalysisAndPersist({
+            _id: _id.toString(),
+            analysis_type: analysisType,
+            userId,
+            repoUrl,
+            github_repositoryId: github_repositoryId || undefined,
+            sandboxId,
+            model: model || "",
+            prompt,
+            status: "interrupted",
+            exitCode: runExitCode || -1,
+          });
+          if (callbacks?.onProgress) {
+            await callbacks.onProgress("💾 Partial analysis data saved");
+          }
+        } catch (persistErr) {
+          console.error("Failed to persist interrupted analysis data:", persistErr);
+        }
+        
         return {
           success: false,
           exitCode: runExitCode || -1,

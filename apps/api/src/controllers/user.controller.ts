@@ -477,6 +477,11 @@ export const getUserSettings = async (req: Request, res: Response, next: NextFun
     const settings: any = user.settings || {};
     const result: any = { ...settings };
 
+    // Set default commentSeverity if not present (1 = MED)
+    if (result.commentSeverity === undefined) {
+      result.commentSeverity = 1;
+    }
+
     // Populate model details if ObjectIds are present
     if (settings.defaultModelRepo) {
       try {
@@ -551,6 +556,11 @@ export const updateUserSettings = async (req: Request, res: Response, next: Next
       if (m) {
         nextSettings.defaultModelPr = m._id;
       }
+    }
+
+    // Handle commentSeverity (0=LOW, 1=MED, 2=HIGH)
+    if (typeof body.commentSeverity === 'number' && [0, 1, 2].includes(body.commentSeverity)) {
+      nextSettings.commentSeverity = body.commentSeverity;
     }
 
     user.settings = nextSettings;

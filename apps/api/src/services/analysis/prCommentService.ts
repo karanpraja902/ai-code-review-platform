@@ -2,6 +2,7 @@
 import { getInstallationOctokit } from '../../lib/githubApp.js';
 import { PRComment } from '../../utils/responseParser.js';
 import { incrementAnalysisCommentCounter } from '../../utils/analysisStreamStore.js';
+import { logger } from '../../utils/logger.js';
 
 export interface PRCommentContext {
   installationId: number;
@@ -12,6 +13,8 @@ export interface PRCommentContext {
   filesChanged?: string[]; // optional list of filenames (and previous filenames) from PR
   // Optional analysis ID to persist total posted comments
   analysisId?: string;
+  // Severity threshold for comment filtering: 0=all, 1=Medium+High+Critical, 2=Critical only
+  severityThreshold?: number;
 }
 
 export interface ParsedSuggestion {
@@ -31,11 +34,21 @@ export class PRCommentService {
   private postedComments: Set<string> = new Set();
   private filesInPR?: Set<string>;
   private statusCommentId?: number;
+  private severityThreshold: number;
   private static STATUS_MARKER = '<!-- ai-code-review:main-comment -->';
+
+  // Severity level mapping for comparison
+  private static SEVERITY_LEVELS: Record<string, number> = {
+    'critical': 3,
+    'high': 2,
+    'medium': 1,
+  };
 
   constructor(context: PRCommentContext) {
     this.context = context;
     this.octokit = getInstallationOctokit(context.installationId);
+    // Default to 1 (MED) if not specified - show Medium+High+Critical
+    this.severityThreshold = context.severityThreshold ?? 1;
     if (Array.isArray(context.filesChanged) && context.filesChanged.length > 0) {
       // Normalize and store filenames for quick membership checks
       this.filesInPR = new Set(
@@ -43,6 +56,33 @@ export class PRCommentService {
           .filter(Boolean)
           .map((p) => p.trim().replace(/^\.\//, ''))
       );
+    }
+  }
+
+  /**
+   * Check if a comment should be posted based on its severity and the threshold setting.
+   * @param severity The severity string from the comment (Critical/High/Medium/Low)
+   * @returns true if should post, false if should skip
+   */
+  private shouldPostBySeverity(severity?: string): boolean {
+    if (!severity) {
+      // If no severity, default to posting (treat as medium importance)
+      return this.severityThreshold <= 1;
+    }
+
+    const normalizedSeverity = severity.toLowerCase().trim();
+    const severityLevel = PRCommentService.SEVERITY_LEVELS[normalizedSeverity] ?? 1;
+
+    // severityThreshold: 0=post all (LOW), 1=MED+ (severity >= 1), 2=HIGH+ (severity >= 3 i.e. Critical only)
+    switch (this.severityThreshold) {
+      case 0: // LOW - post all comments
+        return true;
+      case 1: // MED - post Medium, High, Critical (severity >= 1)
+        return severityLevel >= 1;
+      case 2: // HIGH - post Critical only (severity >= 3)
+        return severityLevel >= 3;
+      default:
+        return true;
     }
   }
 
@@ -55,23 +95,20 @@ export class PRCommentService {
       const normalizedPath = filePath.trim().replace(/^\.\//, '');
 
       // Prefer provided files list if available
-      console.log("🔍 Files in PR Set: ", Array.from(this.filesInPR || []));
-      console.log(`[PR-${this.context.pullNumber}] 🔎 Checking provided filesChanged list for: "${normalizedPath}"`);
       const isFileInPR = this.filesInPR?.has(normalizedPath) || false;
-      console.log(`[PR-${this.context.pullNumber}] 🔍 Is file in PR: ${isFileInPR}`);
       
       // Additional debug: check if there's a partial match
       if (!isFileInPR && this.filesInPR) {
         const matchingFiles = Array.from(this.filesInPR).filter(f => f.includes(normalizedPath) || normalizedPath.includes(f));
         if (matchingFiles.length > 0) {
-          console.log(`[PR-${this.context.pullNumber}] ⚠️ Found similar files:`, matchingFiles);
+          logger.debug(`[PR-${this.context.pullNumber}] ⚠️ Found similar files:`, matchingFiles);
         }
       }
       
       return isFileInPR;
    
     } catch (e) {
-      console.error(`[PR-${this.context.pullNumber}] Failed to list PR files for validation:`, e);
+      logger.error(`[PR-${this.context.pullNumber}] Failed to list PR files for validation:`, e);
       return false;
     }
   }
@@ -198,6 +235,9 @@ processedContent = processedContent.replace(
       const confidenceMatch = content.match(/\*\*Confidence\*\*:\s*(.+)/);
       const confidence = confidenceMatch ? confidenceMatch[1].trim() : undefined;
       
+      // Extract severity (Critical/High/Medium)
+      const severityMatch = content.match(/\*\*Severity\*\*:\s*(Critical|High|Medium)/i);
+      const severity = severityMatch ? severityMatch[1].trim() : undefined;
 
       
       return {
@@ -207,6 +247,7 @@ processedContent = processedContent.replace(
         suggestionCode,
         originalComment: content,
         confidence,
+        severity,
       };
     } catch (error) {
       console.error('Error parsing suggestion comment:', error);
@@ -266,23 +307,20 @@ processedContent = processedContent.replace(
         line: suggestion.lineEnd || suggestion.lineStart
       };
 
-      console.log("🔄 Review comment params: ", reviewCommentParams);
-
       // If we have both lineStart and lineEnd, and they're different, use multi-line comment
       if (suggestion.lineEnd && suggestion.lineEnd !== suggestion.lineStart) {
         reviewCommentParams.start_line = suggestion.lineStart;
         reviewCommentParams.start_side = 'RIGHT';
-        console.log(`[PR-${this.context.pullNumber}] Creating multi-line comment from line ${suggestion.lineStart} to ${suggestion.lineEnd}`);
+        logger.debug(`[PR-${this.context.pullNumber}] Creating multi-line comment from line ${suggestion.lineStart} to ${suggestion.lineEnd}`);
       } else {
-        console.log(`[PR-${this.context.pullNumber}] Creating single-line comment at line ${suggestion.lineStart}`);
+        logger.debug(`[PR-${this.context.pullNumber}] Creating single-line comment at line ${suggestion.lineStart}`);
       }
 
       const response = await this.octokit.pulls.createReviewComment(reviewCommentParams);
 
-      console.log(`[PR-${this.context.pullNumber}] ✅ Posted review comment with suggestion: ${response.data.html_url}`);
       return true;
     } catch (error) {
-      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post review comment:`, error);
+      logger.error(`[PR-${this.context.pullNumber}] ❌ Failed to post review comment:`, error);
       // Fallback to regular comment if review comment fails
       return false;
     }
@@ -297,29 +335,32 @@ processedContent = processedContent.replace(
       const commentHash = this.createCommentHash(comment.content);
       
       if (this.postedComments.has(commentHash)) {
-        console.log(`[PR-${this.context.pullNumber}] Skipping duplicate comment`);
+        logger.debug(`[PR-${this.context.pullNumber}] Skipping duplicate comment`);
         return false;
       }
 
       // Summary comments: update the initial AI Code Review status comment instead of posting a new one
       const trimmed = comment.content.trim();
       if (trimmed.startsWith('## Summary by AI Code Review')) {
-        console.log("🔄 Updating AI Code Review status comment with summary content");
         const updated = await this.updateStatusCommentWithSummary(comment.content);
         if (updated) {
           this.postedComments.add(commentHash);
           return true;
         }
-        console.log(`[PR-${this.context.pullNumber}] ❌ Failed to update status comment; not posting duplicate summary`);
+        logger.debug(`[PR-${this.context.pullNumber}] ❌ Failed to update status comment; not posting duplicate summary`);
         return false;
       }
 
       // Check if this is a suggestion comment
       const suggestion = this.parseSuggestionComment(comment.content);
       
-      console.log("🔄 Suggestion: ", suggestion);
       if (suggestion) {
-        console.log("🔄 Posting review comment with suggestion");
+        // Check severity threshold before posting
+        if (!this.shouldPostBySeverity(suggestion.severity)) {
+          logger.info(`[PR-${this.context.pullNumber}] ⏭️ Comment skipped - severity: ${suggestion.severity || 'unknown'}, threshold: ${this.severityThreshold} (0=all, 1=med+, 2=critical only), file: ${suggestion.filePath}, lines: ${suggestion.lineStart}-${suggestion.lineEnd || suggestion.lineStart}`);
+          return false;
+        }
+
         // Try to post as a review comment with suggestion
         const reviewSuccess = await this.postReviewComment(suggestion);
         
@@ -328,14 +369,14 @@ processedContent = processedContent.replace(
           return true;
         }
         
-        console.log(`[PR-${this.context.pullNumber}] ❌ Review comment failed`);
+        logger.error(`[PR-${this.context.pullNumber}] ❌ Review comment failed`);
         return false;
       }
 
-      console.log(`[PR-${this.context.pullNumber}] ❌ No valid suggestion found in comment; not posting regular comment`);
+      logger.error(`[PR-${this.context.pullNumber}] ❌ No valid suggestion found in comment; not posting regular comment`);
       return false;
     } catch (error) {
-      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post comment:`, error);
+      logger.error(`[PR-${this.context.pullNumber}] ❌ Failed to post comment:`, error);
       return false;
     }
   }
@@ -360,7 +401,7 @@ processedContent = processedContent.replace(
         await incrementAnalysisCommentCounter(this.context.analysisId, successCount);
       }
     } catch (err) {
-      console.warn(`[PR-${this.context.pullNumber}] ⚠️ Failed to increment Redis comment counter`, err);
+      logger.warn(`[PR-${this.context.pullNumber}] ⚠️ Failed to increment Redis comment counter`, err);
     }
     
     return successCount;
@@ -473,6 +514,38 @@ processedContent = processedContent.replace(
     return result.join('\n');
   }
 
+  /**
+   * Generate the severity setting label based on threshold value
+   */
+  private getSeverityLabel(): string {
+    switch (this.severityThreshold) {
+      case 0: return 'All — AI Code Review will post all comments including minor suggestions';
+      case 1: return 'Medium+ — AI Code Review will post Medium, High, and Critical comments';
+      case 2: return 'Critical Only — AI Code Review will post only Critical issues';
+      default: return 'Medium+ — AI Code Review will post Medium, High, and Critical comments';
+    }
+  }
+
+  /**
+   * Generate the common user guide and settings footer for PR comments
+   */
+  private generateUserGuideFooter(): string {
+    const severityLabel = this.getSeverityLabel();
+    return [
+      '',
+      `**Severity Threshold**: \`${severityLabel}\` — [Change in Settings](https://ai-code-review-platform.dev/settings)`,
+      '',
+      '<details>',
+      '<summary>📖 User Guide</summary>',
+      '',
+      '- Once repos are connected, PR analysis is automatically enabled. You can disable analysis for this repo from [ai-code-review-platform.dev/repositories](https://ai-code-review-platform.dev/repositories)',
+      '- Comment `@ai-code-review review` on any PR to start analysis manually',
+      '- Comment `@ai-code-review stop` to stop any ongoing analysis',
+      '',
+      '</details>',
+    ].join('\n');
+  }
+
 
   /**
    * Create a friendly, immediately visible status comment indicating analysis started.
@@ -548,8 +621,10 @@ processedContent = processedContent.replace(
 \`\`\``,
 
         '',
+        this.generateUserGuideFooter(),
+        '',
         '---',
-        `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
+        `Follow us: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
       ].join('\n');
 
       const response = await this.octokit.issues.createComment({
@@ -659,7 +734,12 @@ processedContent = processedContent.replace(
     try {
       // Clean summary for GitHub rendering
       const processed = this.processCommentForGitHub(summaryContent);
-      const updatedBody = `${PRCommentService.STATUS_MARKER}\n${processed}`;
+      
+      // Append user guide and severity info to the summary
+      const footerContent = this.generateUserGuideFooter();
+      const linksSection = '\n\n---\nFollow us: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)';
+      
+      const updatedBody = `${PRCommentService.STATUS_MARKER}\n${processed}\n${footerContent}${linksSection}`;
 
       const commentId = this.statusCommentId;
       if (!commentId) {
@@ -671,7 +751,7 @@ processedContent = processedContent.replace(
           body: updatedBody,
         });
         this.statusCommentId = response.data.id;
-        console.log(`[PR-${this.context.pullNumber}] ✅ Posted new summary comment (no prior status found): ${response.data.html_url}`);
+        logger.debug(`[PR-${this.context.pullNumber}] ✅ Posted new summary comment (no prior status found): ${response.data.html_url}`);
         return true;
       }
 
@@ -681,10 +761,10 @@ processedContent = processedContent.replace(
         comment_id: commentId,
         body: updatedBody,
       });
-      console.log(`[PR-${this.context.pullNumber}] ✅ Updated status comment with summary: ${response.data.html_url}`);
+      logger.debug(`[PR-${this.context.pullNumber}] ✅ Updated status comment with summary: ${response.data.html_url}`);
       return true;
     } catch (error) {
-      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to update status comment with summary:`, error);
+      logger.error(`[PR-${this.context.pullNumber}] ❌ Failed to update status comment with summary:`, error);
       return false;
     }
   }

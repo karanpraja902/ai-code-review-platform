@@ -223,7 +223,7 @@ Start chatting and watch the workflow build itself. Code, tests, issues, reviews
               <CardHeading
                 icon={MapIcon}
                 title="AI Code Review IDE Extension"
-                description="Say hello to AI Code Review’s end-to-end repo analysis."
+                description="Say hello to AI Code Review’s in your IDE."
 
               />
             </CardHeader>
