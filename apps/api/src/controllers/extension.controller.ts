@@ -9,6 +9,7 @@ import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
 import { gunzipSync } from 'zlib';
 import { initAnalysisCommentCounter, incrementAnalysisCommentCounter } from '../utils/analysisStreamStore.js';
+import { Sandbox } from '@e2b/code-interpreter';
 
 export const createExtensionReview = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -479,7 +480,6 @@ export const stopExtensionAnalysis = async (req: Request, res: Response): Promis
     // Attempt to kill the sandbox if it exists
     if (analysis.sandboxId) {
       try {
-        const { Sandbox } = await import('@e2b/code-interpreter');
         await Sandbox.kill(analysis.sandboxId);
         logger.info(`Sandbox killed for extension analysis`, { dataId, sandboxId: analysis.sandboxId });
       } catch (killErr: any) {

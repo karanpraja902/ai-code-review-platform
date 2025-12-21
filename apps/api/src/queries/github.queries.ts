@@ -14,6 +14,7 @@ import { initAnalysisCommentCounter } from "../utils/analysisStreamStore.js";
 import Analysis from "../models/analysis.model.js";
 import SubscriptionPlan from "../models/subscription_plan.model.js";
 import { FeatureAccessChecker } from "../middlewares/helpers/checkAccessService.js";
+import { Sandbox } from "@e2b/code-interpreter";
 
 export const create_github_installation = async (payload: CreateInstallationInput) => {
     try {
@@ -263,6 +264,163 @@ export const handlePrMerged = async (payload: any) => {
   }
 };
 
+/**
+ * Handle stop analysis command from PR comment
+ * Interrupts any running analyses for the specified PR
+ */
+export const handleStopAnalysis = async (payload: {
+  repository: { full_name: string };
+  installation: { id: number };
+  prNumber: number;
+  headSha?: string;
+}) => {
+  try {
+    const { repository, installation, prNumber } = payload;
+    const [owner, repo] = repository.full_name.split('/');
+
+    logger.info('Processing stop analysis command', {
+      repository: repository.full_name,
+      prNumber,
+    });
+
+    // Find the repository to get its ID
+    const githubRepo = await Github_Repository.findOne({ fullName: repository.full_name });
+    
+    let interruptedCount = 0;
+    let killedSandboxes = 0;
+
+    if (githubRepo) {
+      // First, find all running analyses to get their sandbox IDs
+      const runningAnalyses = await Analysis.find({
+        github_repositoryId: githubRepo._id,
+        pr_number: prNumber,
+        status: 'running',
+      }).select('_id sandboxId');
+
+      // Try to kill each sandbox
+      
+      for (const analysis of runningAnalyses) {
+        if (analysis.sandboxId) {
+          try {
+            logger.info('Attempting to kill sandbox', { 
+              sandboxId: analysis.sandboxId, 
+              analysisId: analysis._id 
+            });
+            await Sandbox.kill(analysis.sandboxId);
+            killedSandboxes++;
+            logger.info('Successfully killed sandbox', { 
+              sandboxId: analysis.sandboxId 
+            });
+          } catch (killErr) {
+            // Sandbox might already be dead or unreachable - that's okay
+            logger.warn('Failed to kill sandbox (may already be stopped)', { 
+              sandboxId: analysis.sandboxId,
+              error: killErr instanceof Error ? killErr.message : killErr 
+            });
+          }
+        }
+      }
+
+      // Update all running analyses to interrupted
+      const result = await Analysis.updateMany(
+        {
+          github_repositoryId: githubRepo._id,
+          pr_number: prNumber,
+          status: 'running',
+        },
+        {
+          $set: { status: 'interrupted' },
+        }
+      );
+      interruptedCount = result.modifiedCount || 0;
+    }
+
+    logger.info('Interrupted running analyses', {
+      repository: repository.full_name,
+      prNumber,
+      interruptedCount,
+      killedSandboxes,
+    });
+
+    const octokit = getInstallationOctokit(installation.id);
+
+    // Update GitHub Check Run to cancelled status
+    if (interruptedCount > 0) {
+      try {
+        // Find the existing AI Code Review check run for this PR
+        const checkRuns = await octokit.checks.listForRef({
+          owner,
+          repo,
+          ref: payload.headSha || `refs/pull/${prNumber}/head`,
+          check_name: 'AI Code Review',
+        });
+
+        const ai-code-reviewCheck = checkRuns.data.check_runs.find(
+          (run) => run.status === 'in_progress' || run.status === 'queued'
+        );
+
+        if (ai-code-reviewCheck) {
+          await octokit.checks.update({
+            owner,
+            repo,
+            check_run_id: ai-code-reviewCheck.id,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            conclusion: 'cancelled',
+            output: {
+              title: 'AI Code Review Platform review cancelled',
+              summary: `Analysis was stopped by user command.`,
+              text: `The review was interrupted. To restart, comment \`@ai-code-review review\`.`,
+            },
+          });
+          logger.info('Updated AI Code Review check run to cancelled', { checkRunId: ai-code-reviewCheck.id, prNumber });
+        } else {
+          // Fallback to commit status if no check run found
+          logger.debug('No in-progress AI Code Review check run found, trying commit status fallback', { prNumber });
+          try {
+            await octokit.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: payload.headSha || '',
+              state: 'error',
+              context: 'AI Code Review',
+              description: 'Analysis cancelled by user',
+              target_url: `https://ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${prNumber}`,
+            });
+          } catch (statusErr) {
+            logger.warn('Failed to update commit status', { error: statusErr instanceof Error ? statusErr.message : statusErr });
+          }
+        }
+      } catch (checkErr) {
+        logger.warn('Failed to update GitHub Check Run to cancelled', {
+          error: checkErr instanceof Error ? checkErr.message : checkErr,
+          prNumber,
+        });
+      }
+    }
+
+    // Post confirmation comment
+    const stopMessage = interruptedCount > 0
+      ? `🛑 **Analysis stopped.** ${interruptedCount} running analysis${interruptedCount > 1 ? 'es were' : ' was'} interrupted${killedSandboxes > 0 ? ` and ${killedSandboxes} sandbox${killedSandboxes > 1 ? 'es' : ''} terminated` : ''}.\n\nTo restart analysis, comment \`@ai-code-review review\`.`
+      : `ℹ️ No running analysis found for this PR.\n\nTo start a new analysis, comment \`@ai-code-review review\`.`;
+
+    await octokit.issues.createComment({
+      owner,
+      repo,
+      issue_number: prNumber,
+      body: stopMessage,
+    });
+
+    return { success: true, interruptedCount, killedSandboxes };
+  } catch (error) {
+    logger.error('Error handling stop analysis command', {
+      error: error instanceof Error ? error.message : error,
+      prNumber: payload?.prNumber,
+      repository: payload?.repository?.full_name,
+    });
+    throw error;
+  }
+};
 
 // Get user's GitHub installation for token generation
 export const getUserGitHubInstallation = async (userId: string, owner: string) => {
@@ -955,13 +1113,41 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         // Initialize PR comment service
         const [owner, repo] = repository.full_name.split('/');
 
+        // Get comment severity threshold from user/team settings (default: 1 = Medium+)
+        let commentSeverityThreshold = 1; // Default: Medium and above
+        try {
+          const userSettings = user?.settings as any;
+          if (typeof userSettings?.commentSeverity === 'number') {
+            commentSeverityThreshold = userSettings.commentSeverity;
+          }
+          // If repo belongs to a team, try to use team settings
+          if (githubRepo.teams && githubRepo.teams.length > 0) {
+            const Team = mongoose.model('Team');
+            const team = await Team.findById(githubRepo.teams[0]).select('settings');
+            const teamSettings = team?.settings as any;
+            if (typeof teamSettings?.commentSeverity === 'number') {
+              commentSeverityThreshold = teamSettings.commentSeverity;
+            }
+          }
+          logger.info('Using comment severity threshold', { 
+            threshold: commentSeverityThreshold, 
+            meanings: { 0: 'all', 1: 'medium+', 2: 'critical only' },
+            prNumber: pull_request.number 
+          });
+        } catch (settingsErr) {
+          logger.warn('Failed to fetch comment severity setting, using default', { 
+            error: settingsErr instanceof Error ? settingsErr.message : settingsErr 
+          });
+        }
+
         const prCommentContext: PRCommentContext = {
           installationId: installation.id,
           owner,
           repo,
           pullNumber: pull_request.number,
           commitSha: pull_request.head.sha,
-          filesChanged: filesChangedForAnalysis
+          filesChanged: filesChangedForAnalysis,
+          severityThreshold: commentSeverityThreshold,
         };
 
         // Create/Update GitHub Check Run to reflect AI Code Review Platform review status
@@ -1060,7 +1246,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         // Define streaming callbacks for PR analysis
         const callbacks: StreamingCallbacks = {
           onStdout: async (data: string) => {
-            logger.debug("PR analysis stdout", { prNumber: pull_request.number, data });
+            logger.debug(`PR analysis stdout ${data.slice(0, 100)}`, { prNumber: pull_request.number, data });
             
             // Parse the streaming data for PR comments
             const { prComments, state } = parseStreamingResponse(data, parserState);
@@ -1083,7 +1269,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
             }
           },
           onStderr: async (data: string) => {
-            logger.error("PR analysis stderr", { prNumber: pull_request.number, error: data });
+            logger.error(`PR analysis stderr ${data.slice(0, 100)}`, { prNumber: pull_request.number, error: data });
             
             // Also parse stderr for potential PR comments (in case of mixed output)
             const { prComments, state } = parseStreamingResponse(data, parserState);

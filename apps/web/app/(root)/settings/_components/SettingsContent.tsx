@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { useUser, useOrganization, useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { _config } from "@/lib/_config";
 import { toast } from "sonner";
  
@@ -43,10 +44,23 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
   const [prModel, setPrModel] = useState<string>("");
   const [repoModelName, setRepoModelName] = useState<string>("");
   const [prModelName, setPrModelName] = useState<string>("");
-  const [availableRepoModels, setAvailableRepoModels] = useState<Array<{ _id: string; name: string; provider: string }>>([]);
-  const [availablePrModels, setAvailablePrModels] = useState<Array<{ _id: string; name: string; provider: string }>>([]);
+  const [availableRepoModels, setAvailableRepoModels] = useState<Array<{ _id: string; name: string; provider: string; input_context_limit?: number }>>([]);
+  const [availablePrModels, setAvailablePrModels] = useState<Array<{ _id: string; name: string; provider: string; input_context_limit?: number }>>([]);
+
+  // Helper function to format context limit (200000 → 200k, 1000000 → 1M)
+  const formatContextLimit = (limit?: number): string => {
+    if (!limit) return "";
+    if (limit >= 1000000) {
+      return `${(limit / 1000000).toFixed(limit % 1000000 === 0 ? 0 : 1)}M`;
+    }
+    if (limit >= 1000) {
+      return `${(limit / 1000).toFixed(limit % 1000 === 0 ? 0 : 1)}k`;
+    }
+    return String(limit);
+  };
   const [loadingRepoModels, setLoadingRepoModels] = useState<boolean>(false);
   const [loadingPrModels, setLoadingPrModels] = useState<boolean>(false);
+  const [severityThreshold, setSeverityThreshold] = useState<number>(1); // 0 = LOW, 1 = MED, 2 = HIGH
 
   useEffect(() => {
     try {
@@ -92,10 +106,14 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
           const repoModelName = typeof s.defaultModelRepoName === "string" ? s.defaultModelRepoName : "";
           const prModelName = typeof s.defaultModelPrName === "string" ? s.defaultModelPrName : "";
           
+          // Extract commentSeverity (default to 1 = MED)
+          const savedSeverity = typeof s.commentSeverity === "number" ? s.commentSeverity : 1;
+          
           setRepoModel(repoModelId);
           setPrModel(prModelId);
           setRepoModelName(repoModelName);
           setPrModelName(prModelName);
+          setSeverityThreshold(savedSeverity);
         }
 
         // Process available models
@@ -171,6 +189,19 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
     }
   };
 
+  // Auto-save when model or comment severity changes
+  useEffect(() => {
+    // Skip auto-save if not dirty (prevents save on initial load)
+    if (!dirty) return;
+    
+    const timeoutId = setTimeout(() => {
+      handleSave();
+    }, 500); // Debounce 500ms
+    
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prModel, repoModel, severityThreshold]);
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -188,6 +219,7 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
       const payload = {
         ...(repoModel ? { defaultModelRepoId: repoModel } : {}),
         ...(prModel ? { defaultModelPrId: prModel } : {}),
+        commentSeverity: severityThreshold,
       };
       const settingsRes = await fetch(settingsUrl, {
         method: "PUT",
@@ -351,16 +383,79 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
           </Card> */}
           <Card>
             <CardHeader>
+              <CardTitle className="text-lg">Comments</CardTitle>
+            </CardHeader>
+            <CardContent >
+              <div>
+                <div className="flex item-start justify-between gap-10 w-full">
+                   <div className="flex items-center gap-2">
+                  <Label htmlFor="comment-intensity">Comment Severity</Label>
+                  <InfoTooltip 
+                    content="Controls the minimum severity threshold for comments. Lower settings show more suggestions, higher settings focus on critical issues only."
+                    side="right"
+                  />
+                </div>
+                <div className="space-y-2 w-1/2">
+                  <div className="relative h-2">
+                    {/* Background track (unfilled) */}
+                    <div className="absolute inset-0 h-2 rounded-full bg-emerald-700/8" />
+                    {/* Filled track */}
+                    <div 
+                      className="absolute left-0 top-0 h-2 rounded-full bg-primary transition-all"
+                      style={{ width: `${severityThreshold * 50}%` }}
+                    />
+                    <input
+                      type="range"
+                      id="comment-intensity"
+                      min="0"
+                      max="2"
+                      step="1"
+                      value={severityThreshold}
+                      className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
+                      onChange={(e) => { setSeverityThreshold(Number(e.target.value)); setDirty(true); }}
+                    />
+                    {/* Thumb */}
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-primary rounded-sm shadow-md pointer-events-none transition-all"
+                      style={{ left: `calc(${severityThreshold * 50}% - 8px)` }}
+                    />
+                  </div>
+                  {/* Labels below the bar */}
+                  <div className="flex justify-between text-xs px-1">
+                    <span className={severityThreshold === 0 ? "text-foreground font-medium" : "text-muted-foreground"}>LOW</span>
+                    <span className={ `text-center ${severityThreshold === 1 ? "text-foreground font-medium" : "text-muted-foreground"}`}>MED <br/>(Recommended)</span>
+                    <span className={severityThreshold === 2 ? "text-foreground font-medium" : "text-muted-foreground"}>HIGH</span>
+                  </div>
+                </div>
+                </div>
+               
+                {/* Severity description */}
+                <p className="text-sm text-foreground mt-2">
+                  {severityThreshold === 0 && "All comments including minor suggestions. May be noisy on large PRs."}
+                  {severityThreshold === 1 && "Balanced feedback — medium and high severity issues only."}
+                  {severityThreshold === 2 && "Critical issues only — may miss less severe but still valuable suggestions."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle className="text-lg">Model Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              
-                <div className="space-y-2">
-                  <Label htmlFor="pr-model">Model for Pull Request Analysis</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="pr-model">Model for Pull Request Analysis</Label>
+                    <InfoTooltip 
+                      content="Select the AI model used to analyze your pull requests. Models with larger context limits can handle bigger PRs."
+                      side="right"
+                    />
+                  </div>
                   <Select value={prModel} onValueChange={(v) => { setPrModel(v); const found = availablePrModels.find((x) => x._id === v); if (found) setPrModelName(found.name); setDirty(true); }} onOpenChange={(open) => { if (open && availablePrModels.length === 0) { fetchAvailablePrModels(); } }}>
                     <SelectTrigger id="pr-model">
-                      <SelectValue placeholder={prModelName || "Select model"} />
+                      <SelectValue placeholder={prModelName ? `${prModelName}${(() => { const m = availablePrModels.find(x => x.name === prModelName); return m?.input_context_limit ? ` (${formatContextLimit(m.input_context_limit)} input tokens)` : ""; })()}` : "Select model"} />
                     </SelectTrigger>
                     <SelectContent>
                       {loadingPrModels && (
@@ -370,12 +465,14 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                         <SelectItem value="none" disabled>No models available</SelectItem>
                       )}
                       {availablePrModels.map((m) => (
-                        <SelectItem key={m._id} value={m._id}>{m.name}</SelectItem>
+                        <SelectItem key={m._id} value={m._id}>
+                          {m.name}{m.input_context_limit && <span className="text-xs text-muted-foreground ml-2">{formatContextLimit(m.input_context_limit)} input tokens</span>}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                {/* <div className="space-y-3">
                   <Label htmlFor="repo-model">Model for Repo Analysis</Label>
                   <Select value={repoModel} onValueChange={(v) => { setRepoModel(v); const found = availableRepoModels.find((x) => x._id === v); if (found) setRepoModelName(found.name); setDirty(true); }} onOpenChange={(open) => { if (open && availableRepoModels.length === 0) { fetchAvailableRepoModels(); } }}>
                     <SelectTrigger id="repo-model">
@@ -393,10 +490,11 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
               </div>
             </CardContent>
           </Card>
+          
             <div className="flex items-center justify-center pt-2">
                 <Button onClick={handleSave} disabled={!dirty || saving}>
                   {saving ? "Saving..." : "Save Settings"}
