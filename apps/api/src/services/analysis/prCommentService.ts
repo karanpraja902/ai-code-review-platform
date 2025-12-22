@@ -35,6 +35,7 @@ export class PRCommentService {
   private filesInPR?: Set<string>;
   private statusCommentId?: number;
   private severityThreshold: number;
+  private nonSummaryCommentsPosted: number = 0; // Track actual issue comments (not summary)
   private static STATUS_MARKER = '<!-- ai-code-review:main-comment -->';
 
   // Severity level mapping - matches threshold values for simple comparison
@@ -358,6 +359,7 @@ processedContent = processedContent.replace(
         
         if (reviewSuccess) {
           this.postedComments.add(commentHash);
+          this.nonSummaryCommentsPosted++; // Track non-summary comments
           return true;
         }
         
@@ -383,6 +385,7 @@ processedContent = processedContent.replace(
       const success = await this.postComment(comment);
       if (success) {
         successCount++;
+        logger.info(`[PR-${this.context.pullNumber}] ✅ Posted comment: ${comment.content}`);
         // Add a small delay between comments to avoid rate limiting
         await this.delay(1000);
       }
@@ -433,6 +436,13 @@ processedContent = processedContent.replace(
    */
   clearCache(): void {
     this.postedComments.clear();
+  }
+
+  /**
+   * Get the count of non-summary comments posted (actual issue/suggestion comments)
+   */
+  getNonSummaryCommentsPosted(): number {
+    return this.nonSummaryCommentsPosted;
   }
 
   /**
@@ -511,10 +521,10 @@ processedContent = processedContent.replace(
    */
   private getSeverityLabel(): string {
     switch (this.severityThreshold) {
-      case 0: return 'All — AI Code Review will post all comments (Medium, High, Critical)';
-      case 1: return 'High+ — AI Code Review will post High and Critical comments';
-      case 2: return 'Critical Only — AI Code Review will post only Critical issues';
-      default: return 'High+ — AI Code Review will post High and Critical comments';
+      case 0: return 'Show All — Posts all feedback including minor suggestions';
+      case 1: return 'Only Important — Posts only important issues (High & Critical)';
+      case 2: return 'Only Critical — Posts only the most critical issues';
+      default: return 'Only Important — Posts only important issues (High & Critical)';
     }
   }
 
@@ -526,6 +536,7 @@ processedContent = processedContent.replace(
     return [
       '',
       `**Severity Threshold**: \`${severityLabel}\` — [Change in Settings](https://ai-code-review-platform.dev/settings)`,
+      `**Custom Rules**: Define your own review rules — [Set Custom Rules](https://ai-code-review-platform.dev/custom-context)`,
       '',
       '<details>',
       '<summary>📖 User Guide</summary>',
@@ -536,6 +547,40 @@ processedContent = processedContent.replace(
       '',
       '</details>',
     ].join('\n');
+  }
+
+  /**
+   * Post a "no issues found" comment when analysis completes with only a summary and no other comments.
+   */
+  async postNoIssuesFoundComment(): Promise<boolean> {
+    try {
+      const footerContent = this.generateUserGuideFooter();
+      
+      // This is a SEPARATE comment from the status/summary comment
+      const body = [
+        '✅ You\'re good to merge this PR! **No issues found**. Great job!',
+        '',
+        '<details>',
+        '<summary>Settings</summary>',
+        '',
+        footerContent,
+        '',
+        '</details>',
+      ].join('\n');
+
+      // Always create a new comment (don't update status comment)
+      const response = await this.octokit.issues.createComment({
+        owner: this.context.owner,
+        repo: this.context.repo,
+        issue_number: this.context.pullNumber,
+        body,
+      });
+      logger.debug(`[PR-${this.context.pullNumber}] ✅ Posted no issues found comment: ${response.data.html_url}`);
+      return true;
+    } catch (error) {
+      logger.error(`[PR-${this.context.pullNumber}] ❌ Failed to post no issues found comment:`, error);
+      return false;
+    }
   }
 
 
