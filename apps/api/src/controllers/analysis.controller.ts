@@ -670,7 +670,7 @@ export const getGlobalStats = async (
       {
         $match: {
           analysis_type: "pr_analysis",
-          status: "completed",
+          status: { $nin: ["running", "error"] },
         },
       },
       {
