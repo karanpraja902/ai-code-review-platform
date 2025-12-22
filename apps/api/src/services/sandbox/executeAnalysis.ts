@@ -52,6 +52,9 @@ export const executeAnalysis = async (
   let model: string = "";
   let provider: string = "";
   let modelDoc: IAIModel | null = null;
+  
+  // Buffer to collect error logs from stderr for storing in DB on failure
+  let errorLogsBuffer: string[] = [];
 
   try {
     let teamDoc: any = null;
@@ -414,6 +417,9 @@ export const executeAnalysis = async (
         };
         const cleanData = redact(data);
 
+        // Collect error logs for storing in DB on failure
+        errorLogsBuffer.push(cleanData);
+
         // Buffer to Redis
         try {
           await appendToRedisBuffer(_id.toString(), `⚠️ ${cleanData}`);
@@ -497,6 +503,14 @@ export const executeAnalysis = async (
       try {
         const status: "completed" | "error" =
           result.exitCode === 0 ? "completed" : "error";
+        
+        // If analysis failed (non-zero exit code), store error logs
+        if (result.exitCode !== 0 && errorLogsBuffer.length > 0) {
+          const errorLogs = errorLogsBuffer.join('\n').slice(-10000); // Limit to last 10KB
+          await Analysis.findByIdAndUpdate(_id, { errorLogs });
+          console.log(`📝 Error logs stored for failed analysis: ${_id}`);
+        }
+        
         await finalizeAnalysisAndPersist({
           _id: _id.toString(),
           analysis_type: analysisType,
@@ -626,6 +640,13 @@ export const executeAnalysis = async (
     // For extension_analysis, github_repositoryId can be null
     if (userId && repoUrl) {
       try {
+        // Store error logs in DB
+        const errorLogs = errorLogsBuffer.length > 0 
+          ? errorLogsBuffer.join('\n').slice(-10000) // Limit to last 10KB
+          : error.message || 'Unknown error';
+        await Analysis.findByIdAndUpdate(_id, { errorLogs });
+        console.log(`📝 Error logs stored for failed analysis: ${_id}`);
+        
         await finalizeAnalysisAndPersist({
           _id: _id.toString(),
           analysis_type: analysisType,

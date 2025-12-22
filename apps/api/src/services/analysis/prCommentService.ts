@@ -409,7 +409,7 @@ processedContent = processedContent.replace(
    */
   async postAnalysisErrorComment(error: string): Promise<boolean> {
     const comment: PRComment = {
-      content: `❌ **CodeDetector Analysis Error**\n\nI encountered an error while analyzing this pull request:\n\n\`\`\`\n${error}\n\`\`\`\n\nPlease try again or contact support if the issue persists.`,
+      content: `❌ **AI Code Review Analysis Error**\n\nI encountered an error while analyzing this pull request:\n\n\`\`\`\n${error}\n\`\`\`\n\nPlease try again or contact support if the issue persists.`,
       timestamp: new Date().toISOString()
     };
     
@@ -683,16 +683,46 @@ processedContent = processedContent.replace(
    * Post a daily PR analysis limit reached status comment.
    * Keeps the same links section used in the main status comment.
    */
-  async postDailyLimitReachedComment(message?: string): Promise<boolean> {
+
+  /**
+   * Post a comment when PR author is a bot and automatic review is skipped.
+   * Informs user how to trigger a manual review.
+   */
+  /**
+   * Post a generalized "review skipped" comment with a specified reason.
+   * Can be used for: bot author, too many files, no changes, etc.
+   * @param reason The reason why the review was skipped (e.g., "Bot user detected", "PR has more than 100 files")
+   * @param showTriggerHint Whether to show the manual trigger hint (default: true)
+   */
+  async postSkippedComment(reason: string, showTriggerHint: boolean = true): Promise<boolean> {
     try {
-      const body = [
+      const bodyParts = [
         PRCommentService.STATUS_MARKER,
-        `## 🪲 Daily PR Analysis Limit Reached`,
-        (message || `You've hit the daily PR analysis limit on your current plan. Consider upgrading your plan: https://ai-code-review-platform.dev/dashboard`),
-        '',
-        '---',
-        `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
-      ].join('\n');
+        '> [!IMPORTANT]',
+        '> **Review skipped**',
+        '>',
+        `> ${reason}`,
+      ];
+
+      if (showTriggerHint) {
+        bodyParts.push('>');
+        bodyParts.push('> To trigger a single review, invoke the `@ai-code-review review` command.');
+      }
+
+      const footerContent = this.generateUserGuideFooter();
+
+      bodyParts.push('');
+      bodyParts.push('<details>');
+      bodyParts.push('<summary>Settings</summary>');
+      bodyParts.push('');
+      bodyParts.push(footerContent);
+      bodyParts.push('');
+      bodyParts.push('</details>');
+      bodyParts.push('');
+      bodyParts.push('---');
+      bodyParts.push(`Follow us: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`);
+
+      const body = bodyParts.join('\n');
 
       const response = await this.octokit.issues.createComment({
         owner: this.context.owner,
@@ -704,45 +734,40 @@ processedContent = processedContent.replace(
       this.statusCommentId = response.data.id;
       return true;
     } catch (error) {
-      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post daily limit reached comment:`, error);
+      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post skipped comment:`, error);
       return false;
     }
   }
 
   /**
    * Post a comment when PR author is a bot and automatic review is skipped.
-   * Informs user how to trigger a manual review.
+   * Convenience wrapper around postSkippedComment.
    */
   async postBotAuthorSkippedComment(): Promise<boolean> {
-    try {
-      const body = [
-        PRCommentService.STATUS_MARKER,
-        '> [!IMPORTANT]',
-        '> **Review skipped**',
-        '>',
-        '> Bot user detected.',
-        '>',
-        '> To trigger a single review, invoke the `@ai-code-review review` command.',
-        '',
-        '---',
-        `Links: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)`,
-      ].join('\n');
-
-      const response = await this.octokit.issues.createComment({
-        owner: this.context.owner,
-        repo: this.context.repo,
-        issue_number: this.context.pullNumber,
-        body,
-      });
-
-      this.statusCommentId = response.data.id;
-      return true;
-    } catch (error) {
-      console.error(`[PR-${this.context.pullNumber}] ❌ Failed to post bot author skipped comment:`, error);
-      return false;
-    }
+    return this.postSkippedComment('Bot user detected.');
   }
 
+  /**
+   * Post a comment when PR has too many files (>100) and review is skipped.
+   */
+  async postTooManyFilesSkippedComment(fileCount: number): Promise<boolean> {
+    return this.postSkippedComment(`This PR has ${fileCount} files changed, which exceeds our limit of 100 files for automatic review.`);
+  }
+
+  /**
+   * Post a comment when PR has no analyzable changes.
+   */
+  async postNoChangesSkippedComment(): Promise<boolean> {
+    return this.postSkippedComment('No new changes detected since last review.', false);
+  }
+
+  /**
+   * Post a comment when daily PR analysis limit is reached.
+   * Uses the generalized skip comment format.
+  */
+  async postDailyLimitReachedComment(): Promise<boolean> {
+    return this.postSkippedComment("You've hit the daily PR analysis limit on your current plan. Consider upgrading: [Upgrade](https://ai-code-review-platform.dev/upgrade)", false);
+  }
 
   /**
    * Find the existing AI Code Review status/main comment on the PR by hidden marker.

@@ -329,7 +329,10 @@ export const handleStopAnalysis = async (payload: {
           status: 'running',
         },
         {
-          $set: { status: 'interrupted' },
+          $set: { 
+            status: 'interrupted',
+            errorLogs: 'Manually stopped via @ai-code-review stop command.'
+          },
         }
       );
       interruptedCount = result.modifiedCount || 0;
@@ -564,6 +567,8 @@ export const checkPullRequestPermission = (installation: any) => {
   }
 };
 
+
+
 export const PrData = async (payload: any, options?: { skipBotCheck?: boolean }) => {
   try {
     const { pull_request, repository, installation, sender } = payload;
@@ -575,6 +580,53 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
       prNumber: pull_request?.number,
       skipBotCheck,
     });
+
+         // Helper function to create a skipped analysis record
+    const createSkippedAnalysis = async (skipReason: string) => {
+      try {
+        const githubInstallation = await Github_Installation.findOne({ installationId: installation.id });
+        if (!githubInstallation?.userId) return null;
+        
+        const githubRepo = await Github_Repository.findOne({ fullName: repository.full_name });
+        if (!githubRepo) return null;
+
+        const repoUrl = `https://github.com/${repository.full_name}`;
+        const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
+        const analysisId = new mongoose.Types.ObjectId().toString();
+        
+        const createPayload: any = {
+          _id: analysisId,
+          analysis_type: "pr_analysis",
+          userId: githubInstallation.userId,
+          repoUrl,
+          github_repositoryId: githubRepo._id,
+          sandboxId: "",
+          model: "skipped",
+          prompt: "Skipped - " + skipReason,
+          status: "skipped",
+          pr_number: pull_request.number,
+          pr_url: prUrl,
+          pr_title: pull_request.title,
+          errorLogs: skipReason,
+          // Don't store reviewedLinesOfCode for skipped analyses
+        };
+        
+        await Analysis.create(createPayload);
+        logger.info("Created skipped analysis record", { 
+          analysisId, 
+          repo: repository.full_name, 
+          prNumber: pull_request.number,
+          skipReason 
+        });
+        return analysisId;
+      } catch (err) {
+        logger.warn("Failed to create skipped analysis record", { 
+          error: err instanceof Error ? err.message : err 
+        });
+        return null;
+      }
+    };
+
 
     // Early check: Is PR author a bot? Skip automatic review if so.
     // Skip this check if triggered by @ai-code-review review command
@@ -659,8 +711,10 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
               commitSha: pull_request.head.sha,
             });
 
-            const msg = `You've hit the daily limits of PR analysis. Consider updating the plan: https://ai-code-review-platform.dev/dashboard`;
-            await prCommentService.postDailyLimitReachedComment(msg);
+            await prCommentService.postDailyLimitReachedComment();
+
+            // Create skipped analysis record for daily limit
+            await createSkippedAnalysis(`Daily PR analysis limit reached. Plan: ${featureResult.planName}, Current: ${featureResult.currentCount}, Max: ${featureResult.maxAllowed}`);
 
             logger.info("PR analysis blocked due to daily limit", {
               userId: githubInstallation.userId,
@@ -965,12 +1019,27 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
     };
 
     if (newCommitsOnly.length === 0) {
-      logger.info("No new commits detected for PR; skipping insertion", {
+      logger.info("No new commits detected for PR; skipping review", {
         prNumber: pull_request.number,
         repository: repository.full_name,
         latestCommitSha
       });
-      return
+
+      // Post skip comment for no new changes
+      const [owner, repo] = repository.full_name.split('/');
+      const prCommentService = new PRCommentService({
+        installationId: installation.id,
+        owner,
+        repo,
+        pullNumber: pull_request.number,
+        commitSha: pull_request.head.sha,
+      });
+      await prCommentService.postNoChangesSkippedComment();
+      
+      // Create skipped analysis record
+      await createSkippedAnalysis('No new commits detected since last review.');
+      
+      return;
     }
 
        // If we have at least some human commits, analyze ALL commits (including bot ones)
@@ -1057,6 +1126,35 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
     console.log("🔍 Files changed for analysis (from new commits): ", filesChangedForAnalysis);
     console.log("🚫 Ignored files (non-analyzable): ", ignoredFilesForAnalysis);
 
+
+    // Total files changed > 100? Skip review
+    const totalFilesChanged = filesChangedForAnalysis.length;
+    if (totalFilesChanged > 100) {
+      logger.info("PR has too many files; skipping review", {
+        prNumber: pull_request.number,
+        repository: repository.full_name,
+        totalFilesChanged,
+        limit: 100
+      });
+
+      const [owner, repo] = repository.full_name.split('/');
+      const prCommentService = new PRCommentService({
+        installationId: installation.id,
+        owner,
+        repo,
+        pullNumber: pull_request.number,
+        commitSha: pull_request.head.sha,
+      });
+      await prCommentService.postTooManyFilesSkippedComment(totalFilesChanged);
+      
+      // Create skipped analysis record
+      await createSkippedAnalysis(`PR has ${totalFilesChanged} files changed, exceeding the limit of 100 files.`);
+      
+      modelAnalysisData.skipped = true;
+      await prCollection?.insertOne(modelAnalysisData);
+      
+      return;
+    }
 
     // Fallback to previous entry id if we didn't insert a new one
     if (!prDataInsertedId) {
@@ -1314,6 +1412,52 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
             prNumber: pull_request.number, 
             result 
           });
+
+          // If analysis failed, handle as error case
+          if (!result.success) {
+            logger.warn("PR analysis returned failure", { 
+              repository: repository.full_name, 
+              prNumber: pull_request.number, 
+              error: result.error 
+            });
+            
+            // Mark GitHub Check Run as failed
+            if (checkRunId) {
+              try {
+                await octokit.checks.update({
+                  owner,
+                  repo,
+                  check_run_id: checkRunId,
+                  status: 'completed',
+                  completed_at: new Date().toISOString(),
+                  conclusion: 'failure',
+                  output: {
+                    title: 'AI Code Review Platform review failed',
+                    summary: `Analysis encountered an error for PR #${pull_request.number}.`,
+                    text: result.error || 'Unknown error.'
+                  }
+                });
+                logger.info('Updated AI Code Review Platform check run to failed', { checkRunId, prNumber: pull_request.number });
+              } catch (updateErr) {
+                logger.warn('Failed to update GitHub Check Run to failed', { error: updateErr instanceof Error ? updateErr.message : updateErr, checkRunId });
+              }
+            } else if (usedStatusFallback) {
+              try {
+                await octokit.repos.createCommitStatus({
+                  owner,
+                  repo,
+                  sha: pull_request.head.sha,
+                  state: 'failure',
+                  context: 'AI Code Review',
+                  description: 'AI Code Review Platform review failed',
+                  target_url: `https://ai-code-review-platform.dev/github/${encodeURIComponent(repository.full_name)}/pull/${pull_request.number}`
+                });
+              } catch (statusErr) {
+                logger.warn('Failed to update fallback commit status to failure', { error: statusErr instanceof Error ? statusErr.message : statusErr });
+              }
+            }
+            return; // Early return - don't process success flow
+          }
           
           // Process any remaining content in parser state
           const finalComments = finalizeParsing(parserState);
