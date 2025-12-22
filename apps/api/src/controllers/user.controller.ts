@@ -404,7 +404,8 @@ export const getUserDashboardInfo = async (req: Request, res: Response, next: Ne
                 total_comments: typeof (analysis as any).pr_comments_posted === 'number' ? (analysis as any).pr_comments_posted : 0,
                 pr_url: prUrl,
                 repo_id: (repo?._id ? String(repo._id) : String(analysis.github_repositoryId)),
-                analysis_id: String(analysis._id)
+                analysis_id: String(analysis._id),
+                errorLogs: analysis.errorLogs
             };
         });
 

@@ -460,7 +460,7 @@ export const getPrAnalysis = async (
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .select("repoUrl model status pr_number pr_url pr_title createdAt");
+      .select("repoUrl model status pr_number pr_url pr_title createdAt errorLogs");
 
     return res.status(200).json({
       success: true,
@@ -491,7 +491,7 @@ export const updateAnalysisStatus = async (
     const { status } = req.body;
 
     // Validate status
-    const validStatuses = ['draft', 'running', 'completed', 'interrupted', 'error'];
+    const validStatuses = ['draft', 'running', 'completed', 'interrupted', 'error', 'skipped'];
     if (!validStatuses.includes(status)) {
       return next(new CustomError("Invalid status value", 400));
     }

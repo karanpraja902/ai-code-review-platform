@@ -10,7 +10,7 @@ export interface IAnalysis {
   extension_data_id?: mongoose.Types.ObjectId; // For extension analysis
   model: string;
   prompt: string;
-  status: 'draft' | 'running' | 'completed' | 'interrupted' | 'error';
+  status: 'draft' | 'running' | 'completed' | 'interrupted' | 'error' | 'skipped';
   // PR-specific fields (only present for 'pr_analysis')
   pr_number?: number;
   pr_url?: string;
@@ -21,6 +21,8 @@ export interface IAnalysis {
   reviewedLinesOfCode?: number;
   // Options field only for PR review context
   options?: Record<string, any>;
+  // Error logs captured when analysis fails
+  errorLogs?: string;
   exitCode?: number | null;
   logsCompressed?: Buffer;
   compression?: {
@@ -44,7 +46,7 @@ const AnalysisSchema = new Schema<IAnalysis>(
     prompt: { type: String, required: true },
     status: {
       type: String,
-      enum: ['draft', 'running', 'completed', 'interrupted', 'error'],
+      enum: ['draft', 'running', 'completed', 'interrupted', 'error', 'skipped'],
       required: true,
     },
     pr_number: { type: Number },
@@ -54,6 +56,8 @@ const AnalysisSchema = new Schema<IAnalysis>(
     reviewedLinesOfCode: { type: Number, default: 0 },
     // Options field used only for PR review context
     options: { type: Schema.Types.Mixed },
+    // Error logs captured when analysis fails
+    errorLogs: { type: String },
     exitCode: { type: Number },
     logsCompressed: { type: Buffer },
     compression: {

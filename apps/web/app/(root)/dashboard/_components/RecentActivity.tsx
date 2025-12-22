@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DashboardData } from "@/types/dashboard";
 
 import {
@@ -11,6 +12,11 @@ import {
   Github,
   Monitor,
   Code2,
+  CircleCheck,
+  CircleX,
+  Ellipsis,
+  SkipForward,
+  AlertTriangle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -136,9 +142,28 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                 >
                   <div className="mb-2 flex items-start justify-between">
                     <ActivityHeader activity={activity} />
-                    <Badge className={statusClasses(activity.state)}>
-                      {activity.state}
-                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className={`cursor-help inline-flex items-center gap-1 ${statusClasses(activity.state)}`}>
+                          {activity.state}
+                          {activity.state === "completed" && <CircleCheck className="h-3 w-3" />}
+                          {activity.state === "error" && <CircleX className="h-3 w-3" />}
+                          {activity.state === "running" && <Ellipsis className="h-3 w-3 animate-pulse" />}
+                          {activity.state === "skipped" && <SkipForward className="h-3 w-3" />}
+                          {activity.state === "interrupted" && <AlertTriangle className="h-3 w-3" />}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {["error", "skipped", "interrupted"].includes(activity.state) ? (
+                          <span>{(activity as any).errorLogs || `${activity.state} - No details available`}</span>
+                        ) : (
+                          <span>
+                            {activity.state === "completed" ? "Completed" : "Started"}{" "}
+                            {formatDate(activity.date)}
+                          </span>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
 
                   <div className="mb-2 text-xs">
@@ -163,9 +188,28 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                 >
                   <div className="mb-2 flex items-start justify-between">
                     <ActivityHeader activity={activity} />
-                    <Badge className={statusClasses(activity.state)}>
-                      {activity.state}
-                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className={`cursor-help inline-flex items-center gap-1 ${statusClasses(activity.state)}`}>
+                          {activity.state}
+                          {activity.state === "completed" && <CircleCheck className="h-3 w-3" />}
+                          {activity.state === "error" && <CircleX className="h-3 w-3" />}
+                          {activity.state === "running" && <Ellipsis className="h-3 w-3 animate-pulse" />}
+                          {activity.state === "skipped" && <SkipForward className="h-3 w-3" />}
+                          {activity.state === "interrupted" && <AlertTriangle className="h-3 w-3" />}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {["error", "skipped", "interrupted"].includes(activity.state) ? (
+                          <span>{(activity as any).errorLogs || `${activity.state} - No details available`}</span>
+                        ) : (
+                          <span>
+                            {activity.state === "completed" ? "Completed" : "Started"}{" "}
+                            {formatDate(activity.date)}
+                          </span>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
 
                   <div className="mb-2 grid grid-cols-2 gap-2 text-xs">
@@ -194,9 +238,28 @@ export const RecentActivity = ({ data }: RecentActivityProps) => {
                 >
                   <div className="mb-2 flex items-start justify-between">
                     <ActivityHeader activity={activity} />
-                    <Badge className={statusClasses(activity.state)}>
-                      {activity.state}
-                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className={`cursor-help inline-flex items-center gap-1 ${statusClasses(activity.state)}`}>
+                          {activity.state}
+                          {activity.state === "completed" && <CircleCheck className="h-3 w-3" />}
+                          {activity.state === "error" && <CircleX className="h-3 w-3" />}
+                          {activity.state === "running" && <Ellipsis className="h-3 w-3 animate-pulse" />}
+                          {activity.state === "skipped" && <SkipForward className="h-3 w-3" />}
+                          {activity.state === "interrupted" && <AlertTriangle className="h-3 w-3" />}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {["error", "skipped", "interrupted"].includes(activity.state) ? (
+                          <span>{(activity as any).error_logs || `${activity.state} - No details available`}</span>
+                        ) : (
+                          <span>
+                            {activity.state === "completed" ? "Completed" : "Started"}{" "}
+                            {formatDate(activity.date)}
+                          </span>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
 
                   <div className="mb-2 grid grid-cols-2 gap-2 text-xs">

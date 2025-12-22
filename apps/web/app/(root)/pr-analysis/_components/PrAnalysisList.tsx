@@ -4,11 +4,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { logger } from "@/lib/logger";
 import { getPrAnalyses } from "../../analysis/_actions/getPrAnalyses";
-import { CircleCheck, CircleX, Ellipsis, ExternalLink, GitPullRequestIcon, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { CircleCheck, CircleX, Ellipsis, ExternalLink, GitPullRequestIcon, ChevronLeft, ChevronRight, Search, SkipForward, AlertTriangle } from "lucide-react";
 import { statusClasses } from "@/lib/utils/statusClasses";
 import { formatDistanceToNow } from "date-fns";
 import { IconBrandGithub } from "@tabler/icons-react";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { useDebouncedCallback } from "use-debounce";
 import { useAuth } from "@clerk/nextjs";
@@ -27,6 +28,7 @@ const PrAnalysisList = ({ scope = "user" }: { scope?: RepoScope }) => {
     pr_url?: string;
     pr_title?: string;
     createdAt?: string;
+    errorLogs?: string;
   }>>([]);
 
   const [page, setPage] = useState(1);
@@ -218,19 +220,38 @@ const PrAnalysisList = ({ scope = "user" }: { scope?: RepoScope }) => {
                     )}
                   </div>
                   <div className="col-span-2">
-                    <span className={`text-xs px-1.5 py-1 rounded-lg inline-block ${statusClasses(item.status)}`}>
-                   
-                      <span className="align-middle">{item.status}</span>
-                        {item.status === "completed" && (
-                        <CircleCheck className="h-3 w-3 inline-block ml-1" />
-                      )}
-                      {item.status === "error" && (
-                        <CircleX className="h-3 w-3 inline-block ml-1" />
-                      )}
-                      {item.status === "running" && (
-                        <Ellipsis className="h-3 w-3 inline-block ml-1 animate-pulse" />
-                      )}
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className={`text-xs px-1.5 py-1 rounded-lg inline-flex items-center gap-1 cursor-help ${statusClasses(item.status)}`}>
+                          <span>{item.status}</span>
+                          {item.status === "completed" && (
+                            <CircleCheck className="h-3 w-3" />
+                          )}
+                          {item.status === "error" && (
+                            <CircleX className="h-3 w-3" />
+                          )}
+                          {item.status === "running" && (
+                            <Ellipsis className="h-3 w-3 animate-pulse" />
+                          )}
+                          {item.status === "skipped" && (
+                            <SkipForward className="h-3 w-3" />
+                          )}
+                          {item.status === "interrupted" && (
+                            <AlertTriangle className="h-3 w-3" />
+                          )}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {["error", "skipped", "interrupted"].includes(item.status) ? (
+                          <span>{item.errorLogs || `${item.status} - No details available`}</span>
+                        ) : (
+                          <span>
+                            {item.status === "completed" ? "Completed" : "Started"}{" "}
+                            {item.createdAt ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) : ""}
+                          </span>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                   <div className="col-span-2 flex items-center justify-between gap-3">
                     <div className="text-xs text-muted-foreground">

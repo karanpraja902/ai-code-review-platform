@@ -12,6 +12,7 @@ export interface PrAnalysisItem {
   pr_url?: string;
   pr_title?: string;
   createdAt?: string;
+  errorLogs?: string;
 }
 
 export interface GetPrAnalysesOptions {

@@ -8,6 +8,8 @@ export const statusClasses = (status: string) => {
       return " text-red-700 dark:text-red-700 bg-red-200/60 dark:bg-red-900/30";
     case "interrupted":
       return " text-amber-700 dark:text-amber-700 bg-amber-200/60 dark:bg-amber-900/30 ";
+    case "skipped":
+      return " text-gray-500 dark:text-gray-400 bg-gray-300/60 dark:bg-neutral-700/40 ";
     default:
       return " text-gray-700 dark:text-gray-400 bg-gray-200/60 dark:bg-neutral-800/30 ";
   }

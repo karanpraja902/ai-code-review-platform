@@ -46,7 +46,6 @@ function InfoTooltip({
       <TooltipContent
         side={side}
         align={align}
-        className="max-w-xs bg-popover text-popover-foreground border shadow-lg p-3 text-sm"
       >
         {content}
       </TooltipContent>
