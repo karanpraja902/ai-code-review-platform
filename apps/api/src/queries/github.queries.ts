@@ -1101,16 +1101,6 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
 
  
 
-      const insertResult = await prCollection?.insertOne(modelAnalysisData);
-      prDataInsertedId = insertResult?.insertedId?.toString();
-      logger.info("PR data inserted into MongoDB", { 
-        prNumber: pull_request.number, 
-        repository: repository.full_name,
-        insertedId: insertResult?.insertedId,
-        newCommitsCount: newCommitsOnly.length
-      });
-    
-
     const filesChangedForAnalysis = Array.from(new Set(
       (newCommitsOnly || [])
         .flatMap((commit: any) => (commit.files || [])
@@ -1127,7 +1117,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
     console.log("🚫 Ignored files (non-analyzable): ", ignoredFilesForAnalysis);
 
 
-    // Total files changed > 100? Skip review
+    // Total files changed > 100? Skip review (check BEFORE inserting PR data)
     const totalFilesChanged = filesChangedForAnalysis.length;
     if (totalFilesChanged > 100) {
       logger.info("PR has too many files; skipping review", {
@@ -1150,11 +1140,22 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
       // Create skipped analysis record
       await createSkippedAnalysis(`PR has ${totalFilesChanged} files changed, exceeding the limit of 100 files.`);
       
+      // Insert skipped PR data (only once)
       modelAnalysisData.skipped = true;
       await prCollection?.insertOne(modelAnalysisData);
       
       return;
     }
+
+    // Insert PR data for analysis (only if not skipped above)
+    const insertResult = await prCollection?.insertOne(modelAnalysisData);
+    prDataInsertedId = insertResult?.insertedId?.toString();
+    logger.info("PR data inserted into MongoDB", { 
+      prNumber: pull_request.number, 
+      repository: repository.full_name,
+      insertedId: insertResult?.insertedId,
+      newCommitsCount: newCommitsOnly.length
+    });
 
     // Fallback to previous entry id if we didn't insert a new one
     if (!prDataInsertedId) {
