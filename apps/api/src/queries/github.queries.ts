@@ -1261,11 +1261,11 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
                 commentsCount: prComments.length 
               });
               const postedCount = await prCommentService.postComments(prComments);
-              logger.info("Posted PR comments", { 
-                prNumber: pull_request.number, 
-                postedCount, 
-                totalComments: prComments.length 
-              });
+              // logger.info("Posted PR comments", { 
+              //   prNumber: pull_request.number, 
+              //   postedCount, 
+              //   totalComments: prComments.length 
+              // });
             }
           },
           onStderr: async (data: string) => {
@@ -1323,6 +1323,24 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
               finalCommentsCount: finalComments.length 
             });
             await prCommentService.postComments(finalComments);
+          }
+
+          // Check if no actual issues were found - post "good to merge" comment
+          const totalIssuesPosted = prCommentService.getNonSummaryCommentsPosted();
+          if (totalIssuesPosted === 0) {
+            logger.info("No issues found during analysis, posting no-issues comment", {
+              prNumber: pull_request.number,
+              repository: repository.full_name
+            });
+            try {
+              await prCommentService.postNoIssuesFoundComment();
+            } catch (noIssuesErr) {
+              logger.warn("Failed to post no-issues-found comment", {
+                prNumber: pull_request.number,
+                repository: repository.full_name,
+                error: noIssuesErr instanceof Error ? noIssuesErr.message : noIssuesErr
+              });
+            }
           }
 
           // Mark GitHub Check Run as completed
