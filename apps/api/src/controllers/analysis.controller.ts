@@ -669,8 +669,9 @@ export const getGlobalStats = async (
     const stats = await Analysis.aggregate([
       {
         $match: {
-          analysis_type: "pr_analysis",
-          status: { $nin: ["running", "error"] },
+          // Include all analysis types except repo_analysis
+          analysis_type: { $ne: "repo_analysis" },
+          status: { $nin: ["running", "error", "skipped"] },
         },
       },
       {
@@ -678,17 +679,19 @@ export const getGlobalStats = async (
           _id: null,
           totalPrs: { $sum: 1 },
           totalLines: { $sum: "$reviewedLinesOfCode" },
+          totalCommentsPosted: { $sum: "$pr_comments_posted" },
         },
       },
     ]);
 
-    const result = stats.length > 0 ? stats[0] : { totalPrs: 0, totalLines: 0 };
+    const result = stats.length > 0 ? stats[0] : { totalPrs: 0, totalLines: 0, totalCommentsPosted: 0 };
 
     res.json({
       success: true,
       data: {
         totalPrs: result.totalPrs,
         totalLinesReviewed: result.totalLines,
+        totalPrCommentsPosted: result.totalCommentsPosted,
       },
     });
   } catch (error: any) {

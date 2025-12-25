@@ -20,7 +20,7 @@ const formatNumber = (num: number): string => {
 };
 
 const OverviewSection = () => {
-  const [stats, setStats] = useState<{ totalPrs: number; totalLinesReviewed: number } | null>(null);
+  const [stats, setStats] = useState<{ totalPrs: number; totalLinesReviewed: number; totalPrCommentsPosted: number } | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -49,10 +49,10 @@ const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     { text: "Lines", className: "text-white" },
     { text: "Of", className: "text-white" },
     { text: "Code", className: "text-white" },
-    { text: "across", className: "text-white" },
-    { text: formatNumber(stats.totalPrs), className: "!text-primary" },
-    { text: "Pull", className: "text-white" },
-    { text: "Requests", className: "text-white" },
+    { text: "and", className: "text-white" },
+    { text: "Reported", className: "text-white" },
+    { text: formatNumber(stats.totalPrCommentsPosted || 0), className: "!text-primary" },
+    { text: "Bugs", className: "text-white" },
     { text: "so", className: "text-white" },
     { text: "far", className: "text-white" },
   ] : [];
