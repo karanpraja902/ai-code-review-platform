@@ -32,7 +32,7 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
     raiseIssues: boolean;
     autoFixBugs: boolean;
   }>({
-    trackGithubPullRequests: false,
+    trackGithubPullRequests: true,
     trackGithubIssues: false,
     analysisRequired: true,
     raiseIssues: false,
@@ -61,6 +61,13 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
   const [loadingRepoModels, setLoadingRepoModels] = useState<boolean>(false);
   const [loadingPrModels, setLoadingPrModels] = useState<boolean>(false);
   const [severityThreshold, setSeverityThreshold] = useState<number>(1); // 0 = LOW, 1 = MED, 2 = HIGH
+  const [prSummarySettings, setPrSummarySettings] = useState({
+    enabled: true,
+    sequenceDiagram: true,
+    issueTables: true,
+    impactAsessment: true,
+    vibeCheckRap: true,
+  });
 
   useEffect(() => {
     try {
@@ -109,11 +116,21 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
           // Extract commentSeverity (default to 1 = MED)
           const savedSeverity = typeof s.commentSeverity === "number" ? s.commentSeverity : 1;
           
+          // Extract prSummarySettings (default to all enabled)
+          const savedPrSummarySettings = s.prSummarySettings || {};
+          
           setRepoModel(repoModelId);
           setPrModel(prModelId);
           setRepoModelName(repoModelName);
           setPrModelName(prModelName);
           setSeverityThreshold(savedSeverity);
+          setPrSummarySettings({
+            enabled: savedPrSummarySettings.enabled ?? true,
+            sequenceDiagram: savedPrSummarySettings.sequenceDiagram ?? true,
+            issueTables: savedPrSummarySettings.issueTables ?? true,
+            impactAsessment: savedPrSummarySettings.impactAsessment ?? true,
+            vibeCheckRap: savedPrSummarySettings.vibeCheckRap ?? true,
+          });
         }
 
         // Process available models
@@ -200,7 +217,7 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
     
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prModel, repoModel, severityThreshold]);
+  }, [prModel, repoModel, severityThreshold, prSummarySettings]);
 
   const handleSave = async () => {
     try {
@@ -220,6 +237,7 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
         ...(repoModel ? { defaultModelRepoId: repoModel } : {}),
         ...(prModel ? { defaultModelPrId: prModel } : {}),
         commentSeverity: severityThreshold,
+        prSummarySettings,
       };
       const settingsRes = await fetch(settingsUrl, {
         method: "PUT",
@@ -435,6 +453,152 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                   {severityThreshold === 1 && "Balanced feedback — medium and high severity issues only."}
                   {severityThreshold === 2 && "Critical issues only — may miss less severe but still valuable suggestions."}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  PR Summary Settings
+                </CardTitle>
+                {/* <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <InfoTooltip content="Configure what appears in your PR summary comments" side="left" />
+                  <span>Summary posted as comment</span>
+                </div> */}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="append-pr-summary" className="cursor-pointer text-sm font-medium">
+                  Pull Request summary
+                  </Label>
+                  <InfoTooltip content="Enable to post a summary comment on pull requests" side="right" />
+                </div>
+                <Checkbox
+                  id="append-pr-summary"
+                  checked={prSummarySettings.enabled}
+                  onCheckedChange={(v: boolean) => { 
+                    const isEnabled = Boolean(v);
+                    setPrSummarySettings(prev => ({
+                      ...prev,
+                      enabled: isEnabled,
+                      // Auto-enable sequenceDiagram and issueTables when enabling
+                      ...(isEnabled && { sequenceDiagram: true, issueTables: true })
+                    })); 
+                    setDirty(true); 
+                  }}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  <h4 className="text-sm font-medium">What should be included in your PR summary</h4>
+                  <InfoTooltip content="Choose which components to include in the summary. If you disabled all components, then only summary text will be posted." side="right" />
+                </div>
+
+                <div className="space-y-3">
+
+
+                  <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-0.5">
+                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">Sequence Diagram</div>
+                        <div className="text-xs text-muted-foreground">Generate a sequence diagram of the changes</div>
+                      </div>
+                    </div>
+                    <Checkbox
+                      checked={prSummarySettings.sequenceDiagram}
+                      disabled={!prSummarySettings.enabled}
+                      onCheckedChange={(v: boolean) => { 
+                        setPrSummarySettings(prev => ({ ...prev, sequenceDiagram: Boolean(v) })); 
+                        setDirty(true); 
+                      }}
+                      className="ml-3"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-0.5">
+                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">Issues Table</div>
+                        <div className="text-xs text-muted-foreground">Show a table of important files changed with ratings</div>
+                      </div>
+                    </div>
+                    <Checkbox
+                      checked={prSummarySettings.issueTables}
+                      disabled={!prSummarySettings.enabled}
+                      onCheckedChange={(v: boolean) => { 
+                        setPrSummarySettings(prev => ({ ...prev, issueTables: Boolean(v) })); 
+                        setDirty(true); 
+                      }}
+                      className="ml-3"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-0.5">
+                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">Impact Assessment</div>
+                        <div className="text-xs text-muted-foreground">Include a confidence rating for the PR</div>
+                      </div>
+                    </div>
+                    <Checkbox
+                      checked={prSummarySettings.impactAsessment}
+                      disabled={!prSummarySettings.enabled}
+                      onCheckedChange={(v: boolean) => { 
+                        setPrSummarySettings(prev => ({ ...prev, impactAsessment: Boolean(v) })); 
+                        setDirty(true); 
+                      }}
+                      className="ml-3"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-0.5">
+                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">Vibe Check Rap</div>
+                        <div className="text-xs text-muted-foreground">Get a fun rap summary of your PR</div>
+                      </div>
+                    </div>
+                    <Checkbox
+                      checked={prSummarySettings.vibeCheckRap}
+                      disabled={!prSummarySettings.enabled}
+                      onCheckedChange={(v: boolean) => { 
+                        setPrSummarySettings(prev => ({ ...prev, vibeCheckRap: Boolean(v) })); 
+                        setDirty(true); 
+                      }}
+                      className="ml-3"
+                    />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

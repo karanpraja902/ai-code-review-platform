@@ -158,6 +158,19 @@ export const updateTeamSettings = async (req: Request, res: Response, next: Next
     if (typeof body.commentSeverity === 'number' && [0, 1, 2].includes(body.commentSeverity)) {
       nextSettings.commentSeverity = body.commentSeverity;
     }
+
+    // Handle prSummarySettings
+    if (body.prSummarySettings && typeof body.prSummarySettings === 'object') {
+      const currentPrSettings = nextSettings.prSummarySettings || {};
+      nextSettings.prSummarySettings = {
+        enabled: typeof body.prSummarySettings.enabled === 'boolean' ? body.prSummarySettings.enabled : currentPrSettings.enabled ?? true,
+        sequenceDiagram: typeof body.prSummarySettings.sequenceDiagram === 'boolean' ? body.prSummarySettings.sequenceDiagram : currentPrSettings.sequenceDiagram ?? true,
+        issueTables: typeof body.prSummarySettings.issueTables === 'boolean' ? body.prSummarySettings.issueTables : currentPrSettings.issueTables ?? true,
+        impactAsessment: typeof body.prSummarySettings.impactAsessment === 'boolean' ? body.prSummarySettings.impactAsessment : currentPrSettings.impactAsessment ?? true,
+        vibeCheckRap: typeof body.prSummarySettings.vibeCheckRap === 'boolean' ? body.prSummarySettings.vibeCheckRap : currentPrSettings.vibeCheckRap ?? false,
+      };
+    }
+    
     team.settings = nextSettings;
     await team.save();
     return res.status(200).json({ success: true, message: 'Settings updated', data: nextSettings });

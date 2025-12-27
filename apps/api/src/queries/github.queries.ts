@@ -1119,6 +1119,20 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
 
     // Total files changed > 100? Skip review (check BEFORE inserting PR data)
     const totalFilesChanged = filesChangedForAnalysis.length;
+    
+    // Check if there are NO analyzable files - skip silently
+    if (totalFilesChanged === 0) {
+      logger.info("No analyzable files changed in PR; skipping review silently", {
+        prNumber: pull_request.number,
+        repository: repository.full_name,
+        totalFilesChanged: 0,
+        ignoredFilesCount: ignoredFilesForAnalysis.length
+      });
+
+      // Skip silently without posting comment or creating analysis record
+      return;
+    }
+    
     if (totalFilesChanged > 100) {
       logger.info("PR has too many files; skipping review", {
         prNumber: pull_request.number,
