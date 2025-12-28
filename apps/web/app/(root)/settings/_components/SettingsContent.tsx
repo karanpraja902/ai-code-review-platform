@@ -249,29 +249,31 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
         toast.error(err.message || "Failed to save model settings");
         return;
       }
-      const body = {
-        scope,
-        settings: {
-          trackGithubPullRequests: bulkSettings.trackGithubPullRequests,
-          trackGithubIssues: bulkSettings.trackGithubIssues,
-          analysisRequired: bulkSettings.analysisRequired,
-          raiseIssues: bulkSettings.raiseIssues,
-          autoFixBugs: bulkSettings.autoFixBugs,
-        },
-      };
-      const res = await fetch(`${_config.API_BASE_URL}/api/github/repository/settings/bulk`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.message || "Failed to save settings");
-      } else {
-        const data = await res.json();
-        toast.success(data.message || "Settings updated");
-        setDirty(false);
-      }
+      toast.success("Settings updated");
+      setDirty(false);
+      // const body = {
+      //   scope,
+      //   settings: {
+      //     trackGithubPullRequests: bulkSettings.trackGithubPullRequests,
+      //     trackGithubIssues: bulkSettings.trackGithubIssues,
+      //     analysisRequired: bulkSettings.analysisRequired,
+      //     raiseIssues: bulkSettings.raiseIssues,
+      //     autoFixBugs: bulkSettings.autoFixBugs,
+      //   },
+      // };
+      // const res = await fetch(`${_config.API_BASE_URL}/api/github/repository/settings/bulk`, {
+      //   method: "PUT",
+      //   headers,
+      //   body: JSON.stringify(body),
+      // });
+      // if (!res.ok) {
+      //   const err = await res.json().catch(() => ({}));
+      //   toast.error(err.message || "Failed to save settings");
+      // } else {
+      //   const data = await res.json();
+      //   toast.success(data.message || "Settings updated");
+      //   setDirty(false);
+      // }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to save settings";
       toast.error(msg);

@@ -529,10 +529,10 @@ processedContent = processedContent.replace(
    */
   private getSeverityLabel(): string {
     switch (this.severityThreshold) {
-      case 0: return 'Show All — Posts all feedback including minor suggestions';
-      case 1: return 'Only Important — Posts only important issues (High & Critical)';
-      case 2: return 'Only Critical — Posts only the most critical issues';
-      default: return 'Only Important — Posts only important issues (High & Critical)';
+      case 0: return 'Low — All comments including minor suggestions. May be noisy on large PRs.';
+      case 1: return 'Medium — Balanced feedback — medium and high severity issues only.';
+      case 2: return 'High — Critical issues only — may miss less severe but still valuable suggestions.';
+      default: return 'Medium — Balanced feedback — medium and high severity issues only.';
     }
   }
 
@@ -548,6 +548,7 @@ processedContent = processedContent.replace(
       '',
       `**Severity Threshold**: \`${severityLabel}\` — [Change in Settings](https://ai-code-review-platform.dev/settings)`,
       `**Custom Rules**: Define your own review rules — [Set Custom Rules](https://ai-code-review-platform.dev/custom-context)`,
+      `**PR Summary**: Configure PR summary — [Change in Settings](https://ai-code-review-platform.dev/settings)`,
       '',
       '</details>',
       '',
@@ -631,45 +632,15 @@ processedContent = processedContent.replace(
 
       const body = [
         PRCommentService.STATUS_MARKER,
-        `## 🪲 AI Code Review Platform is reviewing this PR — Let’s see what you’ve done!`,
-        `Under Review`,
+        `### AI Code Review is reviewing the changes — Let’s see what you’ve done!`,
+        `🔍 Under Review`,
         `<details>\n<summary>Commits (${commitsCount})</summary>\n\n${commitItems || '- No commits found'}\n\n</details>`,
         '',
         `<details>\n<summary>Files Changed (${filesCount})</summary>\n\n${fileItems || '- No files found'}\n\n</details>`,
         '',
         ignoredCount > 0 ? `<details>\n<summary>Ignored Files (${ignoredCount})</summary>\n\n${ignoredItems}\n\n</details>` : '',
         '',
-        `\`Step aside — I’m tearing through this PR 😈 -- You keep on building\``,
-        '',
-        `\`\`\`
-
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡴⠶⠶⠦⠦⣤⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡤⣞⠁⠀⠀⡄⠀⠀⠀⠀⠐⢣⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡖⠀⣁⠀⠠⡮⠁⠀⠀⠀⠀⠀⠀⠈⠐⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣏⠐⣣⠦⠐⣧⠆⢀⡰⠃⠰⠆⠀⠀⠀⠀⠸⠆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡟⡤⠃⡄⠛⠛⢓⡛⢓⣾⡇⣰⡞⠃⢠⢰⢀⠙⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡥⡧⣯⣿⠡⢾⡯⢧⡠⠟⠋⢁⡠⢌⣏⣺⢸⣰⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣁⠇⠇⣇⠀⠀⠁⠀⠀⠀⢀⣠⣄⠈⢸⡿⠸⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⣤⠶⠋⠉⠀⠀⢧⠀⠀⠀⠃⠀⠀⠀⠀⠀⠀⠛⠃⣴⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠀⢀⠰⠉⠀⠀⠀⠀⠀⡀⠀⡶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢈⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⠀⠀⠰⠊⠁⠀⠀⠀⠀⠀⠀⠙⡄⠀⠓⣤⡆⣦⡀⠀⠀⠐⣢⡌⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⠀⢀⡘⠃⠀⠀⢀⠶⠀⠀⠀⠀⠀⣏⠀⠀⠙⣣⣏⡹⠦⠔⠚⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⢠⠎⠁⠀⠀⠀⣸⠀⠀⠀⠀⠀⣤⠿⠀⢀⡴⠈⠉⢁⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠀⡖⠀⠀⠀⠀⠰⣤⢀⠀⣤⣄⣀⠶⠀⣠⠎⠓⠋⠉⠉⢛⠳⠤⢄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⠘⠃⠀⠀⠀⠀⢀⣴⠏⠀⠀⣠⣼⠗⠋⠁⢀⡄⣀⠀⡸⣾⣷⡀⠀⠈⢣⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⢘⡇⠀⠀⠀⠀⠀⢘⠁⠀⠛⠀⠀⠀⠀⣰⠋⠀⣠⠬⠉⠉⠀⡉⠛⠢⣼⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⢸⡇⠀⠀⠠⠞⢋⢹⠀⠀⠀⠀⠀⠀⣬⠁⠀⣼⠓⠲⠤⣄⡬⠁⠀⠀⠀⠈⠙⠢⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                      ⢸⣅⣀⡴⢂⡴⠊⠉⣤⣀⣀⠤⠖⠋⠀⠀⡼⠁⠀⠀⢀⡦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠒⢦⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣄⡄⠀⠀⠀⠀⠀⠀⠀⠠⣄⠀⠀⠀⠀⠀
-                      ⠰⡏⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣖⠟⠀⠀⠀⢠⠆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠲⢤⣀⠀⠀⠀⠀⠀⠀⠀⠘⠯⠁⠀⢀⣠⣀⣀⠤⣀⡀⠽⠂⠀⠀⠀⠀
-                      ⠀⠹⢆⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⢛⡟⠀⠀⢀⣰⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠲⠄⠀⠀⢀⡸⠁⢈⣷⡶⢋⡙⣦⣀⣀⠈⠙⠦⡀⠀⠀⠀⠀
-                      ⠀⠀⠘⢢⣀⠀⠀⠀⠀⠀⢀⡶⠀⣍⠀⠠⡶⠛⠇⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢓⣀⡴⠞⢂⣀⡾⠉⢳⠊⠀⠈⣂⠉⠛⠢⣄⢻⡀⠀⠀⠀
-                      ⠀⠀⠀⠀⠈⢹⠐⠒⠚⠛⠉⠙⠛⠀⠋⠋⠉⠓⠾⠟⠓⢲⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢩⡀⠀⢈⡟⢡⠝⢻⠃⠀⠀⣸⠀⠀⠀⠈⢈⡇⠀⠀⠀
-                      ⢀⣀⣠⢴⢒⣸⣄⣀⣀⣠⣴⣀⠀⠀⠀⠀⠀⡀⡀⢔⣀⡠⢇⣀⣰⡦⠤⠄⡠⠄⠀⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠙⠤⠴⢾⡾⠲⠸⣤⣀⣰⡂⣀⠀⡀⣠⠮⢤⠀⠀⠀
-                      ⠀⠀⠘⠃⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠉⠁⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠠⠄⠠⠄⠨⡷⠼⢇⣀⡸⠏⠀⣠⣀⠾⢀⠀⠹⣭⡀⠉⠷⣄⣀⠳⠄⠆
-                      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠀⠐⠂⢸⠈⠈⠀⠀⠀⠉⠀⠀⠈⠉⠀⠀⠀
-
-\`\`\``,
-
+        '---',
         '',
         this.generateUserGuideFooter(),
         '',
