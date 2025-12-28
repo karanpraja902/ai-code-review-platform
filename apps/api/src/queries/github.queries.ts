@@ -1119,6 +1119,20 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
 
     // Total files changed > 100? Skip review (check BEFORE inserting PR data)
     const totalFilesChanged = filesChangedForAnalysis.length;
+    
+    // Check if there are NO analyzable files - skip silently
+    if (totalFilesChanged === 0) {
+      logger.info("No analyzable files changed in PR; skipping review silently", {
+        prNumber: pull_request.number,
+        repository: repository.full_name,
+        totalFilesChanged: 0,
+        ignoredFilesCount: ignoredFilesForAnalysis.length
+      });
+
+      // Skip silently without posting comment or creating analysis record
+      return;
+    }
+    
     if (totalFilesChanged > 100) {
       logger.info("PR has too many files; skipping review", {
         prNumber: pull_request.number,
@@ -1212,14 +1226,22 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         // Initialize PR comment service
         const [owner, repo] = repository.full_name.split('/');
 
-        // Get comment severity threshold from user/team settings (default: 1 = Medium+)
+        // Get comment severity threshold and PR summary settings from user/team settings
         let commentSeverityThreshold = 1; // Default: Medium and above
+        let prSummarySettings = { enabled: true }; // Default: enabled
         try {
           const userSettings = user?.settings as any;
           if (typeof userSettings?.commentSeverity === 'number') {
             commentSeverityThreshold = userSettings.commentSeverity;
           }
-          // If repo belongs to a team, try to use team settings
+          // Get user PR summary settings
+          if (userSettings?.prSummarySettings && typeof userSettings.prSummarySettings === 'object') {
+            prSummarySettings = {
+              enabled: userSettings.prSummarySettings.enabled ?? true
+            };
+          }
+          
+          // If repo belongs to a team, try to use team settings (team settings override user settings)
           if (githubRepo.teams && githubRepo.teams.length > 0) {
             const Team = mongoose.model('Team');
             const team = await Team.findById(githubRepo.teams[0]).select('settings');
@@ -1227,14 +1249,21 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
             if (typeof teamSettings?.commentSeverity === 'number') {
               commentSeverityThreshold = teamSettings.commentSeverity;
             }
+            // Override with team PR summary settings if available
+            if (teamSettings?.prSummarySettings && typeof teamSettings.prSummarySettings === 'object') {
+              prSummarySettings = {
+                enabled: teamSettings.prSummarySettings.enabled ?? true
+              };
+            }
           }
-          logger.info('Using comment severity threshold', { 
+          logger.info('Using comment severity threshold and PR summary settings', { 
             threshold: commentSeverityThreshold, 
             meanings: { 0: 'all', 1: 'medium+', 2: 'critical only' },
+            prSummaryEnabled: prSummarySettings.enabled,
             prNumber: pull_request.number 
           });
         } catch (settingsErr) {
-          logger.warn('Failed to fetch comment severity setting, using default', { 
+          logger.warn('Failed to fetch settings, using defaults', { 
             error: settingsErr instanceof Error ? settingsErr.message : settingsErr 
           });
         }
@@ -1247,6 +1276,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
           commitSha: pull_request.head.sha,
           filesChanged: filesChangedForAnalysis,
           severityThreshold: commentSeverityThreshold,
+          prSummarySettings: prSummarySettings,
         };
 
         // Create/Update GitHub Check Run to reflect AI Code Review Platform review status

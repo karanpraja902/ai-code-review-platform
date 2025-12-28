@@ -59,6 +59,13 @@ const TeamSchema = new Schema<ITeam>(
           commentSeverity: 1,
           defaultModelRepo: new mongoose.Types.ObjectId('6916caa7984764bbefcf67d9'),
           defaultModelPr: new mongoose.Types.ObjectId('6916caa7984764bbefcf67dc'),
+          prSummarySettings: {
+            enabled: true,
+            sequenceDiagram: true,
+            issueTables: true,
+            impactAsessment: true,
+            vibeCheckRap: false,
+          },
         },
       },
   },

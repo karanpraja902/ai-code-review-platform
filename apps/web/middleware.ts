@@ -95,6 +95,7 @@ pathname.startsWith("/security");
     const pathname = req.nextUrl.pathname;
     const searchParams = req.nextUrl.searchParams;
     const isExtensionAuth = searchParams.get("source") === "extension";
+    const isCliAuth = searchParams.get("source") === "cli";
 
     // If authenticated and it's an extension auth request, redirect to callback
     if (isExtensionAuth) {
@@ -103,6 +104,17 @@ pathname.startsWith("/security");
       searchParams.forEach((value, key) => {
         callbackUrl.searchParams.set(key, value);
       });
+      return NextResponse.redirect(callbackUrl);
+    }
+
+    // If authenticated and it's a CLI auth request, redirect to callback
+    if (isCliAuth) {
+      const callbackUrl = new URL("/cli-auth-callback", req.url);
+      // Preserve port param
+      const port = searchParams.get("port");
+      if (port) {
+        callbackUrl.searchParams.set("port", port);
+      }
       return NextResponse.redirect(callbackUrl);
     }
 
