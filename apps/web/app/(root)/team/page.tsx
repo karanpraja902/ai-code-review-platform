@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, MoreHorizontal, Loader2, UserPlus, X, Check } from "lucide-react";
+import { Plus, MoreHorizontal, Loader2, UserPlus, X, Check, Crown } from "lucide-react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -82,6 +83,9 @@ export default function TeamPage() {
   const [newTeamName, setNewTeamName] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Subscription state
+  const [isFreePlan, setIsFreePlan] = useState(true);
+
   const fetchTeamData = useCallback(async () => {
     try {
       const token = await getToken();
@@ -126,6 +130,26 @@ export default function TeamPage() {
   useEffect(() => {
     fetchTeamData();
   }, [fetchTeamData]);
+
+  // Fetch subscription status
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${_config.API_BASE_URL}/api/subscription/features`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const hasSubscription = Boolean(data?.hasSubscription);
+        const planName: string | undefined = data?.subscription?.planName;
+        const free = !hasSubscription || planName?.toLowerCase() === "free";
+        setIsFreePlan(Boolean(free));
+      } catch (e) {
+        setIsFreePlan(true);
+      }
+    };
+    fetchSubscription();
+  }, [getToken]);
 
   const handleCreateTeam = async () => {
     if (!newTeamName.trim()) {
@@ -398,13 +422,21 @@ export default function TeamPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Pending Invites ({pendingInvites.length})</h2>
-            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-[#10B981] hover:bg-[#059669] text-white font-medium h-9 text-xs tracking-wide">
-                  <UserPlus className="mr-1 h-3.5 w-3.5" />
-                  INVITE USER
-                </Button>
-              </DialogTrigger>
+            {isFreePlan ? (
+              <Button asChild className="bg-amber-500 hover:bg-amber-600 text-white font-medium h-9 text-xs tracking-wide">
+                <Link href="/upgrade">
+                  <Crown className="mr-1 h-3.5 w-3.5" />
+                  UPGRADE TO INVITE
+                </Link>
+              </Button>
+            ) : (
+              <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#10B981] hover:bg-[#059669] text-white font-medium h-9 text-xs tracking-wide">
+                    <UserPlus className="mr-1 h-3.5 w-3.5" />
+                    INVITE USER
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Invite Team Member</DialogTitle>
@@ -451,6 +483,7 @@ export default function TeamPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            )}
           </div>
           
           {pendingInvites.length > 0 && (

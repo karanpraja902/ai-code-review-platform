@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { Check, ChevronDown, Plus, Settings, Loader2, Mail, X } from "lucide-react";
 import {
@@ -65,6 +66,10 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
   const [selectedInvite, setSelectedInvite] = useState<PendingInvite | null>(null);
   const [processingInvite, setProcessingInvite] = useState(false);
 
+  // Subscription state
+  const [isFreePlan, setIsFreePlan] = useState(true);
+  const router = useRouter();
+
   const fetchTeams = useCallback(async () => {
     try {
       const token = await getToken();
@@ -112,6 +117,26 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
     } finally {
       setLoading(false);
     }
+  }, [getToken]);
+
+  // Fetch subscription status
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${_config.API_BASE_URL}/api/subscription/features`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const hasSubscription = Boolean(data?.hasSubscription);
+        const planName: string | undefined = data?.subscription?.planName;
+        const free = !hasSubscription || planName?.toLowerCase() === "free";
+        setIsFreePlan(Boolean(free));
+      } catch (e) {
+        setIsFreePlan(true);
+      }
+    };
+    fetchSubscription();
   }, [getToken]);
 
   useEffect(() => {
@@ -372,13 +397,19 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 
               {/* Create Team */}
               <DropdownMenuItem
-                onClick={() => setCreateOpen(true)}
+                onClick={() => {
+                  if (isFreePlan) {
+                    router.push("/upgrade");
+                  } else {
+                    setCreateOpen(true);
+                  }
+                }}
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-md border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
                   <Plus className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <span>Create Team</span>
+                <span>{isFreePlan ? "Upgrade to Create Team" : "Create Team"}</span>
               </DropdownMenuItem>
             </>
           )}
