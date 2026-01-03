@@ -10,6 +10,9 @@ export { analysisErrorTemplate } from './analysisErrorTemplate.js';
 export { welcomeTemplate } from './welcomeTemplate.js';
 export { earlyAccessTemplate } from './earlyAccessTemplate.js';
 
+// Team templates
+export { teamInviteTemplate } from './teamInviteTemplate.js';
+
 // Template type mapping for easy access
 export const templates = {
   default: 'defaultTemplate',
@@ -17,6 +20,8 @@ export const templates = {
   analysisError: 'analysisErrorTemplate',
   welcome: 'welcomeTemplate',
   earlyAccess: 'earlyAccessTemplate',
+  teamInvite: 'teamInviteTemplate',
 } as const;
 
 export type TemplateType = keyof typeof templates;
+

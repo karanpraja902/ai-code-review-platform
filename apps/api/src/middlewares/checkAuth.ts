@@ -23,11 +23,13 @@ import { NextFunction, Request, Response } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
 import User from "../models/user.model.js";
 import Team from "../models/team.model.js";
+import TeamMember from "../models/team_member.model.js";
 import SubscriptionPlan from "../models/subscription_plan.model.js";
 import { createUser, CreateUserData } from "../queries/user.queries.js";
 import mongoose from "mongoose";
 import { logger } from "../utils/logger.js";
 import { upsertMailerLiteSubscriber } from "../services/mail/mailerlite/upsert_subscriber.js";
+import { ensureUserTeam } from "./helpers/ensureUserTeam.js";
 import jwt from "jsonwebtoken";
 
 declare global {
@@ -198,6 +200,9 @@ export const baseAuth = async (
         logger.info(`User found in DB: ${user.username}`);
       }
 
+      // Ensure user has a team (handles both new and existing users)
+      await ensureUserTeam(user._id, "My Team");
+
       req.user = user; // attach full user object for downstream handlers
       logger.info(`User authenticated successfully via Clerk: ${user.email}`);
       return next();
@@ -274,6 +279,9 @@ export const baseAuth = async (
           });
         }
       }
+
+      // Ensure user has a team (handles both new and existing users)
+      await ensureUserTeam(user._id, "My Team");
 
       req.user = user;
       logger.info(`Extension user authenticated: ${user.email}`);
@@ -419,62 +427,62 @@ export const subscriptionAuth = async (
  * Requires baseAuth to be run first to ensure req.user is available.
  * Handles team context from headers.
  */
-export const teamAuth = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  logger.info("teamAuth middleware execution started");
-  try {
-    const user = req.user;
-    if (!user) {
-      logger.error(
-        "teamAuth: No user found in request. baseAuth must be run first."
-      );
-      return res
-        .status(500)
-        .json({ message: "Internal error: User context missing" });
-    }
+// export const teamAuth = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   logger.info("teamAuth middleware execution started");
+//   try {
+//     const user = req.user;
+//     if (!user) {
+//       logger.error(
+//         "teamAuth: No user found in request. baseAuth must be run first."
+//       );
+//       return res
+//         .status(500)
+//         .json({ message: "Internal error: User context missing" });
+//     }
 
-    // Handle team context from X-Team-Id header
-    const teamIdFromHeader = req.headers["x-team-id"] as string;
-    if (teamIdFromHeader) {
-      logger.debug(`Team ID from header: ${teamIdFromHeader}`);
+//     // Handle team context from X-Team-Id header
+//     const teamIdFromHeader = req.headers["x-team-id"] as string;
+//     if (teamIdFromHeader) {
+//       logger.debug(`Team ID from header: ${teamIdFromHeader}`);
 
-      // Verify user has access to this team (either owner or member via user.team)
-      const team = await Team.findById(teamIdFromHeader);
-      if (team) {
-        // Check if user is the owner
-        if (team.ownerId === user._id) {
-          req.team = {
-            id: teamIdFromHeader,
-            role: 'admin',
-          };
-          logger.debug(`Team context set: ${team.name} (owner/admin)`);
-        } else if (user.team?.id === teamIdFromHeader) {
-          // User is a member via their user.team assignment
-          req.team = {
-            id: teamIdFromHeader,
-            role: user.team.role || 'member',
-          };
-          logger.debug(`Team context set: ${team.name} (${user.team.role || 'member'})`);
-        } else {
-          logger.warn(
-            `User ${user._id} attempted to access team ${teamIdFromHeader} without membership`
-          );
-        }
-      } else {
-        logger.warn(`Team ${teamIdFromHeader} not found`);
-      }
-    }
+//       // Verify user has access to this team (either owner or member )
+//       const team = await Team.findById(teamIdFromHeader);
+//       if (team) {
+//         // Check if user is the owner
+//         if (team.ownerId === user._id) {
+//           req.team = {
+//             id: teamIdFromHeader,
+//             role: 'admin',
+//           };
+//           logger.debug(`Team context set: ${team.name} (owner/admin)`);
+//         } else if (user.team?.id === teamIdFromHeader) {
+//           // User is a member via their user.team assignment
+//           req.team = {
+//             id: teamIdFromHeader,
+//             role: user.team.role || 'member',
+//           };
+//           logger.debug(`Team context set: ${team.name} (${user.team.role || 'member'})`);
+//         } else {
+//           logger.warn(
+//             `User ${user._id} attempted to access team ${teamIdFromHeader} without membership`
+//           );
+//         }
+//       } else {
+//         logger.warn(`Team ${teamIdFromHeader} not found`);
+//       }
+//     }
 
-    logger.info(`Team auth completed for user: ${user.email}`);
-    next();
-  } catch (err) {
-    logger.error(`Team auth error: ${err}`);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
+//     logger.info(`Team auth completed for user: ${user.email}`);
+//     next();
+//   } catch (err) {
+//     logger.error(`Team auth error: ${err}`);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
 
 /**
  * Complete authentication middleware that combines all auth layers.
@@ -517,17 +525,17 @@ export const checkAuth = async (
     });
 
     // Run team authentication
-    await new Promise<void>((resolve, reject) => {
-      teamAuth(req, res, (err) => {
-        if (err) {
-          reject(err);
-        } else if (res.headersSent) {
-          reject(new Error("Response already sent"));
-        } else {
-          resolve();
-        }
-      });
-    });
+    // await new Promise<void>((resolve, reject) => {
+    //   teamAuth(req, res, (err) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else if (res.headersSent) {
+    //       reject(new Error("Response already sent"));
+    //     } else {
+    //       resolve();
+    //     }
+    //   });
+    // });
 
     logger.info("checkAuth middleware completed successfully");
     next();
@@ -614,17 +622,17 @@ export const authWithTeam = async (
     });
 
     // Run team authentication
-    await new Promise<void>((resolve, reject) => {
-      teamAuth(req, res, (err) => {
-        if (err) {
-          reject(err);
-        } else if (res.headersSent) {
-          reject(new Error("Response already sent"));
-        } else {
-          resolve();
-        }
-      });
-    });
+    // await new Promise<void>((resolve, reject) => {
+    //   teamAuth(req, res, (err) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else if (res.headersSent) {
+    //       reject(new Error("Response already sent"));
+    //     } else {
+    //       resolve();
+    //     }
+    //   });
+    // });
 
     logger.info("authWithTeam middleware completed successfully");
     next();

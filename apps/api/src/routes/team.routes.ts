@@ -2,7 +2,6 @@
 import express, { Router } from 'express';
 import { authWithTeam } from '../middlewares/checkAuth.js';
 import {
-  getOrCreateCurrentOrgTeam,
   getTeamRepositories,
   getMyTeams,
   addReposInTeam,
@@ -15,6 +14,7 @@ import {
   inviteToTeam,
   getPendingInvites,
   getMyInvitations,
+  getInvitationById,
   acceptInvitation,
   rejectInvitation,
   revokeInvitation,
@@ -36,6 +36,7 @@ router.get('/mine', getMyTeams);
 router.post('/invite', inviteToTeam);
 router.get('/invites/pending', getPendingInvites);
 router.get('/invites/mine', getMyInvitations);
+router.get('/invites/:id', getInvitationById);
 router.post('/invites/:id/accept', acceptInvitation);
 router.post('/invites/:id/reject', rejectInvitation);
 router.delete('/invites/:id', revokeInvitation);
@@ -51,7 +52,5 @@ router.put('/settings', checkTeamMemberRole('admin'), updateTeamSettings);
 // Dashboard route
 router.get('/dashboard', getTeamDashboardInfo);
 
-// Legacy route
-router.get('/current', getOrCreateCurrentOrgTeam);
 
 export default router;
