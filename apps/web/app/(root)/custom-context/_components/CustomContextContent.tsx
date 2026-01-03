@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { useOrganization, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { _config } from "@/lib/_config";
 import { toast } from "sonner";
@@ -254,9 +254,7 @@ const RepoMultiSelect: React.FC<RepoMultiSelectProps> = ({
 };
 
 const CustomContextContent: React.FC<CustomContextContentProps> = ({ scope = "user", teamSlug, teamId }) => {
-  useOrganization();
-  const { orgId, getToken } = useAuth();
-  console.log()
+  const { getToken } = useAuth();
 
   const [rules, setRules] = useState<CustomRule[]>([]);
   const [page, setPage] = useState(1);

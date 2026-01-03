@@ -1,6 +1,6 @@
 // apps/api/src/routes/team.routes.ts
 import express, { Router } from 'express';
-import { authWithTeam, checkAuth, teamAuth } from '../middlewares/checkAuth.js';
+import { authWithTeam } from '../middlewares/checkAuth.js';
 import {
   getOrCreateCurrentOrgTeam,
   getTeamRepositories,
@@ -9,6 +9,15 @@ import {
   getTeamDashboardInfo,
   getTeamSettings,
   updateTeamSettings,
+  createTeam,
+  getTeamInfo,
+  getTeamMembers,
+  inviteToTeam,
+  getPendingInvites,
+  getMyInvitations,
+  acceptInvitation,
+  rejectInvitation,
+  revokeInvitation,
 } from '../controllers/team.controller.js';
 import { checkTeamMemberRole } from '../middlewares/checkRole.js';
 
@@ -17,22 +26,32 @@ const router: Router = express.Router();
 
 router.use(authWithTeam);
 
-router.get('/current', getOrCreateCurrentOrgTeam);
+// Team info routes
+router.get('/info', getTeamInfo);
+router.get('/members', getTeamMembers);
+router.post('/create', createTeam);
 router.get('/mine', getMyTeams);
+
+// Invitation routes
+router.post('/invite', inviteToTeam);
+router.get('/invites/pending', getPendingInvites);
+router.get('/invites/mine', getMyInvitations);
+router.post('/invites/:id/accept', acceptInvitation);
+router.post('/invites/:id/reject', rejectInvitation);
+router.delete('/invites/:id', revokeInvitation);
+
+// Team repository routes
 router.get('/repositories', getTeamRepositories);
 router.post('/repositories/add', checkTeamMemberRole('admin'), addReposInTeam);
-router.get("/dashboard", getTeamDashboardInfo)
+
+// Team settings routes
 router.get('/settings', getTeamSettings);
 router.put('/settings', checkTeamMemberRole('admin'), updateTeamSettings);
 
-// router.get('/:teamId', getTeam);
-// router.put('/:teamId',  updateTeam);
-// router.delete('/:teamId', deleteTeam);
+// Dashboard route
+router.get('/dashboard', getTeamDashboardInfo);
 
-// router.get('/:teamId/members', getMembers);
-// router.post('/:teamId/members', addMember);
-// router.delete('/:teamId/members/:memberId', removeMember);
-// router.patch('/:teamId/members/:memberId', updateMemberRole);
-// router.get('/:teamId/repositories', getTeamRepositories);
+// Legacy route
+router.get('/current', getOrCreateCurrentOrgTeam);
 
 export default router;

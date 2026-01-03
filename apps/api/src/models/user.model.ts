@@ -7,11 +7,10 @@ export interface IUser extends Document {
   username: string;
   avatarUrl: string;
   email: string;
-  organizationId?: string;
-  teams?: Array<{
-    _id: string;
+  team?: {
+    id: string;
     role: "admin" | "member";
-  }>;
+  };
   password?: string;
   subscriptionPlanId: mongoose.Schema.Types.ObjectId;
   subscriptionStatus?: "active" | "inactive" | "cancelled" | "free";
@@ -54,21 +53,15 @@ const userSchema = new Schema<IUser>(
       trim: true,
       lowercase: true,
     },
-    teams: [
-      {
-        _id: {
-          type: String,
-          index: true,
-        },
-        role: {
-          type: String,
-          enum: ["admin", "member"],
-        },
+    team: {
+      id: {
+        type: String,
+        index: true,
       },
-    ],
-    organizationId: {
-      type: String,
-      index: true,
+      role: {
+        type: String,
+        enum: ["admin", "member"],
+      },
     },
     password: {
       type: String,

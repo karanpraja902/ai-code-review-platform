@@ -36,7 +36,7 @@ declare global {
       user?: any;
       isServerRequest?: boolean;
       org?: { id: string; role?: string; slug?: string };
-      team?: { id: string; role?: string; slug?: string };
+      team?: { id: string; role?: string };
       sub?: {
         planId: string;
         planName: "free" | "lite" | "advance" | "custom";
@@ -417,7 +417,7 @@ export const subscriptionAuth = async (
 /**
  * Team authentication middleware that handles team context and membership.
  * Requires baseAuth to be run first to ensure req.user is available.
- * Handles both organization context from Clerk and team context from headers.
+ * Handles team context from headers.
  */
 export const teamAuth = async (
   req: Request,
@@ -436,103 +436,28 @@ export const teamAuth = async (
         .json({ message: "Internal error: User context missing" });
     }
 
-    const { orgId, orgRole, orgSlug } = getAuth(req);
-    logger.debug("Team auth context extracted", { orgId, orgRole, orgSlug });
-
-    // Attach active organization context if present
-    if (orgId) {
-      req.org = {
-        id: orgId,
-        role: orgRole as string | undefined,
-        slug: orgSlug as string | undefined,
-      };
-
-      // Ensure Team exists and membership is synced
-      let team = await Team.findById(orgId);
-      if (!team) {
-        try {
-          const org = await retryClerkApiCall(() =>
-            clerkClient.organizations.getOrganization({ organizationId: orgId })
-          );
-          team = await Team.create({
-            _id: orgId,
-            name: org.name,
-            description: "",
-            slug: org.slug,
-            ownerId: user._id,
-            members: [
-              { userId: user._id, role: "admin", joinedAt: new Date() },
-            ],
-            settings: {},
-          });
-        } catch (clerkError: any) {
-          logger.error(
-            `Failed to fetch organization from Clerk: ${clerkError}`
-          );
-
-          // If rate limited, return appropriate error
-          if (
-            clerkError?.status === 429 ||
-            clerkError?.errors?.[0]?.code === "rate_limit_exceeded"
-          ) {
-            return res.status(429).json({
-              message: "Too many requests. Please try again in a moment.",
-              error: "Rate limit exceeded",
-            });
-          }
-
-          // For other errors, continue without creating the team
-          logger.warn(`Continuing without team creation for orgId: ${orgId}`);
-          next();
-          return;
-        }
-      }
-
-      const role: "admin" | "member" = orgRole?.includes("admin")
-        ? "admin"
-        : "member";
-
-      // Add or update team membership
-      const memberIndex = team.members.findIndex(
-        (m: any) => m.userId === user._id
-      );
-      if (memberIndex === -1) {
-        team.members.push({ userId: user._id, role, joinedAt: new Date() });
-      } else if (team.members[memberIndex].role !== role) {
-        team.members[memberIndex].role = role;
-      }
-      await team.save();
-
-      // Sync user's teams array
-      const hasTeam =
-        Array.isArray(user.teams) &&
-        user.teams.some((t: any) => t._id === orgId);
-      if (!hasTeam) {
-        await User.updateOne(
-          { _id: user._id },
-          { $push: { teams: { _id: orgId, role } } }
-        );
-      }
-
-      logger.debug(`Organization context set: ${team.name} (${role})`);
-    }
-
     // Handle team context from X-Team-Id header
     const teamIdFromHeader = req.headers["x-team-id"] as string;
     if (teamIdFromHeader) {
       logger.debug(`Team ID from header: ${teamIdFromHeader}`);
 
-      // Verify user has access to this team
+      // Verify user has access to this team (either owner or member via user.team)
       const team = await Team.findById(teamIdFromHeader);
       if (team) {
-        const member = team.members.find((m: any) => m.userId === user._id);
-        if (member) {
+        // Check if user is the owner
+        if (team.ownerId === user._id) {
           req.team = {
             id: teamIdFromHeader,
-            role: member.role,
-            slug: team.slug,
+            role: 'admin',
           };
-          logger.debug(`Team context set: ${team.name} (${member.role})`);
+          logger.debug(`Team context set: ${team.name} (owner/admin)`);
+        } else if (user.team?.id === teamIdFromHeader) {
+          // User is a member via their user.team assignment
+          req.team = {
+            id: teamIdFromHeader,
+            role: user.team.role || 'member',
+          };
+          logger.debug(`Team context set: ${team.name} (${user.team.role || 'member'})`);
         } else {
           logger.warn(
             `User ${user._id} attempted to access team ${teamIdFromHeader} without membership`

@@ -41,7 +41,7 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect();
   }
 
-  const { isAuthenticated, sessionClaims, getToken } = await auth();
+  const { isAuthenticated, getToken } = await auth();
 
   // Early access control for authenticated users
   if (isAuthenticated) {
@@ -54,17 +54,7 @@ export default clerkMiddleware(async (auth, req) => {
 
         // If user has early access, redirect them away from /early-access route
         if (user.earlyAccess && isEarlyAccessRoute(req)) {
-          const activeOrgSlug = (sessionClaims as any)?.o?.slg as
-            | string
-            | undefined;
-
-          if (activeOrgSlug) {
-            return NextResponse.redirect(
-              new URL(`/${activeOrgSlug}/dashboard`, req.url),
-            );
-          } else {
-            return NextResponse.redirect(new URL("/dashboard", req.url));
-          }
+          return NextResponse.redirect(new URL("/dashboard", req.url));
         }
 
         // If user doesn't have early access, only allow / and /early-access routes
@@ -75,8 +65,7 @@ export default clerkMiddleware(async (auth, req) => {
             isEarlyAccessRoute(req) ||
             pathname.startsWith("/sign-in") ||
             pathname.startsWith("/sign-up") ||
-pathname.startsWith("/security");
-
+            pathname.startsWith("/security");
 
           if (!isAllowedRoute) {
             return NextResponse.redirect(new URL("/early-access", req.url));
@@ -134,66 +123,8 @@ pathname.startsWith("/security");
       }
     }
 
-    // Get the active organization from session claims
-    const activeOrgSlug = (sessionClaims as any)?.o?.slg as string | undefined;
-
-    if (activeOrgSlug) {
-      // Redirect to team dashboard if organization is active
-      return NextResponse.redirect(
-        new URL(`/${activeOrgSlug}/dashboard`, req.url),
-      );
-    } else {
-      // Redirect to personal dashboard if no organization
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-  }
-
-  // Handle team slug routing for authenticated users
-  if (isAuthenticated) {
-    const url = req.nextUrl.clone();
-    const pathname = url.pathname;
-    const activeOrgSlug = (sessionClaims as any)?.o?.slg as string | undefined;
-
-    // Define routes that should have team context (include Settings)
-    const teamRoutes = [
-      "/dashboard",
-      "/analysis",
-      "/agents",
-      "/pr-analysis",
-      "/custom-context",
-      "/settings",
-    ];
-    const isTeamRoute = teamRoutes.some(
-      (route) => pathname === route || pathname.startsWith(route + "/"),
-    );
-
-    // Check if we're on a team route without slug but have an active organization
-    if (
-      isTeamRoute &&
-      activeOrgSlug &&
-      !pathname.startsWith(`/${activeOrgSlug}`)
-    ) {
-      url.pathname = `/${activeOrgSlug}${pathname}`;
-      return NextResponse.redirect(url);
-    }
-
-    // Check if we're on a team route with slug but no active organization
-    const pathSegments = pathname.split("/").filter(Boolean);
-    if (pathSegments.length > 1 && !activeOrgSlug) {
-      const potentialSlug = pathSegments[0];
-      const remainingPath = "/" + pathSegments.slice(1).join("/");
-
-      // If the first segment looks like a team slug and we have no active org, redirect to personal
-      if (
-        teamRoutes.some(
-          (route) =>
-            remainingPath === route || remainingPath.startsWith(route + "/"),
-        )
-      ) {
-        url.pathname = remainingPath;
-        return NextResponse.redirect(url);
-      }
-    }
+    // Redirect to personal dashboard
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 });
 

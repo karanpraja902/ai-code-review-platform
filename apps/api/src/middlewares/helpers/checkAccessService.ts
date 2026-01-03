@@ -1,11 +1,8 @@
 import { Request } from "express";
-import Team from "../../models/team.model.js";
 import Analysis from "../../models/analysis.model.js";
 import { logger } from "../../utils/logger.js";
 
 export type FeatureType = 
-  | 'maxTeams' 
-  | 'maxTeamMembers' 
   | 'maxPrAnalysisPerDay'
   | 'maxFullRepoAnalysisPerDay'
   | 'prioritySupport'
@@ -61,12 +58,6 @@ export class FeatureAccessChecker {
     console.log(featureType, "entering switch case")
     try {
       switch (featureType) {
-        case 'maxTeams':
-          return await this.checkTeamLimit(userId, subscription.features.maxTeams, subscription.planName);
-        
-        case 'maxTeamMembers':
-          return await this.checkTeamMemberLimit(userId, subscription.features.maxTeamMembers, subscription.planName, additionalData?.teamId);
-        
         case 'maxPrAnalysisPerDay':
           return await this.checkPrAnalysisDailyLimit(userId, subscription.features.maxPrAnalysisPerDay, subscription.planName);
 
@@ -135,85 +126,6 @@ export class FeatureAccessChecker {
         : `You've reached your daily PR analysis limit (${maxPerDay}) on your ${planName} plan. Please upgrade or try again tomorrow.`,
       featureType: 'maxPrAnalysisPerDay',
       planName,
-    };
-  }
-
-  /**
-   * Check team creation limit
-   */
-  private static async checkTeamLimit(
-    userId: string, 
-    maxTeams: number, 
-    planName: string
-  ): Promise<FeatureCheckResult> {
-    // Count teams owned by user
-    const currentCount = await Team.countDocuments({ ownerId: userId });
-
-    const remaining = Math.max(0, maxTeams - currentCount);
-    const allowed = currentCount < maxTeams;
-
-    return {
-      allowed,
-      currentCount,
-      maxAllowed: maxTeams,
-      remaining,
-      message: allowed 
-        ? `You can create ${remaining} more teams on your ${planName} plan`
-        : `You've reached your team limit (${maxTeams}) on your ${planName} plan. Please upgrade to create more teams.`,
-      featureType: 'maxTeams',
-      planName
-    };
-  }
-
-  /**
-   * Check team member limit for a specific team
-   */
-  private static async checkTeamMemberLimit(
-    userId: string, 
-    maxTeamMembers: number, 
-    planName: string,
-    teamId?: string
-  ): Promise<FeatureCheckResult> {
-    if (!teamId) {
-      return {
-        allowed: false,
-        currentCount: 0,
-        maxAllowed: maxTeamMembers,
-        remaining: 0,
-        message: "Team ID required to check member limit.",
-        featureType: 'maxTeamMembers',
-        planName
-      };
-    }
-
-    // Find the team and check if user is owner
-    const team = await Team.findById(teamId);
-    if (!team || team.ownerId !== userId) {
-      return {
-        allowed: false,
-        currentCount: 0,
-        maxAllowed: maxTeamMembers,
-        remaining: 0,
-        message: "You can only add members to teams you own.",
-        featureType: 'maxTeamMembers',
-        planName
-      };
-    }
-
-    const currentCount = team.members?.length || 0;
-    const remaining = Math.max(0, maxTeamMembers - currentCount);
-    const allowed = currentCount < maxTeamMembers;
-
-    return {
-      allowed,
-      currentCount,
-      maxAllowed: maxTeamMembers,
-      remaining,
-      message: allowed 
-        ? `You can add ${remaining} more members to this team on your ${planName} plan`
-        : `You've reached your team member limit (${maxTeamMembers}) on your ${planName} plan. Please upgrade to add more members.`,
-      featureType: 'maxTeamMembers',
-      planName
     };
   }
 

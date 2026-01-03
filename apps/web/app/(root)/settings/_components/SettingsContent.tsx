@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { useUser, useOrganization, useAuth } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { _config } from "@/lib/_config";
@@ -22,7 +22,6 @@ export interface SettingsContentProps {
 
 const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamSlug }) => {
   const { user } = useUser();
-  const { organization, membership } = useOrganization();
   const { orgId, orgRole, getToken } = useAuth();
   const storageKey = useMemo(() => `settings:allowAllPRs:${scope === "team" ? teamSlug ?? "team" : "user"}`, [scope, teamSlug]);
   const [bulkSettings, setBulkSettings] = useState<{
@@ -321,22 +320,22 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
             <CardContent className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Team Name</span>
-                    <span className="font-medium">{organization?.name || teamSlug || "—"}</span>
+                    <span className="font-medium">{teamSlug || "—"}</span>
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Team Slug</span>
-                    <span className="font-mono text-xs">{organization?.slug || teamSlug || "—"}</span>
+                    <span className="font-mono text-xs">{teamSlug || "—"}</span>
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Team ID</span>
-                    <span className="font-mono text-xs">{organization?.id || orgId || "—"}</span>
+                    <span className="font-mono text-xs">{orgId || "—"}</span>
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Your Role</span>
-                    <span className="font-medium">{membership?.role || orgRole || "—"}</span>
+                    <span className="font-medium">{orgRole || "—"}</span>
                   </div>
           </CardContent>
           </Card>

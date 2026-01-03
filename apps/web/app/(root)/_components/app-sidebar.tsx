@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 
-import { OrganizationSwitcher, useAuth } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
+
+import { useAuth } from "@clerk/nextjs";
 
 import {
   ScanTextIcon,
@@ -74,7 +73,7 @@ const items = [
 const AppSidebar = () => {
   const { open } = useSidebar();
   const pathname = usePathname();
-  const { resolvedTheme } = useTheme();
+
   const { getToken } = useAuth();
 
   const [loadingPlan, setLoadingPlan] = useState(true);
@@ -123,27 +122,7 @@ const AppSidebar = () => {
     };
   }, [getToken]);
 
-  // Helper function to get current path without team slug
-  const getCurrentPathWithoutTeamSlug = (): string => {
-    const pathSegments = pathname.split("/").filter(Boolean) as any;
-    // If first segment looks like a team slug (not dashboard, analysis, agents, etc.)
-    if (
-      pathSegments.length > 0 &&
-      ![
-        "dashboard",
-        "analysis",
-        "agents",
-        "repo",
-        "pr-analysis",
-        "settings",
-        "custom-context",
-      ].includes(pathSegments[0])
-    ) {
-      const pathWithoutSlug = "/" + pathSegments.slice(1).join("/");
-      return pathWithoutSlug || "/dashboard";
-    }
-    return pathname || "/dashboard";
-  };
+
 
   return (
     <Sidebar>
@@ -269,38 +248,18 @@ const AppSidebar = () => {
                   </Link>
                 </SidebarMenuButton>
                 <SidebarMenuButton asChild>
-                  <OrganizationSwitcher
-                    hidePersonal={false}
-                    afterSelectOrganizationUrl={(organization) => {
-                      const currentPathWithoutSlug =
-                        getCurrentPathWithoutTeamSlug();
-                      return `/${organization.slug}${currentPathWithoutSlug}`;
-                    }}
-                    afterSelectPersonalUrl={() => {
-                      return getCurrentPathWithoutTeamSlug();
-                    }}
-                    afterCreateOrganizationUrl={(organization) => {
-                      return `/${organization.slug}/dashboard`;
-                    }}
-                    // For free plan, redirect "Create organization" to upgrade page instead of opening Clerk modal
-                    {...(isFreePlan
-                      ? {
-                          createOrganizationMode: "navigation" as const,
-                          createOrganizationUrl: "/upgrade",
-                        }
-                      : {
-                          createOrganizationMode: "modal" as const,
-                        })}
-                    appearance={{
-                      baseTheme: resolvedTheme === "dark" ? dark : undefined,
-                      elements: {
-                        organizationSwitcherTrigger: cn(
-                          "cursor-pointer",
-                          open ? "p-1 w-full" : "ml-1 w-7 h-7 overflow-hidden",
-                        ),
-                      },
-                    }}
-                  />
+                <SidebarMenuButton asChild>
+                  <Link
+                    href="/team"
+                    className={cn(
+                      "mb-3 flex items-center gap-2",
+                      open ? "px-2" : "px-0",
+                    )}
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Team</span>
+                  </Link>
+                </SidebarMenuButton>
                 </SidebarMenuButton>
 
                 {isFreePlan && (

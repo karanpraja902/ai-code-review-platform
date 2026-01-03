@@ -20,8 +20,8 @@ const slugify = (name: string) =>
     .replace(/(^-|-$)/g, '');
 
 
-const ensureMember = (team: ITeam, userId: string) =>
-  team.members.find((m) => m.userId === userId);
+const isTeamOwner = (team: ITeam, userId: string) =>
+  team.ownerId === userId;
 
 
 export const getOrCreateCurrentOrgTeam = async (req: Request, res: Response, next: NextFunction) => {
@@ -37,22 +37,397 @@ export const getOrCreateCurrentOrgTeam = async (req: Request, res: Response, nex
 
     // Fetch org details from Clerk to seed the local team
     const org = await clerkClient.organizations.getOrganization({ organizationId: req.org.id });
-    const slug = org.slug || slugify(org.name || 'organization');
 
     team = await Team.create({
       _id: req.org.id,
       name: org.name,
-      description: '',
-      slug,
       ownerId: req.user._id,
-      members: [{ userId: req.user._id, role: 'admin', joinedAt: new Date() }],
-      settings: {},
     });
 
     return res.status(201).json({ success: true, data: team });
   } catch (err) {
     logger.error(`getOrCreateCurrentOrgTeam error: ${err}`);
     return next(new CustomError('Failed to ensure organization team', 500));
+  }
+};
+
+export const createTeam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name } = req.body;
+    
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return next(new CustomError('Team name is required', 400));
+    }
+
+    // Check if user already has a team (ownerId is unique)
+    const existingTeam = await Team.findOne({ ownerId: req.user._id });
+    if (existingTeam) {
+      return next(new CustomError('You already have a team. Each user can only own one team.', 400));
+    }
+
+    const team = await Team.create({
+      name: name.trim(),
+      ownerId: req.user._id,
+    });
+
+    const teamId = team._id;
+
+    // Update user's team reference
+    await mongoose.model('User').findByIdAndUpdate(req.user._id, {
+      team: {
+        id: teamId,
+        role: 'admin',
+      },
+    });
+
+    logger.info(`Team created: ${team.name} by user ${req.user._id}`);
+    return res.status(201).json({ success: true, data: team });
+  } catch (err: any) {
+    logger.error(`createTeam error: ${err}`);
+    // Handle duplicate key error for ownerId
+    if (err.code === 11000) {
+      return next(new CustomError('You already have a team. Each user can only own one team.', 400));
+    }
+    return next(new CustomError('Failed to create team', 500));
+  }
+};
+
+export const getTeamInfo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get team ID from user's team or header
+    const teamId = req.user?.team?.id || req.team?.id;
+    
+    if (!teamId) {
+      return res.status(200).json({ 
+        success: true, 
+        data: null,
+        message: 'No team associated with this user'
+      });
+    }
+
+    const team = await Team.findById(teamId).lean() as { _id: string; name: string; ownerId: string } | null;
+    if (!team) {
+      return res.status(200).json({ 
+        success: true, 
+        data: null,
+        message: 'Team not found'
+      });
+    }
+
+    // Check if user is owner or member
+    const isOwner = team.ownerId === req.user._id;
+    const userRole = isOwner ? 'admin' : (req.user?.team?.role || 'member');
+
+    return res.status(200).json({ 
+      success: true, 
+      data: {
+        ...team,
+        userRole,
+        isOwner,
+      }
+    });
+  } catch (err) {
+    logger.error(`getTeamInfo error: ${err}`);
+    return next(new CustomError('Failed to get team info', 500));
+  }
+};
+
+export const getTeamMembers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teamId = req.user?.team?.id || req.team?.id;
+    
+    if (!teamId) {
+      return next(new CustomError('No team context available', 400));
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return next(new CustomError('Team not found', 404));
+    }
+
+    // Get owner info
+    const User = mongoose.model('User');
+    type UserInfo = { _id: string; firstName: string; lastName: string; email: string; avatarUrl?: string; username?: string; team?: { role?: string } };
+    
+    const owner = await User.findById(team.ownerId)
+      .select('_id firstName lastName email avatarUrl username')
+      .lean() as UserInfo | null;
+
+    // Get all members (users where team.id matches)
+    const members = await User.find({ 'team.id': teamId })
+      .select('_id firstName lastName email avatarUrl username team.role')
+      .lean() as UserInfo[];
+
+    // Format response
+    const memberList = [];
+    
+    // Add owner first
+    if (owner) {
+      memberList.push({
+        _id: owner._id,
+        firstName: owner.firstName,
+        lastName: owner.lastName,
+        email: owner.email,
+        avatarUrl: owner.avatarUrl,
+        username: owner.username,
+        role: 'admin',
+        isOwner: true,
+      });
+    }
+
+    // Add other members
+    for (const member of members) {
+      // Skip if already added as owner
+      if (member._id === team.ownerId) continue;
+      
+      memberList.push({
+        _id: member._id,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        email: member.email,
+        avatarUrl: member.avatarUrl,
+        username: member.username,
+        role: member.team?.role || 'member',
+        isOwner: false,
+      });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      data: memberList,
+      total: memberList.length,
+    });
+  } catch (err) {
+    logger.error(`getTeamMembers error: ${err}`);
+    return next(new CustomError('Failed to get team members', 500));
+  }
+};
+
+// ============ INVITATION CONTROLLERS ============
+
+import TeamInvitation from '../models/team_invitation.model.js';
+
+export const inviteToTeam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, role = 'member' } = req.body;
+    
+    if (!email || typeof email !== 'string') {
+      return next(new CustomError('Email is required', 400));
+    }
+
+    // Get user's team (must be owner)
+    const team = await Team.findOne({ ownerId: req.user._id });
+    if (!team) {
+      return next(new CustomError('You must own a team to invite members', 403));
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if already invited (pending)
+    const existingInvite = await TeamInvitation.findOne({
+      teamId: team._id,
+      inviteeEmail: normalizedEmail,
+      status: 'pending',
+    });
+    if (existingInvite) {
+      return next(new CustomError('User already has a pending invitation', 400));
+    }
+
+    // Check if user is already a member
+    const User = mongoose.model('User');
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser?.team?.id === String(team._id)) {
+      return next(new CustomError('User is already a member of this team', 400));
+    }
+
+    // Create invitation
+    const invitation = await TeamInvitation.create({
+      teamId: team._id,
+      inviterId: req.user._id,
+      inviteeEmail: normalizedEmail,
+      inviteeId: existingUser?._id,
+      role: role === 'admin' ? 'admin' : 'member',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    });
+
+    logger.info(`Invitation created: ${normalizedEmail} to team ${team.name}`);
+    return res.status(201).json({ 
+      success: true, 
+      data: invitation,
+      message: `Invitation sent to ${normalizedEmail}`
+    });
+  } catch (err) {
+    logger.error(`inviteToTeam error: ${err}`);
+    return next(new CustomError('Failed to send invitation', 500));
+  }
+};
+
+export const getPendingInvites = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Only team owner can see pending invites
+    const team = await Team.findOne({ ownerId: req.user._id });
+    if (!team) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const invites = await TeamInvitation.find({
+      teamId: team._id,
+      status: 'pending',
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 }).lean();
+
+    return res.status(200).json({ success: true, data: invites });
+  } catch (err) {
+    logger.error(`getPendingInvites error: ${err}`);
+    return next(new CustomError('Failed to get pending invites', 500));
+  }
+};
+
+export const getMyInvitations = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userEmail = req.user.email?.toLowerCase();
+    const userId = req.user._id;
+
+    const invites = await TeamInvitation.find({
+      $or: [
+        { inviteeEmail: userEmail, status: 'pending' },
+        { inviteeId: userId, status: 'pending' },
+      ],
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 }).lean();
+
+    // Populate team names
+    const teamIds = [...new Set(invites.map(i => i.teamId))];
+    const teams = await Team.find({ _id: { $in: teamIds } }).select('_id name').lean();
+    const teamMap = new Map(teams.map(t => [String(t._id), t.name]));
+
+    const enrichedInvites = invites.map(invite => ({
+      ...invite,
+      teamName: teamMap.get(invite.teamId) || 'Unknown Team',
+    }));
+
+    return res.status(200).json({ success: true, data: enrichedInvites });
+  } catch (err) {
+    logger.error(`getMyInvitations error: ${err}`);
+    return next(new CustomError('Failed to get invitations', 500));
+  }
+};
+
+export const acceptInvitation = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const invitation = await TeamInvitation.findById(id);
+    if (!invitation) {
+      return next(new CustomError('Invitation not found', 404));
+    }
+
+    // Verify invitation is for this user
+    const userEmail = req.user.email?.toLowerCase();
+    if (invitation.inviteeEmail !== userEmail && invitation.inviteeId !== req.user._id) {
+      return next(new CustomError('This invitation is not for you', 403));
+    }
+
+    if (invitation.status !== 'pending') {
+      return next(new CustomError(`Invitation already ${invitation.status}`, 400));
+    }
+
+    if (invitation.expiresAt < new Date()) {
+      invitation.status = 'expired';
+      await invitation.save();
+      return next(new CustomError('Invitation has expired', 400));
+    }
+
+    // Check if user already belongs to a team
+    if (req.user.team?.id) {
+      return next(new CustomError('You already belong to a team. Leave your current team first.', 400));
+    }
+
+    // Update user's team
+    const User = mongoose.model('User');
+    await User.findByIdAndUpdate(req.user._id, {
+      team: {
+        id: invitation.teamId,
+        role: invitation.role,
+      },
+    });
+
+    // Update invitation status
+    invitation.status = 'accepted';
+    invitation.inviteeId = req.user._id;
+    await invitation.save();
+
+    const team = await Team.findById(invitation.teamId).select('name').lean() as { name: string } | null;
+    logger.info(`User ${req.user._id} accepted invitation to team ${invitation.teamId}`);
+
+    return res.status(200).json({ 
+      success: true, 
+      message: `You have joined ${team?.name || 'the team'}`,
+      data: { teamId: invitation.teamId, role: invitation.role }
+    });
+  } catch (err) {
+    logger.error(`acceptInvitation error: ${err}`);
+    return next(new CustomError('Failed to accept invitation', 500));
+  }
+};
+
+export const rejectInvitation = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const invitation = await TeamInvitation.findById(id);
+    if (!invitation) {
+      return next(new CustomError('Invitation not found', 404));
+    }
+
+    // Verify invitation is for this user
+    const userEmail = req.user.email?.toLowerCase();
+    if (invitation.inviteeEmail !== userEmail && invitation.inviteeId !== req.user._id) {
+      return next(new CustomError('This invitation is not for you', 403));
+    }
+
+    if (invitation.status !== 'pending') {
+      return next(new CustomError(`Invitation already ${invitation.status}`, 400));
+    }
+
+    invitation.status = 'rejected';
+    await invitation.save();
+
+    logger.info(`User ${req.user._id} rejected invitation ${id}`);
+    return res.status(200).json({ success: true, message: 'Invitation rejected' });
+  } catch (err) {
+    logger.error(`rejectInvitation error: ${err}`);
+    return next(new CustomError('Failed to reject invitation', 500));
+  }
+};
+
+export const revokeInvitation = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const invitation = await TeamInvitation.findById(id);
+    if (!invitation) {
+      return next(new CustomError('Invitation not found', 404));
+    }
+
+    // Only team owner can revoke
+    const team = await Team.findById(invitation.teamId);
+    if (!team || team.ownerId !== req.user._id) {
+      return next(new CustomError('Only team owner can revoke invitations', 403));
+    }
+
+    if (invitation.status !== 'pending') {
+      return next(new CustomError(`Invitation already ${invitation.status}`, 400));
+    }
+
+    await TeamInvitation.findByIdAndDelete(id);
+
+    logger.info(`Invitation ${id} revoked by owner ${req.user._id}`);
+    return res.status(200).json({ success: true, message: 'Invitation revoked' });
+  } catch (err) {
+    logger.error(`revokeInvitation error: ${err}`);
+    return next(new CustomError('Failed to revoke invitation', 500));
   }
 };
 
@@ -194,8 +569,7 @@ export const getTeamRepositories = async (req: Request, res: Response, next: Nex
     const team = await Team.findById(teamId);
     if (!team) return next(new CustomError('Team not found', 404));
 
-    const member = ensureMember(team, req.user._id);
-    if (!member) return next(new CustomError('Forbidden: not a team member', 403));
+    if (!isTeamOwner(team, req.user._id)) return next(new CustomError('Forbidden: not the team owner', 403));
 
     // Build query for repositories where the teamId exists in the teams array
     let query: any = { teams: teamId };
@@ -241,16 +615,32 @@ export const getTeamRepositories = async (req: Request, res: Response, next: Nex
 
 export const getMyTeams = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const teams = await Team.find({ 'members.userId': req.user._id })
-      .select('_id name slug members')
+    // Find teams where user is the owner
+    const teams = await Team.find({ ownerId: req.user._id })
+      .select('_id name ownerId')
       .lean();
+
+    // Also check if user has a team assigned in their profile
+    const userTeam = req.user?.team;
+    let memberTeam = null;
+    if (userTeam?.id && userTeam.id !== teams[0]?._id) {
+      memberTeam = await Team.findById(userTeam.id).select('_id name ownerId').lean();
+    }
 
     const result = teams.map((t: any) => ({
       _id: t._id,
       name: t.name,
-      slug: t.slug,
-      role: t.members.find((m: any) => m.userId === req.user._id)?.role,
+      role: 'admin', // Owner is always admin
     }));
+
+    // Add member team if exists
+    if (memberTeam) {
+      result.push({
+        _id: memberTeam._id,
+        name: memberTeam.name,
+        role: userTeam?.role || 'member',
+      });
+    }
 
     return res.status(200).json({ success: true, data: result });
   } catch (err) {
@@ -280,9 +670,8 @@ export const addReposInTeam = async (req: Request, res: Response, next: NextFunc
     if (!team) return next(new CustomError('Team not found', 404));
 
     // Admin role check is now handled by checkTeamRole middleware
-    const member = ensureMember(team, req.user._id);
-    if (!member) {
-      return next(new CustomError('Forbidden: not a team member', 403));
+    if (!isTeamOwner(team, req.user._id)) {
+      return next(new CustomError('Forbidden: not the team owner', 403));
     }
 
     // Ensure these repos belong to installations owned by team owner (same visibility scope as getTeamRepositories)
@@ -332,10 +721,9 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
             return next(new CustomError('Team not found', 404));
         }
 
-        // Check if user is a member of the team
-        const member = team.members.find((m: any) => m.userId === req.user._id);
-        if (!member) {
-            return next(new CustomError('Forbidden: not a team member', 403));
+        // Check if user is the owner of the team
+        if (team.ownerId !== req.user._id) {
+            return next(new CustomError('Forbidden: not the team owner', 403));
         }
 
         // Time range filter: supports last 7/15/30/60/90 days, default 7

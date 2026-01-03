@@ -82,7 +82,7 @@ export const checkFeatureAccess = (
 
 /**
  * Middleware to check multiple features at once
- * Usage: checkMultipleFeatures(['maxTeams', 'maxPrAnalysisPerDay'])
+ * Usage: checkMultipleFeatures(['maxPrAnalysisPerDay', 'maxFullRepoAnalysisPerDay'])
  */
 export const checkMultipleFeatures = (
   features: FeatureType[],
@@ -183,15 +183,6 @@ export const checkPrAnalysisAccess = checkFeatureAccess('maxPrAnalysisPerDay', {
 export const checkFullRepoAnalysisAccess = checkFeatureAccess('maxFullRepoAnalysisPerDay', {
   additionalDataExtractor: extractAnalysisData,
   customErrorMessage: "You've reached your daily full repo analysis limit. Please upgrade your plan to run more full repo analyses."
-});
-
-export const checkTeamAccess = checkFeatureAccess('maxTeams', {
-  customErrorMessage: "You've reached your team limit. Please upgrade your plan to create more teams."
-});
-
-export const checkTeamMemberAccess = checkFeatureAccess('maxTeamMembers', {
-  additionalDataExtractor: extractTeamId,
-  customErrorMessage: "You've reached your team member limit. Please upgrade your plan to add more members."
 });
 
 export const checkPrioritySupportAccess = checkFeatureAccess('prioritySupport', {
