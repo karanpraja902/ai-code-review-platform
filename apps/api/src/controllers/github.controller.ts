@@ -1625,7 +1625,7 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
       try {
         const result = await Github_Repository.updateMany(
           { repositoryId: { $in: newlyCreatedRepoIds } },
-          { $addToSet: { teams: teamId } }
+          { $set: { teamId } }
         );
         overallSyncResults.addedToTeam = result.modifiedCount || newlyCreatedRepoIds.length;
         logger.info("Added newly created repos to team", { 

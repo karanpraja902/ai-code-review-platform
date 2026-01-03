@@ -40,9 +40,13 @@ export const create_github_installation = async (payload: CreateInstallationInpu
               { username: { $regex: new RegExp(`^${input.sender.login}$`, "i") } }
              );
 
+             // Get user's activeTeamId to attach to installation and repositories
+             const teamId = user?.activeTeamId ? String(user.activeTeamId) : undefined;
+
              const installation_data = {
               installationId: input.installationId,
               userId: user ? user._id.toString() : null,
+              teamId: teamId,
                  account: {
                      login: input.account.login,
                      id: input.account.id,
@@ -90,7 +94,8 @@ export const create_github_installation = async (payload: CreateInstallationInpu
                                  repositoryId: repo.id,
                                  fullName: repo.fullName,
                                  private: repo.private,
-                                 defaultBranch: repoDetails.data.default_branch
+                                 defaultBranch: repoDetails.data.default_branch,
+                                 teamId: teamId || undefined
                              };
                          } catch (error) {
                              console.error(`Failed to fetch default branch for ${repo.fullName}:`, error);
@@ -100,7 +105,8 @@ export const create_github_installation = async (payload: CreateInstallationInpu
                                  repositoryId: repo.id,
                                  fullName: repo.fullName,
                                  private: repo.private,
-                                 defaultBranch: 'main'
+                                 defaultBranch: 'main',
+                                 teamId: teamId || undefined
                              };
                          }
                      })
@@ -109,7 +115,7 @@ export const create_github_installation = async (payload: CreateInstallationInpu
                  await Github_Repository.insertMany(repositoriesWithDefaultBranch);
              }
 
-             logger.info("GitHub installation created and user updated", { installationId: input.installationId });
+             logger.info("GitHub installation created and user updated", { installationId: input.installationId, teamId });
              return installation;
     } catch (error) {
         logger.error("Error creating GitHub installation", { error: error instanceof Error ? error.message : error });
@@ -598,6 +604,7 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
           _id: analysisId,
           analysis_type: "pr_analysis",
           userId: githubInstallation.userId,
+          teamId: githubRepo.teamId || undefined,
           repoUrl,
           github_repositoryId: githubRepo._id,
           sandboxId: "",
@@ -1242,9 +1249,9 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
           }
           
           // If repo belongs to a team, try to use team settings (team settings override user settings)
-          if (githubRepo.teams && githubRepo.teams.length > 0) {
+          if (githubRepo.teamId) {
             const Team = mongoose.model('Team');
-            const team = await Team.findById(githubRepo.teams[0]).select('settings');
+            const team = await Team.findById(githubRepo.teamId).select('settings');
             const teamSettings = team?.settings as any;
             if (typeof teamSettings?.commentSeverity === 'number') {
               commentSeverityThreshold = teamSettings.commentSeverity;
@@ -1340,6 +1347,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
             _id: preAnalysisId,
             analysis_type: "pr_analysis",
             userId: githubInstallation.userId,
+            teamId: githubRepo.teamId || undefined,
             repoUrl,
             github_repositoryId: githubRepo._id,
             sandboxId: "",
@@ -1415,8 +1423,8 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
 
         // Start analysis in background (don't await to avoid blocking webhook response)
         const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
-        // Get the team ID from the repository's teams array (first team if multiple)
-        const teamIdForAnalysis = githubRepo.teams && githubRepo.teams.length > 0 ? githubRepo.teams[0] : undefined;
+        // Get the team ID from the repository
+        const teamIdForAnalysis = githubRepo.teamId || undefined;
         executeAnalysis(
           githubRepo._id as string,
           repoUrl,

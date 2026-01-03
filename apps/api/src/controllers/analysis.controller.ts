@@ -88,6 +88,7 @@ export const createAnalysis = async (
       _id: analysisId,
       analysis_type,
       userId,
+      teamId: teamId && teamId !== 'null' ? teamId : undefined,
       repoUrl,
       github_repositoryId,
       sandboxId: "", // Will be updated when sandbox is created
@@ -417,7 +418,7 @@ export const getPrAnalysis = async (
       if (!isMember) {
         return next(new CustomError("Forbidden: not the team owner or member", 403));
       }
-      const repos = await Github_Repository.find({ teams: resolvedTeamId }).select('_id').lean();
+      const repos = await Github_Repository.find({ teamId: resolvedTeamId }).select('_id').lean();
       const repoIds = repos.map((r: any) => r._id);
 
       // If no accessible repositories, return empty result with pagination

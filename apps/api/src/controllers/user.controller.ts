@@ -106,7 +106,7 @@ export const getUserRepositories = async (req: Request, res: Response, next: Nex
       console.error('Error getting user repositories:', error);
       next(new CustomError('Failed to get user repositories', 500));
     }
-  }
+}
 
 export const getUserDashboardInfo = async (req: Request, res: Response, next: NextFunction) => {
     try {

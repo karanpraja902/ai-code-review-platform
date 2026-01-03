@@ -204,6 +204,28 @@ export const baseAuth = async (
       await ensureUserTeam(user._id, "My Team");
 
       req.user = user; // attach full user object for downstream handlers
+
+      // Set team context from user's activeTeamId
+      if (user.activeTeamId) {
+        const teamId = String(user.activeTeamId);
+        type MembershipDoc = { role: string };
+        const membership = await TeamMember.findOne({
+          teamId,
+          userId: user._id,
+        }).lean() as MembershipDoc | null;
+
+        if (membership) {
+          type TeamDoc = { ownerId: string };
+          const team = await Team.findById(teamId).select('ownerId').lean() as TeamDoc | null;
+          const isOwner = team && String(team.ownerId) === String(user._id);
+          req.team = {
+            id: teamId,
+            role: isOwner ? 'owner' : membership.role,
+          };
+          logger.info(`Team context set: ${teamId}, role: ${req.team.role}`);
+        }
+      }
+
       logger.info(`User authenticated successfully via Clerk: ${user.email}`);
       return next();
     }
@@ -284,6 +306,28 @@ export const baseAuth = async (
       await ensureUserTeam(user._id, "My Team");
 
       req.user = user;
+
+      // Set team context from user's activeTeamId
+      if (user.activeTeamId) {
+        const teamId = String(user.activeTeamId);
+        type MembershipDoc = { role: string };
+        const membership = await TeamMember.findOne({
+          teamId,
+          userId: user._id,
+        }).lean() as MembershipDoc | null;
+
+        if (membership) {
+          type TeamDoc = { ownerId: string };
+          const team = await Team.findById(teamId).select('ownerId').lean() as TeamDoc | null;
+          const isOwner = team && String(team.ownerId) === String(user._id);
+          req.team = {
+            id: teamId,
+            role: isOwner ? 'owner' : membership.role,
+          };
+          logger.info(`Team context set: ${teamId}, role: ${req.team.role}`);
+        }
+      }
+
       logger.info(`Extension user authenticated: ${user.email}`);
       return next();
     }
@@ -599,49 +643,15 @@ export const authWithSubscription = async (
 /**
  * Convenience middleware that combines baseAuth + teamAuth.
  * Use this for routes that need user authentication and team context but not subscription data.
+ * Since baseAuth now sets req.team automatically, this is equivalent to baseAuth.
  */
 export const authWithTeam = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  logger.info("authWithTeam middleware execution started");
-
-  try {
-    // Run base authentication first
-    await new Promise<void>((resolve, reject) => {
-      baseAuth(req, res, (err) => {
-        if (err) {
-          reject(err);
-        } else if (res.headersSent) {
-          reject(new Error("Response already sent"));
-        } else {
-          resolve();
-        }
-      });
-    });
-
-    // Run team authentication
-    // await new Promise<void>((resolve, reject) => {
-    //   teamAuth(req, res, (err) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else if (res.headersSent) {
-    //       reject(new Error("Response already sent"));
-    //     } else {
-    //       resolve();
-    //     }
-    //   });
-    // });
-
-    logger.info("authWithTeam middleware completed successfully");
-    next();
-  } catch (err) {
-    if (!res.headersSent) {
-      logger.error(`authWithTeam middleware error: ${err}`);
-      res.status(500).json({ message: "Authentication error" });
-    }
-  }
+  // baseAuth now handles team context setting, so just call baseAuth
+  return baseAuth(req, res, next);
 };
 
 export const checkSandboxAuth = async (

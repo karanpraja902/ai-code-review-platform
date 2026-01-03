@@ -1,6 +1,6 @@
 // apps/api/src/routes/team.routes.ts
 import express, { Router } from 'express';
-import { authWithTeam } from '../middlewares/checkAuth.js';
+import { baseAuth } from '../middlewares/checkAuth.js';
 import {
   getTeamRepositories,
   getMyTeams,
@@ -24,7 +24,7 @@ import { checkTeamMemberRole } from '../middlewares/checkRole.js';
 
 const router: Router = express.Router();
 
-router.use(authWithTeam);
+router.use(baseAuth);
 
 // Team info routes
 router.get('/info', getTeamInfo);
