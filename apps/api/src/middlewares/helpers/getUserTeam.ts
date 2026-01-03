@@ -12,7 +12,7 @@ import TeamMember from '../../models/team_member.model.js';
 export async function getUserTeam(userId: string): Promise<{
   team: any;
   teamId: string;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member';
   isOwner: boolean;
 } | null> {
   // Check if user owns a team
@@ -21,7 +21,7 @@ export async function getUserTeam(userId: string): Promise<{
     return {
       team: ownedTeam,
       teamId: String(ownedTeam._id),
-      role: 'admin',
+      role: 'owner',
       isOwner: true,
     };
   }
@@ -34,7 +34,7 @@ export async function getUserTeam(userId: string): Promise<{
       return {
         team,
         teamId: membership.teamId,
-        role: membership.role as 'admin' | 'member',
+        role: membership.role as 'owner' | 'admin' | 'member',
         isOwner: false,
       };
     }
@@ -52,10 +52,10 @@ export async function getUserTeam(userId: string): Promise<{
 export async function getAllUserTeams(userId: string): Promise<Array<{
   team: any;
   teamId: string;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member';
   isOwner: boolean;
 }>> {
-  const result: Array<{ team: any; teamId: string; role: 'admin' | 'member'; isOwner: boolean }> = [];
+  const result: Array<{ team: any; teamId: string; role: 'owner' | 'admin' | 'member'; isOwner: boolean }> = [];
 
   // Find owned teams
   const ownedTeams = await Team.find({ ownerId: userId });
@@ -63,7 +63,7 @@ export async function getAllUserTeams(userId: string): Promise<Array<{
     result.push({
       team,
       teamId: String(team._id),
-      role: 'admin',
+      role: 'owner',
       isOwner: true,
     });
   }
@@ -81,7 +81,7 @@ export async function getAllUserTeams(userId: string): Promise<Array<{
       result.push({
         team,
         teamId: membership.teamId,
-        role: membership.role as 'admin' | 'member',
+        role: membership.role as 'owner' | 'admin' | 'member',
         isOwner: false,
       });
     }

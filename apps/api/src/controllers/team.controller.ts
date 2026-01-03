@@ -12,7 +12,7 @@ import Analysis from '../models/analysis.model.js';
 import GithubIssue from '../models/github_issue.model.js';
 import GithubPullRequest from '../models/github_pull_request.model.js';
 import mongoose from 'mongoose';
-import { getUserTeam, getAllUserTeams } from '../middlewares/helpers/getUserTeam.js';
+import { getAllUserTeams } from '../middlewares/helpers/getUserTeam.js';
 import TeamInvitation from '../models/team_invitation.model.js';
 import { mailService } from '../services/mail/mail_service.js';
 
@@ -41,7 +41,7 @@ export const createTeam = async (req: Request, res: Response, next: NextFunction
     await TeamMember.create({
       teamId: String(teamId),
       userId: req.user._id,
-      role: 'admin',
+      role: 'owner',
       joinedAt: new Date(),
     });
 
@@ -168,6 +168,15 @@ export const inviteToTeam = async (req: Request, res: Response, next: NextFuncti
     
     if (!email || typeof email !== 'string') {
       return next(new CustomError('Email is required', 400));
+    }
+
+    // Validate role - cannot invite as owner
+    if (role === 'owner') {
+      return next(new CustomError('Cannot invite users as owner. Only admin or member roles allowed.', 400));
+    }
+
+    if (role !== 'admin' && role !== 'member') {
+      return next(new CustomError('Role must be either admin or member', 400));
     }
 
     // Get user's team (must be owner)
@@ -684,6 +693,39 @@ export const getMyTeams = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+export const getTeamInstallations = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Use team context from middleware
+    const teamId = req.team?.id;
+    if (!teamId) {
+      return next(new CustomError('Team context required', 400));
+    }
+
+    // Find all installations for the team
+    const installations = await Github_Installation.find({ teamId }).sort({ installedAt: -1 });
+
+    if (!installations || installations.length === 0) {
+      return next(new CustomError('No installations found', 404));
+    }
+
+    // Extract account information
+    const accounts = installations.map(installation => ({
+      id: installation._id,
+      login: installation.account.login,
+      type: installation.account.type || 'Organization',
+      avatarUrl: installation.account.avatarUrl || null
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: accounts
+    });
+  } catch (error) {
+    logger.error(`getTeamInstallations error: ${error}`);
+    return next(new CustomError('Failed to fetch team installations', 500));
+  }
+};
+
 // Add repositories into a team
 export const addReposInTeam = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -932,41 +974,35 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
             }
         };
 
-        // Get all repositories that belong to this team
+        // Get all repositories that belong to this team (for count)
         const repositories = await Github_Repository.find({ teamId }).lean();
-        const repositoryIds = repositories.map(repo => repo._id);
 
         // Get total repositories added to team
         const total_repo_added = repositories.length;
 
-        // Get analyses split by type for team repositories (using team owner's userId)
+        // Get analyses split by type using teamId directly
         const fullRepoAnalyses = await Analysis.find({
-                      github_repositoryId: { $in: repositoryIds },
-
-            userId: team.ownerId,
+            teamId,
             analysis_type: 'full_repo_analysis',
             createdAt: { $gte: rangeStart, $lte: now }
         }).lean();
 
         const prAnalyses = await Analysis.find({
-                      github_repositoryId: { $in: repositoryIds },
-
-            userId: team.ownerId,
+            teamId,
             analysis_type: 'pr_analysis',
             createdAt: { $gte: rangeStart, $lte: now }
         }).lean();
 
         // Get all GitHub issues created for team repositories
+        const repositoryIds = repositories.map(repo => repo._id);
         const githubIssues = await GithubIssue.find({
             github_repositoryId: { $in: repositoryIds },
-            createdBy: team.ownerId,
             createdAt: { $gte: rangeStart, $lte: now }
         }).lean();
 
         // Get all pull requests created for team repositories
         const pullRequests = await GithubPullRequest.find({
             github_repositoryId: { $in: repositoryIds },
-            createdBy: team.ownerId,
             createdAt: { $gte: rangeStart, $lte: now }
         }).lean();
 
@@ -979,8 +1015,7 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
 
         // Get recent activity (last 5 items) - both full repo analyses and PR analyses
         const recentFullRepoAnalyses = await Analysis.find({
-            github_repositoryId: { $in: repositoryIds },
-            userId: team.ownerId,
+            teamId,
             analysis_type: 'full_repo_analysis',
             createdAt: { $gte: rangeStart, $lte: now }
         })
@@ -990,8 +1025,7 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
         .lean();
 
         const recentPrAnalyses = await Analysis.find({
-            github_repositoryId: { $in: repositoryIds },
-            userId: team.ownerId,
+            teamId,
             analysis_type: 'pr_analysis',
             createdAt: { $gte: rangeStart, $lte: now }
         })

@@ -5,7 +5,7 @@ import { sanitizePrompt, optimizeCustomRules } from '../utils/gemini.helper.js';
 export const getCustomContexts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?._id;
-    const teamId = req.headers['x-team-id'] as string || req.team?.id || req.org?.id;
+    const teamId = req.team?.id
 
     if (!userId) {
       return res.status(401).json({ status: 'error', message: 'Unauthorized' });

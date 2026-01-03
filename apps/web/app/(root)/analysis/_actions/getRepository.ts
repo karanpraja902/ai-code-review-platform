@@ -6,26 +6,10 @@ import { logger } from "@/lib/logger";
 
 export const getRepository = async (
   query: string,
-  scope: "user" | "team" = "team",
-  teamIdFromClient?: string,
   orgSlug?: string
 ) => {
   try {
-    if (scope === "user") {
-      const userRes = await apiGet(
-        `/api/user/repositories?orgSlug=${orgSlug}&search=${query}`,
-        {
-          includeTeamId: false,
-          cache: "force-cache",
-          next: { tags: ["repository_list", "user"] },
-        }
-      );
-
-      const data: { success: boolean; data: GithubRepository[] } = await userRes.json();
-      return data;
-    }
-
-    // Team scope - now the backend will get teamId from headers automatically
+    // Fetch repositories using team route - teamId is automatically included via headers
     const repoRes = await apiGet(
       `/api/team/repositories?orgSlug=${orgSlug}&search=${query}`,
       {
@@ -39,8 +23,6 @@ export const getRepository = async (
   } catch (error) {
     logger.error("Failed to fetch repositories", { 
       query, 
-      scope, 
-      teamId: teamIdFromClient,
       error: error instanceof Error ? error.message : error 
     });
 

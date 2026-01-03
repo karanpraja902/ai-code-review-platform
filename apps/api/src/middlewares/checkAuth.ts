@@ -201,7 +201,7 @@ export const baseAuth = async (
       }
 
       // Ensure user has a team (handles both new and existing users)
-      await ensureUserTeam(user._id, "My Team");
+      await ensureUserTeam(user._id, "AC");
 
       req.user = user; // attach full user object for downstream handlers
 
@@ -303,7 +303,7 @@ export const baseAuth = async (
       }
 
       // Ensure user has a team (handles both new and existing users)
-      await ensureUserTeam(user._id, "My Team");
+      await ensureUserTeam(user._id, "AC");
 
       req.user = user;
 

@@ -40,7 +40,6 @@ import {
   Palette,
   Zap,
   Code,
-  TestTube,
   Accessibility,
   CheckCircle,
   ChevronsUpDown,
@@ -54,13 +53,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { getRepository } from "../../analysis/_actions/getRepository";
 import { Badge } from "@/components/ui/badge";
 
-type Scope = "user" | "team";
-
-export interface CustomContextContentProps {
-  scope?: Scope;
-  teamSlug?: string;
-  teamId?: string;
-}
+export type CustomContextContentProps = Record<string, never>;
 
 interface Repository {
   _id: string;
@@ -253,7 +246,7 @@ const RepoMultiSelect: React.FC<RepoMultiSelectProps> = ({
   );
 };
 
-const CustomContextContent: React.FC<CustomContextContentProps> = ({ scope = "user", teamSlug, teamId }) => {
+const CustomContextContent: React.FC<CustomContextContentProps> = () => {
   const { getToken } = useAuth();
 
   const [rules, setRules] = useState<CustomRule[]>([]);
@@ -283,17 +276,13 @@ const CustomContextContent: React.FC<CustomContextContentProps> = ({ scope = "us
       Authorization: token ? `Bearer ${token}` : "",
       "Content-Type": "application/json",
     };
-    if (scope === "team" && teamId) {
-      headers["X-Team-Id"] = teamId;
-    }
     return headers;
-  }, [getToken, scope, teamId]);
+  }, [getToken]);
 
   const fetchRepos = useCallback(async () => {
     try {
       setLoadingRepos(true);
-      const result = await getRepository("", scope, teamId);
-      console.log(result, "here is th resulu");
+      const result = await getRepository("");
       if (result?.data) {
         setAvailableRepos(result.data as Repository[]);
       }
@@ -302,7 +291,7 @@ const CustomContextContent: React.FC<CustomContextContentProps> = ({ scope = "us
     } finally {
       setLoadingRepos(false);
     }
-  }, [scope, teamId, teamSlug]);
+  }, []);
 
   // Removed useEffect that fetched repos on mount - now lazy loaded when dropdown opens
 
@@ -633,14 +622,14 @@ Ensure all async functions have proper try-catch blocks.
                     />
                     <Label htmlFor="inline-is-active" className="text-sm cursor-pointer">Active</Label>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <Switch
                       id="inline-is-default"
                       checked={editingRule.isDefault}
                       onCheckedChange={(checked) => handleToggleInline("isDefault", checked)}
                     />
                     <Label htmlFor="inline-is-default" className="text-sm cursor-pointer">Set as Default</Label>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 

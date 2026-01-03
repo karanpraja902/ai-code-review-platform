@@ -1,7 +1,7 @@
 // apps/api/src/models/team_member.model.ts
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type TeamMemberRole = 'admin' | 'member';
+export type TeamMemberRole = 'owner' | 'admin' | 'member';
 
 export interface ITeamMember extends Document {
   _id: mongoose.Types.ObjectId;
@@ -28,7 +28,7 @@ const TeamMemberSchema = new Schema<ITeamMember>(
     },
     role: {
       type: String,
-      enum: ['admin', 'member'],
+      enum: ['owner', 'admin', 'member'],
       required: true,
       default: 'member',
     },

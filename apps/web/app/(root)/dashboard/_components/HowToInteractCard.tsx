@@ -113,7 +113,7 @@ const HowToInteractCard = () => {
           return;
         }
         const token = await getToken();
-        const res = await fetch(`${_config.API_BASE_URL}/api/user/installations`, {
+        const res = await fetch(`${_config.API_BASE_URL}/api/team/installations`, {
           headers: { Authorization: token ? `Bearer ${token}` : "" },
         });
         const data = await res.json();

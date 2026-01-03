@@ -4,6 +4,7 @@ import { baseAuth } from '../middlewares/checkAuth.js';
 import {
   getTeamRepositories,
   getMyTeams,
+  getTeamInstallations,
   addReposInTeam,
   getTeamDashboardInfo,
   getTeamSettings,
@@ -41,8 +42,9 @@ router.post('/invites/:id/accept', acceptInvitation);
 router.post('/invites/:id/reject', rejectInvitation);
 router.delete('/invites/:id', revokeInvitation);
 
-// Team repository routes
+// Team repository and installation routes
 router.get('/repositories', getTeamRepositories);
+router.get('/installations', getTeamInstallations);
 router.post('/repositories/add', checkTeamMemberRole('admin'), addReposInTeam);
 
 // Team settings routes

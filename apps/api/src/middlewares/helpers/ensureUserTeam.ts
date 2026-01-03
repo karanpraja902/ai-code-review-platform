@@ -8,7 +8,7 @@ import { logger } from '../../utils/logger.js';
  * This handles migration for old users who don't have teams yet.
  * 
  * @param userId - The user's ID
- * @param teamName - Optional team name (defaults to "My Team")
+ * @param teamName - Optional team name (defaults to "AC")
  * @returns The team info { teamId, isNewTeam } or null if creation failed
  */
 export async function ensureUserTeam(
@@ -29,7 +29,7 @@ export async function ensureUserTeam(
         await TeamMember.create({
           teamId: String(ownedTeam._id),
           userId: userId,
-          role: 'admin',
+          role: 'owner',
           joinedAt: new Date(),
         });
         logger.info(`Created missing TeamMember entry for team owner: ${userId}`);
@@ -54,7 +54,7 @@ export async function ensureUserTeam(
     await TeamMember.create({
       teamId: String(team._id),
       userId: userId,
-      role: 'admin',
+      role: 'owner',
       joinedAt: new Date(),
     });
 

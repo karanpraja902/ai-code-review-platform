@@ -414,7 +414,7 @@ export const getPrAnalysis = async (
       if (!team) {
         return next(new CustomError("Team not found", 404));
       }
-      const isMember = team.ownerId === currentUserId || req.user?.team?.id === resolvedTeamId;
+      const isMember = team.ownerId === currentUserId || req.team?.id === resolvedTeamId;
       if (!isMember) {
         return next(new CustomError("Forbidden: not the team owner or member", 403));
       }
@@ -596,7 +596,7 @@ export const stopAnalysis = async (
     // Authorization: user must be owner or part of the team owned by analysis.userId
     if (analysis.userId !== req.user._id) {
       const team = await Team.findOne({ ownerId: analysis.userId });
-      const hasAccess = team && (team.ownerId === req.user._id || req.user?.team?.id === team._id);
+      const hasAccess = team && (team.ownerId === req.user._id || req.team?.id === team._id);
       if (!hasAccess) {
         return next(new CustomError("Unauthorized to stop this analysis", 403));
       }
