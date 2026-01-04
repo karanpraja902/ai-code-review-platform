@@ -1416,11 +1416,7 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
     }
 }
 
-/**
- * Get team leaderboard - aggregates PR data by author
- * Ranks by: number of PRs created > total lines committed
- * Supports pagination with default limit of 10
- */
+
 export const getTeamLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const teamId = req.team?.id;
@@ -1441,9 +1437,9 @@ export const getTeamLeaderboard = async (req: Request, res: Response, next: Next
     const page = Math.max(parseInt(pageParam, 10) || 1, 1);
     const limit = Math.max(parseInt(limitParam, 10) || 10, 1);
     
-    // Date range filter
-    const daysParam = (req.query.days as string) || "30";
-    const days = parseInt(daysParam, 10) || 30;
+    // Date range filter - default to 7 days for efficiency
+    const daysParam = (req.query.days as string) || "7";
+    const days = parseInt(daysParam, 10) || 7;
     const dateFilter = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Search filter
@@ -1465,31 +1461,40 @@ export const getTeamLeaderboard = async (req: Request, res: Response, next: Next
           createdAt: { $gte: dateFilter }
         }
       },
-      // Group by author username
+      // Group by author username - use $max for name/avatar to get non-null values
       {
         $group: {
           _id: '$author.username',
           username: { $first: '$author.username' },
-          name: { $first: '$author.name' }, // Capture name
-          avatar: { $first: '$author.avatar' },
+          // Use $max to prefer non-null values for name and avatar
+          name: { $max: '$author.name' },
+          avatar: { $max: '$author.avatar' },
           totalPRs: { $sum: 1 },
-          // Count merged PRs (Checking state field if updated, or pr.state)
-          // Note: Currently state might mostly be 'open' unless updated by webhook
+          // Count merged PRs (state can be 'closed' or 'merged')
           totalMerged: { 
             $sum: { 
               $cond: [{ $or: [{ $eq: ['$state', 'closed'] }, { $eq: ['$state', 'merged'] }] }, 1, 0] 
             } 
           },
-          totalAdditions: { $sum: '$changes.summary.additions' },
-          totalDeletions: { $sum: '$changes.summary.deletions' },
-          totalCommits: { $sum: '$changes.summary.commits' },
+          totalAdditions: { $sum: { $ifNull: ['$changes.summary.additions', 0] } },
+          totalDeletions: { $sum: { $ifNull: ['$changes.summary.deletions', 0] } },
+          totalCommits: { $sum: { $ifNull: ['$changes.summary.commits', 0] } },
           lastPRDate: { $max: '$createdAt' }
         }
       },
-      // Calculate total lines
+      // Calculate total lines and ensure name/avatar fallbacks
       {
         $addFields: {
-          totalLinesCommitted: { $add: ['$totalAdditions', '$totalDeletions'] }
+          totalLinesCommitted: { $add: ['$totalAdditions', '$totalDeletions'] },
+          // Fallback name to username if null/empty
+          name: { $ifNull: ['$name', '$username'] },
+          // Generate fallback avatar URL if null
+          avatar: { 
+            $ifNull: [
+              '$avatar', 
+              { $concat: ['https://ui-avatars.com/api/?name=', '$username', '&background=random'] }
+            ] 
+          }
         }
       }
     ];
@@ -1507,30 +1512,19 @@ export const getTeamLeaderboard = async (req: Request, res: Response, next: Next
       });
     }
 
-    // Sort and Rank
-    pipeline.push(
-      {
-        $sort: {
-          totalPRs: -1 as const,
-          totalLinesCommitted: -1 as const
-        }
-      },
-      {
-        $setWindowFields: {
-          sortBy: { totalPRs: -1 as const },
-          output: {
-            rank: { $rank: {} }
-          }
-        }
+    // Sort with proper tiebreakers:
+    // 1. Total PRs (most important)
+    // 2. Lines reviewed/committed (secondary)
+    // 3. PRs merged (tertiary)
+    pipeline.push({
+      $sort: {
+        totalPRs: -1 as const,
+        totalLinesCommitted: -1 as const,
+        totalMerged: -1 as const
       }
-    );
+    });
 
-    // Get total count for pagination
-    const countPipeline = [
-      ...pipeline, // Includes the match/group/search stages
-      { $count: 'total' }
-    ];
-
+    // Get total count for pagination (before skip/limit)
     const countResult = await prCollection.aggregate([...pipeline, { $count: 'total' }]).toArray();
     const total = countResult[0]?.total || 0;
 
@@ -1538,11 +1532,10 @@ export const getTeamLeaderboard = async (req: Request, res: Response, next: Next
     pipeline.push(
       { $skip: (page - 1) * limit },
       { $limit: limit },
-      // Project final shape
+      // Project final shape (without rank - we'll add it in JS)
       {
         $project: {
           _id: 0,
-          rank: 1,
           username: 1,
           name: 1,
           avatar: 1,
@@ -1557,7 +1550,13 @@ export const getTeamLeaderboard = async (req: Request, res: Response, next: Next
       }
     );
 
-    const leaderboard = await prCollection.aggregate(pipeline).toArray();
+    const results = await prCollection.aggregate(pipeline).toArray();
+    
+    // Calculate rank based on position after sorting (accounting for pagination offset)
+    const leaderboard = results.map((item, index) => ({
+      ...item,
+      rank: (page - 1) * limit + index + 1
+    }));
 
     logger.info('Team leaderboard fetched', {
       teamId,
