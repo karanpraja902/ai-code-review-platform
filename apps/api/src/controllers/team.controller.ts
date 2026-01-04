@@ -29,6 +29,12 @@ export const createTeam = async (req: Request, res: Response, next: NextFunction
       return next(new CustomError('Team name is required', 400));
     }
 
+    // Check if user has a paid subscription
+    const subscriptionStatus = req.user.subscriptionStatus;
+    if (!subscriptionStatus || subscriptionStatus === 'free') {
+      return next(new CustomError('Team creation requires a paid subscription. Please upgrade your plan.', 403));
+    }
+
     const team = await Team.create({
       name: name.trim(),
       description: description?.trim() || undefined,
@@ -80,17 +86,273 @@ export const getTeamInfo = async (req: Request, res: Response, next: NextFunctio
     const isOwner = String(team.ownerId) === String(req.user._id);
     const userRole = req.team?.role || (isOwner ? 'owner' : 'member');
 
+    // Get team owner's subscription status
+    const User = mongoose.model('User');
+    type OwnerInfo = { subscriptionStatus?: string; subscriptionPlanId?: any };
+    const owner = await User.findById(team.ownerId).select('subscriptionStatus subscriptionPlanId').lean() as OwnerInfo | null;
+    
+    // Check if owner has a paid plan (not 'free')
+    const ownerHasPaidPlan = owner?.subscriptionStatus && owner.subscriptionStatus !== 'free';
+
     return res.status(200).json({ 
       success: true, 
       data: {
         ...team,
         userRole,
         isOwner,
+        ownerHasPaidPlan,
       }
     });
   } catch (err) {
     logger.error(`getTeamInfo error: ${err}`);
     return next(new CustomError('Failed to get team info', 500));
+  }
+};
+
+export const updateTeam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teamId = req.team?.id;
+    
+    if (!teamId) {
+      return next(new CustomError('No team associated with this user', 400));
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return next(new CustomError('Team not found', 404));
+    }
+
+    // Only owner can update team details
+    if (team.ownerId !== req.user._id) {
+      return next(new CustomError('Only team owner can update team details', 403));
+    }
+
+    const { name, description } = req.body;
+
+    // Validate name if provided
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length === 0) {
+        return next(new CustomError('Team name cannot be empty', 400));
+      }
+      team.name = name.trim();
+    }
+
+    // Update description if provided
+    if (description !== undefined) {
+      team.description = typeof description === 'string' ? description.trim() : undefined;
+    }
+
+    await team.save();
+
+    logger.info(`Team ${teamId} updated by user ${req.user._id}`);
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Team updated successfully',
+      data: { name: team.name, description: team.description }
+    });
+  } catch (err) {
+    logger.error(`updateTeam error: ${err}`);
+    return next(new CustomError('Failed to update team', 500));
+  }
+};
+
+export const updateMemberRole = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teamId = req.team?.id;
+    const { memberId } = req.params;
+    const { role } = req.body;
+    
+    if (!teamId) {
+      return next(new CustomError('No team associated with this user', 400));
+    }
+
+    if (!memberId) {
+      return next(new CustomError('Member ID is required', 400));
+    }
+
+    // Validate role
+    if (!role || !['admin', 'member'].includes(role)) {
+      return next(new CustomError('Role must be either admin or member', 400));
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return next(new CustomError('Team not found', 404));
+    }
+
+    // Cannot change role of team owner
+    if (team.ownerId === memberId) {
+      return next(new CustomError('Cannot change the role of the team owner', 400));
+    }
+
+    // Find the member
+    const member = await TeamMember.findOne({ teamId, userId: memberId });
+    if (!member) {
+      return next(new CustomError('Member not found in this team', 404));
+    }
+
+    // Check permissions - only owner and admins can change roles
+    const currentUserMembership = await TeamMember.findOne({ teamId, userId: req.user._id });
+    const isOwner = team.ownerId === req.user._id;
+    const isAdmin = currentUserMembership?.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return next(new CustomError('Only team owner or admins can change member roles', 403));
+    }
+
+    member.role = role;
+    await member.save();
+
+    logger.info(`Member ${memberId} role changed to ${role} in team ${teamId} by ${req.user._id}`);
+    return res.status(200).json({ 
+      success: true, 
+      message: `Member role updated to ${role}`,
+      data: { userId: memberId, role }
+    });
+  } catch (err) {
+    logger.error(`updateMemberRole error: ${err}`);
+    return next(new CustomError('Failed to update member role', 500));
+  }
+};
+
+export const removeMember = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teamId = req.team?.id;
+    const { memberId } = req.params;
+    
+    if (!teamId) {
+      return next(new CustomError('No team associated with this user', 400));
+    }
+
+    if (!memberId) {
+      return next(new CustomError('Member ID is required', 400));
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return next(new CustomError('Team not found', 404));
+    }
+
+    // Cannot remove team owner
+    if (team.ownerId === memberId) {
+      return next(new CustomError('Cannot remove the team owner', 400));
+    }
+
+    // Cannot remove yourself (use leave team instead)
+    if (memberId === req.user._id) {
+      return next(new CustomError('Cannot remove yourself. Use leave team instead.', 400));
+    }
+
+    // Find the member to be removed
+    const memberToRemove = await TeamMember.findOne({ teamId, userId: memberId });
+    if (!memberToRemove) {
+      return next(new CustomError('Member not found in this team', 404));
+    }
+
+    // Check permissions - only owner and admins can remove members
+    const currentUserMembership = await TeamMember.findOne({ teamId, userId: req.user._id });
+    const isOwner = team.ownerId === req.user._id;
+    const isAdmin = currentUserMembership?.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return next(new CustomError('Only team owner or admins can remove members', 403));
+    }
+
+    await TeamMember.deleteOne({ teamId, userId: memberId });
+
+    // If the removed user had this team as active, set to another team they own or belong to
+    const User = mongoose.model('User');
+    const removedUser = await User.findById(memberId).select('activeTeamId').lean() as { activeTeamId?: string } | null;
+    
+    if (removedUser?.activeTeamId?.toString() === teamId.toString()) {
+      // Find a team the user owns
+      const ownedTeam = await Team.findOne({ ownerId: memberId }).select('_id').lean() as { _id: string } | null;
+      
+      if (ownedTeam) {
+        await User.updateOne({ _id: memberId }, { $set: { activeTeamId: String(ownedTeam._id) } });
+      } else {
+        // No owned team, find any team they're a member of
+        const anyMembership = await TeamMember.findOne({ userId: memberId }).lean() as { teamId: string } | null;
+        if (anyMembership) {
+          await User.updateOne({ _id: memberId }, { $set: { activeTeamId: anyMembership.teamId } });
+        } else {
+          // No teams left, clear activeTeamId
+          await User.updateOne({ _id: memberId }, { $unset: { activeTeamId: 1 } });
+        }
+      }
+    }
+
+    logger.info(`Member ${memberId} removed from team ${teamId} by ${req.user._id}`);
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Member removed from team'
+    });
+  } catch (err) {
+    logger.error(`removeMember error: ${err}`);
+    return next(new CustomError('Failed to remove member', 500));
+  }
+};
+
+export const leaveTeam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teamId = req.team?.id;
+    const userId = req.user._id;
+    console.log(teamId, userId)
+    if (!teamId) {
+      return next(new CustomError('No team associated with this user', 400));
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return next(new CustomError('Team not found', 404));
+    }
+
+    // Owner cannot leave their own team
+    if (team.ownerId === userId) {
+      return next(new CustomError('Team owner cannot leave the team. Transfer ownership or delete the team instead.', 400));
+    }
+
+    // Check if user is a member
+    const membership = await TeamMember.findOne({ teamId, userId });
+    if (!membership) {
+      return next(new CustomError('You are not a member of this team', 404));
+    }
+
+    await TeamMember.deleteOne({ teamId, userId });
+
+    // If this was the active team, set activeTeamId to another team the user owns
+    const User = mongoose.model('User');
+    const user = await User.findById(userId).select('activeTeamId').lean() as { activeTeamId?: string } | null;
+    
+    if (user?.activeTeamId?.toString() === teamId.toString()) {
+      // Find a team the user owns
+      const ownedTeam = await Team.findOne({ ownerId: userId }).select('_id').lean() as { _id: string } | null;
+      console.log(ownedTeam?._id, "here is owneteam")
+      if (ownedTeam) {
+        await User.updateOne({ _id: userId }, { $set: { activeTeamId: String(ownedTeam._id) } });
+        logger.info(`Set activeTeamId to owned team ${ownedTeam._id} for user ${userId}`);
+      } else {
+        // No owned team, find any team they're a member of
+        const anyMembership = await TeamMember.findOne({ userId }).lean() as { teamId: string } | null;
+        if (anyMembership) {
+          await User.updateOne({ _id: userId }, { $set: { activeTeamId: anyMembership.teamId } });
+          logger.info(`Set activeTeamId to member team ${anyMembership.teamId} for user ${userId}`);
+        } else {
+          // No teams left, clear activeTeamId
+          await User.updateOne({ _id: userId }, { $unset: { activeTeamId: 1 } });
+          logger.info(`Cleared activeTeamId for user ${userId} - no teams left`);
+        }
+      }
+    }
+
+    logger.info(`User ${userId} left team ${teamId}`);
+    return res.status(200).json({ 
+      success: true, 
+      message: 'You have left the team'
+    });
+  } catch (err) {
+    logger.error(`leaveTeam error: ${err}`);
+    return next(new CustomError('Failed to leave team', 500));
   }
 };
 
@@ -179,10 +441,24 @@ export const inviteToTeam = async (req: Request, res: Response, next: NextFuncti
       return next(new CustomError('Role must be either admin or member', 400));
     }
 
-    // Get user's team (must be owner)
-    const team = await Team.findOne({ ownerId: req.user._id });
+    // Get user's team - must be owner or admin
+    const teamId = req.team?.id;
+    if (!teamId) {
+      return next(new CustomError('No team context available', 400));
+    }
+
+    const team = await Team.findById(teamId);
     if (!team) {
-      return next(new CustomError('You must own a team to invite members', 403));
+      return next(new CustomError('Team not found', 404));
+    }
+
+    // Check if user is owner or admin
+    const isOwner = team.ownerId === req.user._id;
+    const membership = await TeamMember.findOne({ teamId, userId: req.user._id });
+    const isAdmin = membership?.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return next(new CustomError('Only team owner or admins can invite members', 403));
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -318,9 +594,23 @@ export const getInvitationById = async (req: Request, res: Response, next: NextF
 
 export const getPendingInvites = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Only team owner can see pending invites
-    const team = await Team.findOne({ ownerId: req.user._id });
+    // Owner or admin can see pending invites
+    const teamId = req.team?.id;
+    if (!teamId) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const team = await Team.findById(teamId);
     if (!team) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    // Check if user is owner or admin
+    const isOwner = team.ownerId === req.user._id;
+    const membership = await TeamMember.findOne({ teamId, userId: req.user._id });
+    const isAdmin = membership?.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
       return res.status(200).json({ success: true, data: [] });
     }
 
@@ -468,10 +758,18 @@ export const revokeInvitation = async (req: Request, res: Response, next: NextFu
       return next(new CustomError('Invitation not found', 404));
     }
 
-    // Only team owner can revoke
+    // Owner or admin can revoke
     const team = await Team.findById(invitation.teamId);
-    if (!team || team.ownerId !== req.user._id) {
-      return next(new CustomError('Only team owner can revoke invitations', 403));
+    if (!team) {
+      return next(new CustomError('Team not found', 404));
+    }
+
+    const isOwner = team.ownerId === req.user._id;
+    const membership = await TeamMember.findOne({ teamId: String(team._id), userId: req.user._id });
+    const isAdmin = membership?.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return next(new CustomError('Only team owner or admins can revoke invitations', 403));
     }
 
     if (invitation.status !== 'pending') {
@@ -480,7 +778,7 @@ export const revokeInvitation = async (req: Request, res: Response, next: NextFu
 
     await TeamInvitation.findByIdAndDelete(id);
 
-    logger.info(`Invitation ${id} revoked by owner ${req.user._id}`);
+    logger.info(`Invitation ${id} revoked by ${req.user._id}`);
     return res.status(200).json({ success: true, message: 'Invitation revoked' });
   } catch (err) {
     logger.error(`revokeInvitation error: ${err}`);

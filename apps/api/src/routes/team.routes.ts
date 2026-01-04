@@ -19,6 +19,10 @@ import {
   acceptInvitation,
   rejectInvitation,
   revokeInvitation,
+  updateTeam,
+  updateMemberRole,
+  removeMember,
+  leaveTeam,
 } from '../controllers/team.controller.js';
 import { checkTeamMemberRole } from '../middlewares/checkRole.js';
 
@@ -29,7 +33,11 @@ router.use(baseAuth);
 
 // Team info routes
 router.get('/info', getTeamInfo);
+router.put('/update', updateTeam);
 router.get('/members', getTeamMembers);
+router.put('/members/:memberId/role', checkTeamMemberRole('admin'), updateMemberRole);
+router.delete('/members/:memberId', checkTeamMemberRole('admin'), removeMember);
+router.post('/leave', leaveTeam);
 router.post('/create', createTeam);
 router.get('/mine', getMyTeams);
 

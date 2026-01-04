@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, MoreHorizontal, Loader2, UserPlus, X, Check, Crown } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, MoreHorizontal, Loader2, UserPlus, X, Crown, Pencil, UserMinus, Shield, LogOut } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -22,6 +23,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -37,9 +55,11 @@ import { _config } from "@/lib/_config";
 interface TeamInfo {
   _id: string;
   name: string;
+  description?: string;
   ownerId: string;
   userRole: string;
   isOwner: boolean;
+  ownerHasPaidPlan?: boolean;
 }
 
 interface TeamMember {
@@ -83,8 +103,26 @@ export default function TeamPage() {
   const [newTeamName, setNewTeamName] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // Subscription state
-  const [isFreePlan, setIsFreePlan] = useState(true);
+  // Edit team dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [updating, setUpdating] = useState(false);
+
+  // Change role dialog state
+  const [changeRoleOpen, setChangeRoleOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [newRole, setNewRole] = useState("");
+  const [changingRole, setChangingRole] = useState(false);
+
+  // Remove member dialog state
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  // Leave team dialog state
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const fetchTeamData = useCallback(async () => {
     try {
@@ -108,8 +146,8 @@ export default function TeamPage() {
           setMembers(membersData.data || []);
         }
 
-        // Fetch pending invites (only if owner)
-        if (infoData.data.isOwner) {
+        // Fetch pending invites (for owner or admin)
+        if (infoData.data.isOwner || infoData.data.userRole === 'admin') {
           const invitesRes = await fetch(`${_config.API_BASE_URL}/api/team/invites/pending`, { headers });
           const invitesData = await invitesRes.json();
           if (invitesData.success) {
@@ -130,26 +168,6 @@ export default function TeamPage() {
   useEffect(() => {
     fetchTeamData();
   }, [fetchTeamData]);
-
-  // Fetch subscription status
-  useEffect(() => {
-    const fetchSubscription = async () => {
-      try {
-        const token = await getToken();
-        const res = await fetch(`${_config.API_BASE_URL}/api/subscription/features`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        const hasSubscription = Boolean(data?.hasSubscription);
-        const planName: string | undefined = data?.subscription?.planName;
-        const free = !hasSubscription || planName?.toLowerCase() === "free";
-        setIsFreePlan(Boolean(free));
-      } catch (e) {
-        setIsFreePlan(true);
-      }
-    };
-    fetchSubscription();
-  }, [getToken]);
 
   const handleCreateTeam = async () => {
     if (!newTeamName.trim()) {
@@ -183,6 +201,43 @@ export default function TeamPage() {
       toast.error("Failed to create team");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleEditTeam = async () => {
+    if (!editName.trim()) {
+      toast.error("Team name is required");
+      return;
+    }
+    
+    setUpdating(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${_config.API_BASE_URL}/api/team/update`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          name: editName.trim(),
+          description: editDescription.trim() || undefined
+        }),
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Team updated successfully!");
+        setEditOpen(false);
+        fetchTeamData();
+      } else {
+        toast.error(data.message || "Failed to update team");
+      }
+    } catch (error) {
+      console.error("Error updating team:", error);
+      toast.error("Failed to update team");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -245,6 +300,116 @@ export default function TeamPage() {
     }
   };
 
+  const handleChangeRole = async () => {
+    if (!selectedMember || !newRole) return;
+    
+    setChangingRole(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${_config.API_BASE_URL}/api/team/members/${selectedMember._id}/role`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role: newRole }),
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Role updated to ${newRole}`);
+        setChangeRoleOpen(false);
+        setSelectedMember(null);
+        setNewRole("");
+        fetchTeamData();
+      } else {
+        toast.error(data.message || "Failed to change role");
+      }
+    } catch (error) {
+      console.error("Error changing role:", error);
+      toast.error("Failed to change role");
+    } finally {
+      setChangingRole(false);
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return;
+    
+    setRemoving(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${_config.API_BASE_URL}/api/team/members/${memberToRemove._id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Member removed from team");
+        setRemoveOpen(false);
+        setMemberToRemove(null);
+        fetchTeamData();
+      } else {
+        toast.error(data.message || "Failed to remove member");
+      }
+    } catch (error) {
+      console.error("Error removing member:", error);
+      toast.error("Failed to remove member");
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const openChangeRoleDialog = (member: TeamMember) => {
+    setSelectedMember(member);
+    setNewRole(member.role);
+    setChangeRoleOpen(true);
+  };
+
+  const openRemoveDialog = (member: TeamMember) => {
+    setMemberToRemove(member);
+    setRemoveOpen(true);
+  };
+
+  const openEditDialog = () => {
+    if (teamInfo) {
+      setEditName(teamInfo.name);
+      setEditDescription(teamInfo.description || "");
+      setEditOpen(true);
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    setLeaving(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${_config.API_BASE_URL}/api/team/leave`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        toast.success("You have left the team");
+        setLeaveOpen(false);
+        // Refresh to show no team state
+        window.location.reload();
+      } else {
+        toast.error(data.message || "Failed to leave team");
+      }
+    } catch (error) {
+      console.error("Error leaving team:", error);
+      toast.error("Failed to leave team");
+    } finally {
+      setLeaving(false);
+    }
+  };
+
   const filteredMembers = members.filter(
     (m) =>
       m.email?.toLowerCase().includes(searchMember.toLowerCase()) ||
@@ -265,6 +430,9 @@ export default function TeamPage() {
     if (diffDays === 1) return "1 day";
     return `${diffDays} days`;
   };
+
+  // Check if current user can manage members (owner or admin)
+  const canManageMembers = teamInfo?.isOwner || teamInfo?.userRole === 'admin';
 
   if (loading) {
     return (
@@ -341,6 +509,30 @@ export default function TeamPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Team Details</h2>
+          <div className="flex items-center gap-2">
+            {teamInfo.isOwner && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={openEditDialog}
+                className="h-8"
+              >
+                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                Edit
+              </Button>
+            )}
+            {!teamInfo.isOwner && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLeaveOpen(true)}
+                className="h-8 text-destructive hover:text-destructive"
+              >
+                <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                Leave Team
+              </Button>
+            )}
+          </div>
         </div>
         <div className="space-y-4 rounded-lg border p-4 bg-card/40">
           <div className="grid grid-cols-[200px_1fr] items-center gap-4">
@@ -351,6 +543,16 @@ export default function TeamPage() {
               value={teamInfo.name}
               readOnly
               className="h-10 border-input/50 bg-background/50 font-medium"
+            />
+          </div>
+          <div className="grid grid-cols-[200px_1fr] items-start gap-4">
+            <span className="text-xs font-medium uppercase text-muted-foreground tracking-wider pt-2.5">
+              DESCRIPTION
+            </span>
+            <Textarea
+              value={teamInfo.description || "No description"}
+              readOnly
+              className="min-h-[60px] border-input/50 bg-background/50 text-muted-foreground resize-none"
             />
           </div>
           <div className="grid grid-cols-[200px_1fr] items-center gap-4">
@@ -365,6 +567,52 @@ export default function TeamPage() {
           </div>
         </div>
       </section>
+
+      {/* Edit Team Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Team</DialogTitle>
+            <DialogDescription>
+              Update your team&apos;s name and description.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editName">Team Name</Label>
+              <Input
+                id="editName"
+                placeholder="Team name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDescription">Description (optional)</Label>
+              <Textarea
+                id="editDescription"
+                placeholder="Describe your team..."
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                className="min-h-[80px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleEditTeam} 
+              disabled={updating}
+              className="bg-[#10B981] hover:bg-[#059669]"
+            >
+              {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Members Section */}
       <section className="space-y-4">
@@ -405,9 +653,29 @@ export default function TeamPage() {
                       {member.isOwner ? "Owner" : member.role}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      {canManageMembers && !member.isOwner && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openChangeRoleDialog(member)}>
+                              <Shield className="mr-2 h-4 w-4" />
+                              Change Role
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => openRemoveDialog(member)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <UserMinus className="mr-2 h-4 w-4" />
+                              Remove from Team
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -417,12 +685,99 @@ export default function TeamPage() {
         </div>
       </section>
 
-      {/* Invites Section - Only show for owners */}
-      {teamInfo.isOwner && (
+      {/* Change Role Dialog */}
+      <Dialog open={changeRoleOpen} onOpenChange={setChangeRoleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Member Role</DialogTitle>
+            <DialogDescription>
+              Update the role for {selectedMember?.firstName || selectedMember?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={newRole} onValueChange={setNewRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChangeRoleOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleChangeRole} 
+              disabled={changingRole}
+              className="bg-[#10B981] hover:bg-[#059669]"
+            >
+              {changingRole && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Member Dialog */}
+      <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {memberToRemove?.firstName || memberToRemove?.email} from the team? 
+              They will lose access to all team resources.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveMember}
+              disabled={removing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Leave Team Dialog */}
+      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave Team</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to leave {teamInfo.name}? 
+              You will lose access to all team resources.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeaveTeam}
+              disabled={leaving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {leaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Leave Team
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Invites Section - Show for owners AND admins */}
+      {canManageMembers && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Pending Invites ({pendingInvites.length})</h2>
-            {isFreePlan ? (
+            {!teamInfo.ownerHasPaidPlan ? (
               <Button asChild className="bg-amber-500 hover:bg-amber-600 text-white font-medium h-9 text-xs tracking-wide">
                 <Link href="/upgrade">
                   <Crown className="mr-1 h-3.5 w-3.5" />

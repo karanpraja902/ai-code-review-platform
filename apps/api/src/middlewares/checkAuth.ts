@@ -229,6 +229,34 @@ export const baseAuth = async (
           };
           logger.info(`Team context set: ${teamId}, role: ${req.team.role}`);
         }
+      } else {
+        // No activeTeamId set - find a team the user owns or is a member of
+        type TeamDoc = { _id: string };
+        const ownedTeam = await Team.findOne({ ownerId: user._id }).select('_id').lean() as TeamDoc | null;
+        
+        if (ownedTeam) {
+          const teamId = String(ownedTeam._id);
+          // Update user's activeTeamId
+          await User.updateOne({ _id: user._id }, { $set: { activeTeamId: teamId } });
+          req.team = {
+            id: teamId,
+            role: 'owner',
+          };
+          logger.info(`Set activeTeamId to owned team: ${teamId}`);
+        } else {
+          // Check if user is a member of any team
+          type MembershipDoc = { teamId: string; role: string };
+          const anyMembership = await TeamMember.findOne({ userId: user._id }).lean() as MembershipDoc | null;
+          if (anyMembership) {
+            const teamId = anyMembership.teamId;
+            await User.updateOne({ _id: user._id }, { $set: { activeTeamId: teamId } });
+            req.team = {
+              id: teamId,
+              role: anyMembership.role,
+            };
+            logger.info(`Set activeTeamId to member team: ${teamId}`);
+          }
+        }
       }
 
       logger.info(`User authenticated successfully via Clerk: ${user.email}`);
@@ -335,6 +363,32 @@ export const baseAuth = async (
             role: isOwner ? 'owner' : membership.role,
           };
           logger.info(`Team context set: ${teamId}, role: ${req.team.role}`);
+        }
+      } else {
+        // No activeTeamId set - find a team the user owns or is a member of
+        type TeamDoc = { _id: string };
+        const ownedTeam = await Team.findOne({ ownerId: user._id }).select('_id').lean() as TeamDoc | null;
+        
+        if (ownedTeam) {
+          const teamId = String(ownedTeam._id);
+          await User.updateOne({ _id: user._id }, { $set: { activeTeamId: teamId } });
+          req.team = {
+            id: teamId,
+            role: 'owner',
+          };
+          logger.info(`Set activeTeamId to owned team: ${teamId}`);
+        } else {
+          type MembershipDoc = { teamId: string; role: string };
+          const anyMembership = await TeamMember.findOne({ userId: user._id }).lean() as MembershipDoc | null;
+          if (anyMembership) {
+            const teamId = anyMembership.teamId;
+            await User.updateOne({ _id: user._id }, { $set: { activeTeamId: teamId } });
+            req.team = {
+              id: teamId,
+              role: anyMembership.role,
+            };
+            logger.info(`Set activeTeamId to member team: ${teamId}`);
+          }
         }
       }
 
