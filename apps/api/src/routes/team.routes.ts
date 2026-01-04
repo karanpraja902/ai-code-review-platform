@@ -23,6 +23,7 @@ import {
   updateMemberRole,
   removeMember,
   leaveTeam,
+  getTeamLeaderboard,
 } from '../controllers/team.controller.js';
 import { checkTeamMemberRole } from '../middlewares/checkRole.js';
 
@@ -61,6 +62,9 @@ router.put('/settings', checkTeamMemberRole('admin'), updateTeamSettings);
 
 // Dashboard route
 router.get('/dashboard', getTeamDashboardInfo);
+
+// Leaderboard route
+router.get('/leaderboard', getTeamLeaderboard);
 
 
 export default router;

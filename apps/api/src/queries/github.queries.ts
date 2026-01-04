@@ -883,6 +883,10 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
     const prKey = `${repository.full_name}#${pull_request.number}`;
     const latestCommitSha = (commits[commits.length - 1]?.sha) || pull_request.head.sha;
 
+    // Get teamId from repository
+    const githubRepoForTeam = await Github_Repository.findOne({ fullName: repository.full_name });
+    const teamIdForPrData = githubRepoForTeam?.teamId || undefined;
+
     const modelAnalysisData: any = {
       // Essential PR Information
       pr: {
@@ -891,10 +895,19 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
         description: pull_request.body || '',
         state: pull_request.state,
         isDraft: pull_request.draft,
-        author: pull_request.user.login,
         createdAt: pull_request.created_at,
         updatedAt: pull_request.updated_at
       },
+      
+      // PR Author information for leaderboard
+      author: {
+        username: pull_request.user.login,
+        name: commits.find((c: any) => c.author?.login === pull_request.user.login)?.author?.name || pull_request.user.login,
+        avatar: pull_request.user.avatar_url
+      },
+      
+      // Team ID for team-based tracking
+      teamId: teamIdForPrData,
       
       // Minimal Repository Info
       repository: {
