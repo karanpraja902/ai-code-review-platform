@@ -17,8 +17,7 @@ export const getCustomContexts = async (req: Request, res: Response, next: NextF
     const skip = (page - 1) * limit;
 
     const filter: Record<string, unknown> = {
-      createdBy: userId,
-      team: teamId || userId,
+      team: teamId,
     };
 
     if (query) {
@@ -72,7 +71,7 @@ export const getCustomContextById = async (req: Request, res: Response, next: Ne
 export const createCustomContext = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?._id;
-    const teamId = req.headers['x-team-id'] as string || req.team?.id || req.org?.id;
+    const teamId = req.team?.id 
 
     if (!userId) {
       return res.status(401).json({ status: 'error', message: 'Unauthorized' });
