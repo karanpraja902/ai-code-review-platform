@@ -50,13 +50,14 @@ export const getCustomContexts = async (req: Request, res: Response, next: NextF
 export const getCustomContextById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?._id;
+    const teamId = req.team?.id;
     const { id } = req.params;
 
     if (!userId) {
       return res.status(401).json({ status: 'error', message: 'Unauthorized' });
     }
 
-    const context = await CustomContext.findOne({ _id: id, createdBy: userId });
+    const context = await CustomContext.findOne({ _id: id, team: teamId });
 
     if (!context) {
       return res.status(404).json({ status: 'error', message: 'Custom context not found' });
@@ -143,13 +144,13 @@ export const updateCustomContext = async (req: Request, res: Response, next: Nex
   try {
     const userId = req.user?._id;
     const { id } = req.params;
-    const teamId = req.headers['x-team-id'] as string || req.team?.id || req.org?.id;
+    const teamId = req.team?.id;
 
     if (!userId) {
       return res.status(401).json({ status: 'error', message: 'Unauthorized' });
     }
 
-    const existingContext = await CustomContext.findOne({ _id: id, createdBy: userId });
+    const existingContext = await CustomContext.findOne({ _id: id, team: teamId });
 
     if (!existingContext) {
       return res.status(404).json({ status: 'error', message: 'Custom context not found' });
@@ -237,13 +238,13 @@ export const patchCustomContext = async (req: Request, res: Response, next: Next
   try {
     const userId = req.user?._id;
     const { id } = req.params;
-    const teamId = req.headers['x-team-id'] as string || req.team?.id || req.org?.id;
+    const teamId = req.team?.id;
 
     if (!userId) {
       return res.status(401).json({ status: 'error', message: 'Unauthorized' });
     }
 
-    const existingContext = await CustomContext.findOne({ _id: id, createdBy: userId });
+    const existingContext = await CustomContext.findOne({ _id: id, team: teamId });
 
     if (!existingContext) {
       return res.status(404).json({ status: 'error', message: 'Custom context not found' });
@@ -273,13 +274,14 @@ export const patchCustomContext = async (req: Request, res: Response, next: Next
 export const deleteCustomContext = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?._id;
+    const teamId = req.team?.id;
     const { id } = req.params;
 
     if (!userId) {
       return res.status(401).json({ status: 'error', message: 'Unauthorized' });
     }
 
-    const context = await CustomContext.findOneAndDelete({ _id: id, createdBy: userId });
+    const context = await CustomContext.findOneAndDelete({ _id: id, team: teamId });
 
     if (!context) {
       return res.status(404).json({ status: 'error', message: 'Custom context not found' });
