@@ -186,6 +186,14 @@ export const baseAuth = async (
           `New user created with username: ${user.username} and free subscription plan`
         );
 
+        // Create team for new user and set activeTeamId
+        const teamResult = await ensureUserTeam(user._id, "AC");
+        if (teamResult) {
+          user.activeTeamId = teamResult.teamId;
+          await user.save();
+          logger.info(`Set activeTeamId for new user: ${teamResult.teamId}`);
+        }
+
         // Upsert user to MailerLite
         if (user.email) {
           upsertMailerLiteSubscriber(
@@ -199,9 +207,6 @@ export const baseAuth = async (
       } else {
         logger.info(`User found in DB: ${user.username}`);
       }
-
-      // Ensure user has a team (handles both new and existing users)
-      await ensureUserTeam(user._id, "AC");
 
       req.user = user; // attach full user object for downstream handlers
 
@@ -289,6 +294,14 @@ export const baseAuth = async (
         logger.info(
           `New extension user created: ${user.username}`
         );
+
+        // Create team for new user and set activeTeamId
+        const teamResult = await ensureUserTeam(user._id, "AC");
+        if (teamResult) {
+          user.activeTeamId = teamResult.teamId;
+          await user.save();
+          logger.info(`Set activeTeamId for new extension user: ${teamResult.teamId}`);
+        }
         
         // Upsert user to MailerLite
         if (user.email) {
@@ -301,9 +314,6 @@ export const baseAuth = async (
           });
         }
       }
-
-      // Ensure user has a team (handles both new and existing users)
-      await ensureUserTeam(user._id, "AC");
 
       req.user = user;
 
