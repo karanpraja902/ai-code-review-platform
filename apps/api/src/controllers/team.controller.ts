@@ -630,8 +630,6 @@ export const getTeamRepositories = async (req: Request, res: Response, next: Nex
     const team = await Team.findById(teamId).lean() as TeamInfo | null;
     if (!team) return next(new CustomError('Team not found', 404));
 
-    if (!isTeamOwner(team, req.user._id)) return next(new CustomError('Forbidden: not the team owner', 403));
-
     // Build query for repositories matching this teamId
     let query: any = { teamId };
     
@@ -798,11 +796,6 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
         const team = await Team.findById(teamId).lean() as TeamInfo | null;
         if (!team) {
             return next(new CustomError('Team not found', 404));
-        }
-
-        // Check if user is the owner of the team
-        if (String(team.ownerId) !== String(req.user._id)) {
-            return next(new CustomError('Forbidden: not the team owner', 403));
         }
 
         // Time range filter: supports last 7/15/30/60/90 days, default 7
