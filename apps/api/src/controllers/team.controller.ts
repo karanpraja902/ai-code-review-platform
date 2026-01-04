@@ -1415,3 +1415,172 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
         return next(new CustomError(error.message || "Failed to get team dashboard info", 500));
     }
 }
+
+/**
+ * Get team leaderboard - aggregates PR data by author
+ * Ranks by: number of PRs created > total lines committed
+ * Supports pagination with default limit of 10
+ */
+export const getTeamLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teamId = req.team?.id;
+    
+    if (!teamId) {
+      return next(new CustomError('No team associated with this user', 400));
+    }
+
+    // Verify team exists
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return next(new CustomError('Team not found', 404));
+    }
+
+    // Pagination defaults
+    const pageParam = (req.query.page as string) || "1";
+    const limitParam = (req.query.limit as string) || "10";
+    const page = Math.max(parseInt(pageParam, 10) || 1, 1);
+    const limit = Math.max(parseInt(limitParam, 10) || 10, 1);
+    
+    // Date range filter
+    const daysParam = (req.query.days as string) || "30";
+    const days = parseInt(daysParam, 10) || 30;
+    const dateFilter = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    // Search filter
+    const search = ((req.query.search || req.query.q) as string) || "";
+
+    // Access the pull_request_datas collection directly
+    const prCollection = mongoose.connection.db?.collection('pull_request_datas');
+    if (!prCollection) {
+      return next(new CustomError('Database collection not available', 500));
+    }
+
+    // Aggregation pipeline to get leaderboard data
+    const pipeline: any[] = [
+      // Match PRs for this team within date range
+      {
+        $match: {
+          teamId: teamId,
+          skipped: { $ne: true },
+          createdAt: { $gte: dateFilter }
+        }
+      },
+      // Group by author username
+      {
+        $group: {
+          _id: '$author.username',
+          username: { $first: '$author.username' },
+          name: { $first: '$author.name' }, // Capture name
+          avatar: { $first: '$author.avatar' },
+          totalPRs: { $sum: 1 },
+          // Count merged PRs (Checking state field if updated, or pr.state)
+          // Note: Currently state might mostly be 'open' unless updated by webhook
+          totalMerged: { 
+            $sum: { 
+              $cond: [{ $or: [{ $eq: ['$state', 'closed'] }, { $eq: ['$state', 'merged'] }] }, 1, 0] 
+            } 
+          },
+          totalAdditions: { $sum: '$changes.summary.additions' },
+          totalDeletions: { $sum: '$changes.summary.deletions' },
+          totalCommits: { $sum: '$changes.summary.commits' },
+          lastPRDate: { $max: '$createdAt' }
+        }
+      },
+      // Calculate total lines
+      {
+        $addFields: {
+          totalLinesCommitted: { $add: ['$totalAdditions', '$totalDeletions'] }
+        }
+      }
+    ];
+
+    // Apply search filter if present (post-grouping to match user)
+    if (search.trim()) {
+      const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      pipeline.push({
+        $match: {
+          $or: [
+            { username: { $regex: regex } },
+            { name: { $regex: regex } }
+          ]
+        }
+      });
+    }
+
+    // Sort and Rank
+    pipeline.push(
+      {
+        $sort: {
+          totalPRs: -1 as const,
+          totalLinesCommitted: -1 as const
+        }
+      },
+      {
+        $setWindowFields: {
+          sortBy: { totalPRs: -1 as const },
+          output: {
+            rank: { $rank: {} }
+          }
+        }
+      }
+    );
+
+    // Get total count for pagination
+    const countPipeline = [
+      ...pipeline, // Includes the match/group/search stages
+      { $count: 'total' }
+    ];
+
+    const countResult = await prCollection.aggregate([...pipeline, { $count: 'total' }]).toArray();
+    const total = countResult[0]?.total || 0;
+
+    // Add pagination
+    pipeline.push(
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+      // Project final shape
+      {
+        $project: {
+          _id: 0,
+          rank: 1,
+          username: 1,
+          name: 1,
+          avatar: 1,
+          totalPRs: 1,
+          totalMerged: 1,
+          totalAdditions: 1,
+          totalDeletions: 1,
+          totalLinesCommitted: 1,
+          totalCommits: 1,
+          lastPRDate: 1
+        }
+      }
+    );
+
+    const leaderboard = await prCollection.aggregate(pipeline).toArray();
+
+    logger.info('Team leaderboard fetched', {
+      teamId,
+      page,
+      limit,
+      days,
+      search,
+      total,
+      resultsCount: leaderboard.length
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: leaderboard,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(Math.ceil(total / limit), 1),
+      }
+    });
+  } catch (error: any) {
+    logger.error('Error getting team leaderboard:', error);
+    return next(new CustomError(error.message || 'Failed to get team leaderboard', 500));
+  }
+};
