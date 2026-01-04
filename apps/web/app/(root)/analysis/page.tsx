@@ -10,12 +10,9 @@ import GithubOrgSwitcher from "./_components/GithubOrgSwitcher";
 import { logger } from "@/lib/logger";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
-type RepoScope = "user" | "team";
-
 const Page = async (props: {
   searchParams?: Promise<{
     query?: string;
-    scope?: RepoScope;
     teamId?: string;
     orgSlug?: string;
   }>;
@@ -23,9 +20,8 @@ const Page = async (props: {
   const searchParams = await props.searchParams;
   const orgSlug = searchParams?.orgSlug || "all";
   const query = searchParams?.query || "";
-  const scope = (searchParams?.scope as RepoScope) || "user";
   const teamId = searchParams?.teamId;
-  logger.info(`Analysis page loaded with query:`, { query, scope, teamId });
+  logger.info(`Analysis page loaded with query:`, { query, teamId });
 
   return (
     <div className="max-w-8xl mx-auto min-h-svh w-full">
@@ -59,7 +55,6 @@ const Page = async (props: {
           <Suspense key={query} fallback={<RepositoryListSkeleton />}>
             <RepositoryList
               query={query}
-              scope={scope}
               teamId={teamId}
               orgSlug={orgSlug}
             />
@@ -71,3 +66,4 @@ const Page = async (props: {
 };
 
 export default Page;
+

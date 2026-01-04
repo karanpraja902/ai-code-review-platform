@@ -175,7 +175,7 @@ export const bulkUpdateRepoSettings = async (req: Request, res: Response, next: 
             if (!teamId) {
                 return next(new CustomError('Team context required', 400));
             }
-            filter = { teams: teamId };
+            filter = { teamId };
         } else {
             const userId = req.user?._id;
             if (!userId) {
@@ -201,8 +201,8 @@ export const bulkUpdateRepoSettings = async (req: Request, res: Response, next: 
             filter = {
                 github_installationId: { $in: installationIds },
                 $or: [
-                    { teams: { $exists: false } },
-                    { teams: { $size: 0 } }
+                    { teamId: { $exists: false } },
+                    { teamId: null }
                 ]
             };
         }

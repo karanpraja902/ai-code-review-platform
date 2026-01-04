@@ -9,7 +9,7 @@ import {
   updateAnalysisStatus,
   getPrAnalysis,
 } from "../controllers/analysis.controller.js";
-import { baseAuth, checkAuth, teamAuth } from "../middlewares/checkAuth.js";
+import { baseAuth, checkAuth } from "../middlewares/checkAuth.js";
 import { checkFullRepoAnalysisAccess } from "../middlewares/checkFeatureAccess.js";
 import { stopAnalysis } from "../controllers/analysis.controller.js";
 

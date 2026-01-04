@@ -23,11 +23,13 @@ import { NextFunction, Request, Response } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
 import User from "../models/user.model.js";
 import Team from "../models/team.model.js";
+import TeamMember from "../models/team_member.model.js";
 import SubscriptionPlan from "../models/subscription_plan.model.js";
 import { createUser, CreateUserData } from "../queries/user.queries.js";
 import mongoose from "mongoose";
 import { logger } from "../utils/logger.js";
 import { upsertMailerLiteSubscriber } from "../services/mail/mailerlite/upsert_subscriber.js";
+import { ensureUserTeam } from "./helpers/ensureUserTeam.js";
 import jwt from "jsonwebtoken";
 
 declare global {
@@ -36,7 +38,7 @@ declare global {
       user?: any;
       isServerRequest?: boolean;
       org?: { id: string; role?: string; slug?: string };
-      team?: { id: string; role?: string; slug?: string };
+      team?: { id: string; role?: string };
       sub?: {
         planId: string;
         planName: "free" | "lite" | "advance" | "custom";
@@ -198,7 +200,32 @@ export const baseAuth = async (
         logger.info(`User found in DB: ${user.username}`);
       }
 
+      // Ensure user has a team (handles both new and existing users)
+      await ensureUserTeam(user._id, "AC");
+
       req.user = user; // attach full user object for downstream handlers
+
+      // Set team context from user's activeTeamId
+      if (user.activeTeamId) {
+        const teamId = String(user.activeTeamId);
+        type MembershipDoc = { role: string };
+        const membership = await TeamMember.findOne({
+          teamId,
+          userId: user._id,
+        }).lean() as MembershipDoc | null;
+
+        if (membership) {
+          type TeamDoc = { ownerId: string };
+          const team = await Team.findById(teamId).select('ownerId').lean() as TeamDoc | null;
+          const isOwner = team && String(team.ownerId) === String(user._id);
+          req.team = {
+            id: teamId,
+            role: isOwner ? 'owner' : membership.role,
+          };
+          logger.info(`Team context set: ${teamId}, role: ${req.team.role}`);
+        }
+      }
+
       logger.info(`User authenticated successfully via Clerk: ${user.email}`);
       return next();
     }
@@ -275,7 +302,32 @@ export const baseAuth = async (
         }
       }
 
+      // Ensure user has a team (handles both new and existing users)
+      await ensureUserTeam(user._id, "AC");
+
       req.user = user;
+
+      // Set team context from user's activeTeamId
+      if (user.activeTeamId) {
+        const teamId = String(user.activeTeamId);
+        type MembershipDoc = { role: string };
+        const membership = await TeamMember.findOne({
+          teamId,
+          userId: user._id,
+        }).lean() as MembershipDoc | null;
+
+        if (membership) {
+          type TeamDoc = { ownerId: string };
+          const team = await Team.findById(teamId).select('ownerId').lean() as TeamDoc | null;
+          const isOwner = team && String(team.ownerId) === String(user._id);
+          req.team = {
+            id: teamId,
+            role: isOwner ? 'owner' : membership.role,
+          };
+          logger.info(`Team context set: ${teamId}, role: ${req.team.role}`);
+        }
+      }
+
       logger.info(`Extension user authenticated: ${user.email}`);
       return next();
     }
@@ -417,139 +469,64 @@ export const subscriptionAuth = async (
 /**
  * Team authentication middleware that handles team context and membership.
  * Requires baseAuth to be run first to ensure req.user is available.
- * Handles both organization context from Clerk and team context from headers.
+ * Handles team context from headers.
  */
-export const teamAuth = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  logger.info("teamAuth middleware execution started");
-  try {
-    const user = req.user;
-    if (!user) {
-      logger.error(
-        "teamAuth: No user found in request. baseAuth must be run first."
-      );
-      return res
-        .status(500)
-        .json({ message: "Internal error: User context missing" });
-    }
+// export const teamAuth = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   logger.info("teamAuth middleware execution started");
+//   try {
+//     const user = req.user;
+//     if (!user) {
+//       logger.error(
+//         "teamAuth: No user found in request. baseAuth must be run first."
+//       );
+//       return res
+//         .status(500)
+//         .json({ message: "Internal error: User context missing" });
+//     }
 
-    const { orgId, orgRole, orgSlug } = getAuth(req);
-    logger.debug("Team auth context extracted", { orgId, orgRole, orgSlug });
+//     // Handle team context from X-Team-Id header
+//     const teamIdFromHeader = req.headers["x-team-id"] as string;
+//     if (teamIdFromHeader) {
+//       logger.debug(`Team ID from header: ${teamIdFromHeader}`);
 
-    // Attach active organization context if present
-    if (orgId) {
-      req.org = {
-        id: orgId,
-        role: orgRole as string | undefined,
-        slug: orgSlug as string | undefined,
-      };
+//       // Verify user has access to this team (either owner or member )
+//       const team = await Team.findById(teamIdFromHeader);
+//       if (team) {
+//         // Check if user is the owner
+//         if (team.ownerId === user._id) {
+//           req.team = {
+//             id: teamIdFromHeader,
+//             role: 'admin',
+//           };
+//           logger.debug(`Team context set: ${team.name} (owner/admin)`);
+//         } else if (user.team?.id === teamIdFromHeader) {
+//           // User is a member via their user.team assignment
+//           req.team = {
+//             id: teamIdFromHeader,
+//             role: user.team.role || 'member',
+//           };
+//           logger.debug(`Team context set: ${team.name} (${user.team.role || 'member'})`);
+//         } else {
+//           logger.warn(
+//             `User ${user._id} attempted to access team ${teamIdFromHeader} without membership`
+//           );
+//         }
+//       } else {
+//         logger.warn(`Team ${teamIdFromHeader} not found`);
+//       }
+//     }
 
-      // Ensure Team exists and membership is synced
-      let team = await Team.findById(orgId);
-      if (!team) {
-        try {
-          const org = await retryClerkApiCall(() =>
-            clerkClient.organizations.getOrganization({ organizationId: orgId })
-          );
-          team = await Team.create({
-            _id: orgId,
-            name: org.name,
-            description: "",
-            slug: org.slug,
-            ownerId: user._id,
-            members: [
-              { userId: user._id, role: "admin", joinedAt: new Date() },
-            ],
-            settings: {},
-          });
-        } catch (clerkError: any) {
-          logger.error(
-            `Failed to fetch organization from Clerk: ${clerkError}`
-          );
-
-          // If rate limited, return appropriate error
-          if (
-            clerkError?.status === 429 ||
-            clerkError?.errors?.[0]?.code === "rate_limit_exceeded"
-          ) {
-            return res.status(429).json({
-              message: "Too many requests. Please try again in a moment.",
-              error: "Rate limit exceeded",
-            });
-          }
-
-          // For other errors, continue without creating the team
-          logger.warn(`Continuing without team creation for orgId: ${orgId}`);
-          next();
-          return;
-        }
-      }
-
-      const role: "admin" | "member" = orgRole?.includes("admin")
-        ? "admin"
-        : "member";
-
-      // Add or update team membership
-      const memberIndex = team.members.findIndex(
-        (m: any) => m.userId === user._id
-      );
-      if (memberIndex === -1) {
-        team.members.push({ userId: user._id, role, joinedAt: new Date() });
-      } else if (team.members[memberIndex].role !== role) {
-        team.members[memberIndex].role = role;
-      }
-      await team.save();
-
-      // Sync user's teams array
-      const hasTeam =
-        Array.isArray(user.teams) &&
-        user.teams.some((t: any) => t._id === orgId);
-      if (!hasTeam) {
-        await User.updateOne(
-          { _id: user._id },
-          { $push: { teams: { _id: orgId, role } } }
-        );
-      }
-
-      logger.debug(`Organization context set: ${team.name} (${role})`);
-    }
-
-    // Handle team context from X-Team-Id header
-    const teamIdFromHeader = req.headers["x-team-id"] as string;
-    if (teamIdFromHeader) {
-      logger.debug(`Team ID from header: ${teamIdFromHeader}`);
-
-      // Verify user has access to this team
-      const team = await Team.findById(teamIdFromHeader);
-      if (team) {
-        const member = team.members.find((m: any) => m.userId === user._id);
-        if (member) {
-          req.team = {
-            id: teamIdFromHeader,
-            role: member.role,
-            slug: team.slug,
-          };
-          logger.debug(`Team context set: ${team.name} (${member.role})`);
-        } else {
-          logger.warn(
-            `User ${user._id} attempted to access team ${teamIdFromHeader} without membership`
-          );
-        }
-      } else {
-        logger.warn(`Team ${teamIdFromHeader} not found`);
-      }
-    }
-
-    logger.info(`Team auth completed for user: ${user.email}`);
-    next();
-  } catch (err) {
-    logger.error(`Team auth error: ${err}`);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
+//     logger.info(`Team auth completed for user: ${user.email}`);
+//     next();
+//   } catch (err) {
+//     logger.error(`Team auth error: ${err}`);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
 
 /**
  * Complete authentication middleware that combines all auth layers.
@@ -592,17 +569,17 @@ export const checkAuth = async (
     });
 
     // Run team authentication
-    await new Promise<void>((resolve, reject) => {
-      teamAuth(req, res, (err) => {
-        if (err) {
-          reject(err);
-        } else if (res.headersSent) {
-          reject(new Error("Response already sent"));
-        } else {
-          resolve();
-        }
-      });
-    });
+    // await new Promise<void>((resolve, reject) => {
+    //   teamAuth(req, res, (err) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else if (res.headersSent) {
+    //       reject(new Error("Response already sent"));
+    //     } else {
+    //       resolve();
+    //     }
+    //   });
+    // });
 
     logger.info("checkAuth middleware completed successfully");
     next();
@@ -666,49 +643,15 @@ export const authWithSubscription = async (
 /**
  * Convenience middleware that combines baseAuth + teamAuth.
  * Use this for routes that need user authentication and team context but not subscription data.
+ * Since baseAuth now sets req.team automatically, this is equivalent to baseAuth.
  */
 export const authWithTeam = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  logger.info("authWithTeam middleware execution started");
-
-  try {
-    // Run base authentication first
-    await new Promise<void>((resolve, reject) => {
-      baseAuth(req, res, (err) => {
-        if (err) {
-          reject(err);
-        } else if (res.headersSent) {
-          reject(new Error("Response already sent"));
-        } else {
-          resolve();
-        }
-      });
-    });
-
-    // Run team authentication
-    await new Promise<void>((resolve, reject) => {
-      teamAuth(req, res, (err) => {
-        if (err) {
-          reject(err);
-        } else if (res.headersSent) {
-          reject(new Error("Response already sent"));
-        } else {
-          resolve();
-        }
-      });
-    });
-
-    logger.info("authWithTeam middleware completed successfully");
-    next();
-  } catch (err) {
-    if (!res.headersSent) {
-      logger.error(`authWithTeam middleware error: ${err}`);
-      res.status(500).json({ message: "Authentication error" });
-    }
-  }
+  // baseAuth now handles team context setting, so just call baseAuth
+  return baseAuth(req, res, next);
 };
 
 export const checkSandboxAuth = async (

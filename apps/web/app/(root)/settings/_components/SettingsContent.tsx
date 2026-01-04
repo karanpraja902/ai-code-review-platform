@@ -1,43 +1,18 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { useUser, useOrganization, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { _config } from "@/lib/_config";
 import { toast } from "sonner";
- 
 
-type Scope = "user" | "team";
-
-export interface SettingsContentProps {
-  scope?: Scope;
-  teamSlug?: string;
-}
-
-const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamSlug }) => {
-  const { user } = useUser();
-  const { organization, membership } = useOrganization();
-  const { orgId, orgRole, getToken } = useAuth();
-  const storageKey = useMemo(() => `settings:allowAllPRs:${scope === "team" ? teamSlug ?? "team" : "user"}`, [scope, teamSlug]);
-  const [bulkSettings, setBulkSettings] = useState<{
-    trackGithubPullRequests: boolean;
-    trackGithubIssues: boolean;
-    analysisRequired: boolean;
-    raiseIssues: boolean;
-    autoFixBugs: boolean;
-  }>({
-    trackGithubPullRequests: true,
-    trackGithubIssues: false,
-    analysisRequired: true,
-    raiseIssues: false,
-    autoFixBugs: false,
-  });
+const SettingsContent: React.FC = () => {
+  const { getToken } = useAuth();
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [repoModel, setRepoModel] = useState<string>("");
@@ -58,7 +33,6 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
     }
     return String(limit);
   };
-  const [loadingRepoModels, setLoadingRepoModels] = useState<boolean>(false);
   const [loadingPrModels, setLoadingPrModels] = useState<boolean>(false);
   const [severityThreshold, setSeverityThreshold] = useState<number>(1); // 0 = LOW, 1 = MED, 2 = HIGH
   const [prSummarySettings, setPrSummarySettings] = useState({
@@ -70,34 +44,17 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
   });
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw !== null) {
-        setBulkSettings((prev) => ({ ...prev, trackGithubPullRequests: raw === "true" }));
-      }
-    } catch (_) {}
-  }, [storageKey]);
-
-
-  useEffect(() => {
-    const initUserModels = async () => {
+    const initSettings = async () => {
       try {
         const token = await getToken();
         const headers: Record<string, string> = {
           Authorization: token ? `Bearer ${token}` : "",
           "Content-Type": "application/json",
         };
-        if (scope === "team" && orgId) {
-          headers["X-Team-Id"] = orgId;
-        }
 
-        // Fetch settings and available models in parallel
-        const settingsUrl = scope === "team"
-          ? `${_config.API_BASE_URL}/api/team/settings`
-          : `${_config.API_BASE_URL}/api/user/settings`;
-        
+        // Fetch team settings and available models in parallel
         const [settingsRes, repoModelsRes, prModelsRes] = await Promise.all([
-          fetch(settingsUrl, { headers }),
+          fetch(`${_config.API_BASE_URL}/api/team/settings`, { headers }),
           fetch(`${_config.API_BASE_URL}/api/ai/models?mode=full_repo_analysis`, { headers }),
           fetch(`${_config.API_BASE_URL}/api/ai/models?mode=pr_analysis`, { headers }),
         ]);
@@ -110,8 +67,8 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
           // Extract model IDs and names from settings
           const repoModelId = typeof s.defaultModelRepo === "string" ? s.defaultModelRepo : "";
           const prModelId = typeof s.defaultModelPr === "string" ? s.defaultModelPr : "";
-          const repoModelName = typeof s.defaultModelRepoName === "string" ? s.defaultModelRepoName : "";
-          const prModelName = typeof s.defaultModelPrName === "string" ? s.defaultModelPrName : "";
+          const repoModelNameVal = typeof s.defaultModelRepoName === "string" ? s.defaultModelRepoName : "";
+          const prModelNameVal = typeof s.defaultModelPrName === "string" ? s.defaultModelPrName : "";
           
           // Extract commentSeverity (default to 1 = MED)
           const savedSeverity = typeof s.commentSeverity === "number" ? s.commentSeverity : 1;
@@ -121,8 +78,8 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
           
           setRepoModel(repoModelId);
           setPrModel(prModelId);
-          setRepoModelName(repoModelName);
-          setPrModelName(prModelName);
+          setRepoModelName(repoModelNameVal);
+          setPrModelName(prModelNameVal);
           setSeverityThreshold(savedSeverity);
           setPrSummarySettings({
             enabled: savedPrSummarySettings.enabled ?? true,
@@ -147,31 +104,8 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
         }
       } catch (_) {}
     };
-    initUserModels();
-  }, [getToken, scope, orgId]);
-
-  const fetchAvailableRepoModels = async () => {
-    try {
-      setLoadingRepoModels(true);
-      const token = await getToken();
-      const headers: Record<string, string> = {
-        Authorization: token ? `Bearer ${token}` : "",
-        "Content-Type": "application/json",
-      };
-      if (scope === "team" && orgId) {
-        headers["X-Team-Id"] = orgId;
-      }
-      const res = await fetch(`${_config.API_BASE_URL}/api/ai/models?mode=full_repo_analysis`, { headers });
-      if (res.ok) {
-        const json = await res.json();
-        const arr = Array.isArray(json?.data) ? json.data : [];
-        setAvailableRepoModels(arr);
-      }
-    } catch (_) {}
-    finally {
-      setLoadingRepoModels(false);
-    }
-  };
+    initSettings();
+  }, [getToken]);
 
   const fetchAvailablePrModels = async () => {
     try {
@@ -181,9 +115,6 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
         Authorization: token ? `Bearer ${token}` : "",
         "Content-Type": "application/json",
       };
-      if (scope === "team" && orgId) {
-        headers["X-Team-Id"] = orgId;
-      }
       const res = await fetch(`${_config.API_BASE_URL}/api/ai/models?mode=pr_analysis`, { headers });
       if (res.ok) {
         const json = await res.json();
@@ -193,16 +124,6 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
     } catch (_) {}
     finally {
       setLoadingPrModels(false);
-    }
-  };
-
-  const handleToggle = (key: keyof typeof bulkSettings, checked: boolean) => {
-    setBulkSettings((prev) => ({ ...prev, [key]: checked }));
-    setDirty(true);
-    if (key === "trackGithubPullRequests") {
-      try {
-        localStorage.setItem(storageKey, String(checked));
-      } catch (_) {}
     }
   };
 
@@ -227,53 +148,24 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
         Authorization: token ? `Bearer ${token}` : "",
         "Content-Type": "application/json",
       };
-      if (scope === "team" && orgId) {
-        headers["X-Team-Id"] = orgId;
-      }
-      const settingsUrl = scope === "team"
-        ? `${_config.API_BASE_URL}/api/team/settings`
-        : `${_config.API_BASE_URL}/api/user/settings`;
       const payload = {
         ...(repoModel ? { defaultModelRepoId: repoModel } : {}),
         ...(prModel ? { defaultModelPrId: prModel } : {}),
         commentSeverity: severityThreshold,
         prSummarySettings,
       };
-      const settingsRes = await fetch(settingsUrl, {
+      const settingsRes = await fetch(`${_config.API_BASE_URL}/api/team/settings`, {
         method: "PUT",
         headers,
         body: JSON.stringify(payload),
       });
       if (!settingsRes.ok) {
         const err = await settingsRes.json().catch(() => ({}));
-        toast.error(err.message || "Failed to save model settings");
+        toast.error(err.message || "Failed to save settings");
         return;
       }
       toast.success("Settings updated");
       setDirty(false);
-      // const body = {
-      //   scope,
-      //   settings: {
-      //     trackGithubPullRequests: bulkSettings.trackGithubPullRequests,
-      //     trackGithubIssues: bulkSettings.trackGithubIssues,
-      //     analysisRequired: bulkSettings.analysisRequired,
-      //     raiseIssues: bulkSettings.raiseIssues,
-      //     autoFixBugs: bulkSettings.autoFixBugs,
-      //   },
-      // };
-      // const res = await fetch(`${_config.API_BASE_URL}/api/github/repository/settings/bulk`, {
-      //   method: "PUT",
-      //   headers,
-      //   body: JSON.stringify(body),
-      // });
-      // if (!res.ok) {
-      //   const err = await res.json().catch(() => ({}));
-      //   toast.error(err.message || "Failed to save settings");
-      // } else {
-      //   const data = await res.json();
-      //   toast.success(data.message || "Settings updated");
-      //   setDirty(false);
-      // }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to save settings";
       toast.error(msg);
@@ -290,117 +182,6 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
         </div>
 
         <div className="grid grid-row-1 lg:grid-row-2 gap-6 mt-4 max-w-6xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">User Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Name</span>
-                <span className="font-medium">{user?.fullName || user?.username || "—"}</span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Email</span>
-                <span className="font-medium">{user?.primaryEmailAddress?.emailAddress || "—"}</span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">User ID</span>
-                <span className="font-mono text-xs">{user?.id || "—"}</span>
-              </div>
-           
-            </CardContent>
-          </Card>
-
-             {scope === "team" && (
-                <Card>
-                     <CardHeader>
-              <CardTitle className="text-lg">Team Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Team Name</span>
-                    <span className="font-medium">{organization?.name || teamSlug || "—"}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Team Slug</span>
-                    <span className="font-mono text-xs">{organization?.slug || teamSlug || "—"}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Team ID</span>
-                    <span className="font-mono text-xs">{organization?.id || orgId || "—"}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Your Role</span>
-                    <span className="font-medium">{membership?.role || orgRole || "—"}</span>
-                  </div>
-          </CardContent>
-          </Card>
-              )}
-
-          {/* <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Pull Request Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="allow-all-repos-pr-analysis"
-                  checked={bulkSettings.trackGithubPullRequests}
-                  onCheckedChange={(v: boolean) => handleToggle("trackGithubPullRequests", Boolean(v))}
-                />
-                <Label htmlFor="allow-all-repos-pr-analysis" className="cursor-pointer">
-                  {scope === "team" ? "Allow PR analysis for all team repositories" : "Allow PR analysis for all personal repositories"}
-                </Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="track-github-issues"
-                  checked={bulkSettings.trackGithubIssues}
-                  onCheckedChange={(v: boolean) => handleToggle("trackGithubIssues", Boolean(v))}
-                />
-                <Label htmlFor="track-github-issues" className="cursor-pointer">
-                  {scope === "team" ? "Track GitHub issues across team repositories" : "Track GitHub issues across personal repositories"}
-                </Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="analysis-required"
-                  checked={bulkSettings.analysisRequired}
-                  onCheckedChange={(v: boolean) => handleToggle("analysisRequired", Boolean(v))}
-                />
-                <Label htmlFor="analysis-required" className="cursor-pointer">
-                  {scope === "team" ? "Require analysis before merges (team)" : "Require analysis before merges (personal)"}
-                </Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="raise-issues"
-                  checked={bulkSettings.raiseIssues}
-                  onCheckedChange={(v: boolean) => handleToggle("raiseIssues", Boolean(v))}
-                />
-                <Label htmlFor="raise-issues" className="cursor-pointer">
-                  {scope === "team" ? "Automatically create issues (team)" : "Automatically create issues (personal)"}
-                </Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="auto-fix-bugs"
-                  checked={bulkSettings.autoFixBugs}
-                  onCheckedChange={(v: boolean) => handleToggle("autoFixBugs", Boolean(v))}
-                />
-                <Label htmlFor="auto-fix-bugs" className="cursor-pointer">
-                  {scope === "team" ? "Automatically open PRs for simple fixes (team)" : "Automatically open PRs for simple fixes (personal)"}
-                </Label>
-              </div>
-             
-            
-            </CardContent>
-          </Card> */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Comments</CardTitle>
@@ -467,10 +248,6 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                   </svg>
                   PR Summary Settings
                 </CardTitle>
-                {/* <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <InfoTooltip content="Configure what appears in your PR summary comments" side="left" />
-                  <span>Summary posted as comment</span>
-                </div> */}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -507,8 +284,6 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                 </div>
 
                 <div className="space-y-3">
-
-
                   <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
                     <div className="flex items-start gap-3 flex-1">
                       <div className="mt-0.5">
@@ -610,7 +385,6 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
             </CardHeader>
             <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="pr-model">Model for Pull Request Analysis</Label>
@@ -638,25 +412,6 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                     </SelectContent>
                   </Select>
                 </div>
-                {/* <div className="space-y-3">
-                  <Label htmlFor="repo-model">Model for Repo Analysis</Label>
-                  <Select value={repoModel} onValueChange={(v) => { setRepoModel(v); const found = availableRepoModels.find((x) => x._id === v); if (found) setRepoModelName(found.name); setDirty(true); }} onOpenChange={(open) => { if (open && availableRepoModels.length === 0) { fetchAvailableRepoModels(); } }}>
-                    <SelectTrigger id="repo-model">
-                      <SelectValue placeholder={repoModelName || "Select model"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {loadingRepoModels && (
-                        <SelectItem value="loading" disabled>Loading...</SelectItem>
-                      )}
-                      {!loadingRepoModels && availableRepoModels.length === 0 && (
-                        <SelectItem value="none" disabled>No models available</SelectItem>
-                      )}
-                      {availableRepoModels.map((m) => (
-                        <SelectItem key={m._id} value={m._id}>{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div> */}
               </div>
             </CardContent>
           </Card>
@@ -667,9 +422,7 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ scope = "user", teamS
                 </Button>
               </div>
               <p className="text-xs m-auto text-muted-foreground">
-                {scope === "team"
-                  ? "This applies to the current team’s repositories."
-                  : "This applies to your personal repositories."}
+                These settings apply to your team&apos;s repositories.
               </p>
         </div>
       </div>

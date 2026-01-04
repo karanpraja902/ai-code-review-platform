@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronsUpDown } from "lucide-react";
-import { getUserInstallations } from "@/_actions/user-actions";
+import { getTeamInstallations } from "@/_actions/user-actions";
 
 const GithubOrgSwitcher = () => {
   const router = useRouter();
@@ -16,7 +16,7 @@ const GithubOrgSwitcher = () => {
 
   useEffect(() => {
     const load = async () => {
-      const installationsData = await getUserInstallations();
+      const installationsData = await getTeamInstallations();
       setInstallations(installationsData);
     };
     load();

@@ -9,7 +9,7 @@ import { ActivityOverviewChart } from "@/app/(root)/dashboard/_components/Activi
 import NoInstallationOnboarding from "@/app/(root)/dashboard/_components/NoInstallationOnboarding";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getDashboardData } from "../_actions/getDashboardData";
-import { getUserInstallations } from "@/_actions/user-actions";
+import { getTeamInstallations } from "@/_actions/user-actions";
 import { FullRepoReviewChart } from "./FullRepoReviewChart";
 import { ReviewedLinesChart } from "./ReviewedLinesChart";
 
@@ -25,7 +25,7 @@ const DashboardPage = () => {
     queryKey: ["userInstallations"],
     queryFn: async () => {
       try {
-        const data = await getUserInstallations();
+        const data = await getTeamInstallations();
         return Array.isArray(data) ? data : [];
       } catch (e) {
         return [];

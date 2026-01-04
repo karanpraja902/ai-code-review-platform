@@ -4,6 +4,7 @@ export interface IAnalysis {
   _id: mongoose.Types.ObjectId;
   analysis_type: 'full_repo_analysis' | 'pr_analysis';
   userId: string;
+  teamId?: string;
   repoUrl: string;
   github_repositoryId: Schema.Types.ObjectId;
   sandboxId: string;
@@ -38,6 +39,7 @@ const AnalysisSchema = new Schema<IAnalysis>(
   {
     analysis_type: { type: String, required: true },
     userId: { type: String, required: true, index: true },
+    teamId: { type: String, index: true },
     repoUrl: { type: String, required: true },
     github_repositoryId: { type: Schema.Types.ObjectId, ref: 'Github_Repository', index: true },
     sandboxId: { type: String },

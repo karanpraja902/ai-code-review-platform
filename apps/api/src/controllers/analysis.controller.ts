@@ -88,6 +88,7 @@ export const createAnalysis = async (
       _id: analysisId,
       analysis_type,
       userId,
+      teamId: teamId && teamId !== 'null' ? teamId : undefined,
       repoUrl,
       github_repositoryId,
       sandboxId: "", // Will be updated when sandbox is created
@@ -413,11 +414,11 @@ export const getPrAnalysis = async (
       if (!team) {
         return next(new CustomError("Team not found", 404));
       }
-      const isMember = team.members?.some((m: any) => m.userId === currentUserId);
+      const isMember = team.ownerId === currentUserId || req.team?.id === resolvedTeamId;
       if (!isMember) {
-        return next(new CustomError("Forbidden: not a team member", 403));
+        return next(new CustomError("Forbidden: not the team owner or member", 403));
       }
-      const repos = await Github_Repository.find({ teams: resolvedTeamId }).select('_id').lean();
+      const repos = await Github_Repository.find({ teamId: resolvedTeamId }).select('_id').lean();
       const repoIds = repos.map((r: any) => r._id);
 
       // If no accessible repositories, return empty result with pagination
@@ -503,17 +504,18 @@ export const updateAnalysisStatus = async (
     }
 
     // Check if user owns this analysis or is part of the team
-    if (analysis.userId !== req.user._id) {
-      // Check if it's a team analysis and user is part of the team
-      if (analysis.userId) {
-        const team = await Team.findOne({ ownerId: analysis.userId });
-        if (!team || !team.members?.includes(req.user._id)) {
-          return next(new CustomError("Unauthorized to update this analysis", 403));
-        }
-      } else {
-        return next(new CustomError("Unauthorized to update this analysis", 403));
-      }
-    }
+    // if (analysis.userId !== req.user._id) {
+    //   // Check if it's a team analysis and user is the owner or member
+    //   if (analysis.userId) {
+    //     const team = await Team.findOne({ ownerId: analysis.userId });
+    //     const hasAccess = team && (team.ownerId === req.user._id || req.user.team?.id === team._id);
+    //     if (!hasAccess) {
+    //       return next(new CustomError("Unauthorized to update this analysis", 403));
+    //     }
+    //   } else {
+    //     return next(new CustomError("Unauthorized to update this analysis", 403));
+    //   }
+    // }
 
     // Update the status
     analysis.status = status;
@@ -594,10 +596,8 @@ export const stopAnalysis = async (
     // Authorization: user must be owner or part of the team owned by analysis.userId
     if (analysis.userId !== req.user._id) {
       const team = await Team.findOne({ ownerId: analysis.userId });
-      const isMember = team && Array.isArray((team as any).members)
-        ? (team as any).members.includes(req.user._id)
-        : false;
-      if (!isMember) {
+      const hasAccess = team && (team.ownerId === req.user._id || req.team?.id === team._id);
+      if (!hasAccess) {
         return next(new CustomError("Unauthorized to stop this analysis", 403));
       }
     }

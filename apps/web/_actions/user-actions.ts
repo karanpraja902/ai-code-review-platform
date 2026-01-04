@@ -14,8 +14,8 @@ export const getMyTeams = async () => {
   return await teamsData.data;
 };
 
-export const getUserInstallations = async () => {
-  const response = await apiGet("/api/user/installations", { includeTeamId: false });
+export const getTeamInstallations = async () => {
+  const response = await apiGet("/api/team/installations");
   const installationsData = await response.json();
   return await installationsData.data;
 };

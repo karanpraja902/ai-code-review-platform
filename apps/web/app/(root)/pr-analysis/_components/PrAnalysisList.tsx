@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { logger } from "@/lib/logger";
 import { getPrAnalyses } from "../../analysis/_actions/getPrAnalyses";
@@ -12,14 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { useDebouncedCallback } from "use-debounce";
-import { useAuth } from "@clerk/nextjs";
-import { _config } from "@/lib/_config";
-import ConnectGithubCard from "../../_components/connect-github-card";
 import Link from "next/link";
 
-type RepoScope = "user" | "team";
-
-const PrAnalysisList = ({ scope = "user" }: { scope?: RepoScope }) => {
+const PrAnalysisList = () => {
   const [items, setItems] = useState<Array<{
     repoUrl: string;
     model: string;
@@ -38,64 +33,15 @@ const PrAnalysisList = ({ scope = "user" }: { scope?: RepoScope }) => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [installationsLoading, setInstallationsLoading] = useState(true);
-  const [hasInstallations, setHasInstallations] = useState<boolean | null>(null);
-  const { getToken } = useAuth();
-  const isTeamContext = scope === "team";
 
   const debouncedSetQuery = useDebouncedCallback((val: string) => {
     setPage(1); // Reset to first page on new search
     setQuery(val);
   }, 400);
 
-  // First, check if the user has any GitHub installations (skip on team pages)
-  useEffect(() => {
-    let cancelled = false;
-    const checkInstallations = async () => {
-      try {
-        // In team context, we do NOT show ConnectGithubCard.
-        // Skip installation check and allow list to load.
-        if (isTeamContext) {
-          if (!cancelled) {
-            setHasInstallations(true);
-            setInstallationsLoading(false);
-          }
-          return;
-        }
-        if (!_config.API_BASE_URL) {
-          if (!cancelled) {
-            setHasInstallations(false);
-            setInstallationsLoading(false);
-          }
-          return;
-        }
-        const token = await getToken();
-        const res = await fetch(`${_config.API_BASE_URL}/api/user/installations`, {
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        });
-        const data = await res.json();
-        const arr = Array.isArray(data?.data) ? data.data : [];
-        if (!cancelled) {
-          setHasInstallations(arr.length > 0);
-          setInstallationsLoading(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setHasInstallations(false);
-          setInstallationsLoading(false);
-        }
-      }
-    };
-    checkInstallations();
-    return () => {
-      cancelled = true;
-    };
-  }, [getToken, isTeamContext]);
-
-  // Fetch PR analyses only if installations exist (or when in team context)
+  // Fetch PR analyses
   useEffect(() => {
     const fetchData = async () => {
-      if (installationsLoading || hasInstallations !== true) return;
       try {
         setLoading(true);
         setError(null);
@@ -116,19 +62,17 @@ const PrAnalysisList = ({ scope = "user" }: { scope?: RepoScope }) => {
     };
 
     fetchData();
-  }, [page, limit, query, installationsLoading, hasInstallations]);
+  }, [page, limit, query]);
 
   const repoName = (url?: string) => {
     if (!url) return "";
     try {
       const parts = url.replace("https://github.com/", "").split("/");
       return parts.slice(0, 2).join("/");
-    } catch (_) {
+    } catch {
       return url;
     }
   };
-
-  // statusClasses imported from shared utility
 
   return (
     <div className="w-full">
@@ -155,163 +99,155 @@ const PrAnalysisList = ({ scope = "user" }: { scope?: RepoScope }) => {
       <Separator />
 
       {/* Rows */}
-      {installationsLoading ? (
-        <div className="min-h-[70vh] grid place-items-center text-sm text-neutral-500">Checking GitHub installation…</div>
-      ) : (!isTeamContext && hasInstallations === false) ? (
-        <div className="mt-2 min-h-[68vh]">
-          <ConnectGithubCard />
-        </div>
-      ) : (
-        <ul className="min-h-[70vh]">
-          {loading ? (
-            <div className="min-h-[70vh] grid place-items-center text-sm text-neutral-500">
-              Loading...
-            </div>
-          ) : items && items.length > 0 ? (
-            items.map((item, idx) => {
-            // Compute descending global index across the full dataset
-            const globalIndex = Math.max(total - (page - 1) * limit - idx, 1);
-            // Prepare title with PR number prefix
-            const rawTitle = item?.pr_title
-              ? item.pr_title.length > 30
-                ? `${item.pr_title.slice(0, 30)}...`
-                : item.pr_title
-              : "Untitled Pull Request";
-            const prPrefix = item?.pr_number ? `#${item.pr_number} ` : "";
-            const displayTitle = `${prPrefix}${rawTitle}`;
-            return (
-            <React.Fragment key={`${item.repoUrl}-${item.pr_number}-${idx}`}>
-              <li className="py-4">
-                <div className="grid grid-cols-12 items-center">
-                  {/* Show descending index in the # column */}
-                  <div className="col-span-1 text-sm text-muted-foreground">{globalIndex}</div>
-                  <div className="col-span-4 flex items-center gap-2 min-w-0">
-                    <GitPullRequestIcon className="h-4 w-4 flex-shrink-0" />
-                    <div className="truncate">
-                      {item?.pr_url ? (
-                        <a
-                          href={item.pr_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm truncate hover:underline"
-                        >
-                          {displayTitle}
-                        </a>
-                      ) : (
-                        <span className="text-sm truncate">
-                          {displayTitle}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="col-span-3 text-sm truncate flex items-center gap-2">
-                    <IconBrandGithub className="h-4 w-4 flex-shrink-0" />
-                    {item?.repoUrl ? (
+      <ul className="min-h-[70vh]">
+        {loading ? (
+          <div className="min-h-[70vh] grid place-items-center text-sm text-neutral-500">
+            Loading...
+          </div>
+        ) : items && items.length > 0 ? (
+          items.map((item, idx) => {
+          // Compute descending global index across the full dataset
+          const globalIndex = Math.max(total - (page - 1) * limit - idx, 1);
+          // Prepare title with PR number prefix
+          const rawTitle = item?.pr_title
+            ? item.pr_title.length > 30
+              ? `${item.pr_title.slice(0, 30)}...`
+              : item.pr_title
+            : "Untitled Pull Request";
+          const prPrefix = item?.pr_number ? `#${item.pr_number} ` : "";
+          const displayTitle = `${prPrefix}${rawTitle}`;
+          return (
+          <React.Fragment key={`${item.repoUrl}-${item.pr_number}-${idx}`}>
+            <li className="py-4">
+              <div className="grid grid-cols-12 items-center">
+                {/* Show descending index in the # column */}
+                <div className="col-span-1 text-sm text-muted-foreground">{globalIndex}</div>
+                <div className="col-span-4 flex items-center gap-2 min-w-0">
+                  <GitPullRequestIcon className="h-4 w-4 flex-shrink-0" />
+                  <div className="truncate">
+                    {item?.pr_url ? (
                       <a
-                        href={item.repoUrl}
+                        href={item.pr_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="truncate hover:underline"
+                        className="text-sm truncate hover:underline"
                       >
-                        {repoName(item.repoUrl)}
+                        {displayTitle}
                       </a>
                     ) : (
-                      <span className="truncate">{repoName(item.repoUrl)}</span>
+                      <span className="text-sm truncate">
+                        {displayTitle}
+                      </span>
                     )}
                   </div>
-                  <div className="col-span-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className={`text-xs px-1.5 py-1 rounded-lg inline-flex items-center gap-1 cursor-help ${statusClasses(item.status)}`}>
-                          <span>{item.status}</span>
-                          {item.status === "completed" && (
-                            <CircleCheck className="h-3 w-3" />
-                          )}
-                          {item.status === "error" && (
-                            <CircleX className="h-3 w-3" />
-                          )}
-                          {item.status === "running" && (
-                            <Ellipsis className="h-3 w-3 animate-pulse" />
-                          )}
-                          {item.status === "skipped" && (
-                            <SkipForward className="h-3 w-3" />
-                          )}
-                          {item.status === "interrupted" && (
-                            <AlertTriangle className="h-3 w-3" />
-                          )}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        {["error", "skipped", "interrupted"].includes(item.status) ? (
-                          <span>{item.errorLogs || `${item.status} - No details available`}</span>
-                        ) : (
-                          <span>
-                            {item.status === "completed" ? "Completed" : "Started"}{" "}
-                            {item.createdAt ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) : ""}
-                          </span>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="col-span-2 flex items-center justify-between gap-3">
-                    <div className="text-xs text-muted-foreground">
-                      {item.createdAt ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) : "—"}
-                    </div>
+                </div>
+                <div className="col-span-3 text-sm truncate flex items-center gap-2">
+                  <IconBrandGithub className="h-4 w-4 flex-shrink-0" />
+                  {item?.repoUrl ? (
                     <a
-                      href={item.pr_url || "#"}
+                      href={item.repoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm underline"
+                      className="truncate hover:underline"
                     >
-                      <ExternalLink className="h-4 w-4" />
+                      {repoName(item.repoUrl)}
                     </a>
-                  </div>
+                  ) : (
+                    <span className="truncate">{repoName(item.repoUrl)}</span>
+                  )}
                 </div>
-              </li>
-              <Separator />
-            </React.Fragment>
-          );
-            })
-          ) : (
-            <li className="min-h-[70vh] grid place-items-center">
-              {error ? (
-                <span className="text-base font-medium text-foreground">Error: {error}</span>
-              ) : (
-                <div className="text-center max-w-md">
-                  <div className="mb-4">
-                    <GitPullRequestIcon className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">No PR Analyses Yet</h3>
-                  <p className="text-muted-foreground text-sm mb-6">
-                    Your pull request analysis logs will appear here
-                  </p>
-                  <ul className="text-left text-sm text-muted-foreground space-y-3">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500 mt-0.5">•</span>
-                      <span>Once you open a PR in any of the connected repos, analysis triggers automatically</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500 mt-0.5">•</span>
-                      <span>
-                        To trigger manually, comment{" "}
-                        <code className="bg-neutral-800 text-neutral-200 px-1.5 py-0.5 rounded text-xs font-mono">
-                          @ai-code-review review
-                        </code>{" "}
-                        on any PR
+                <div className="col-span-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className={`text-xs px-1.5 py-1 rounded-lg inline-flex items-center gap-1 cursor-help ${statusClasses(item.status)}`}>
+                        <span>{item.status}</span>
+                        {item.status === "completed" && (
+                          <CircleCheck className="h-3 w-3" />
+                        )}
+                        {item.status === "error" && (
+                          <CircleX className="h-3 w-3" />
+                        )}
+                        {item.status === "running" && (
+                          <Ellipsis className="h-3 w-3 animate-pulse" />
+                        )}
+                        {item.status === "skipped" && (
+                          <SkipForward className="h-3 w-3" />
+                        )}
+                        {item.status === "interrupted" && (
+                          <AlertTriangle className="h-3 w-3" />
+                        )}
                       </span>
-                    </li>
-                  </ul>
-                  <div className="mt-6">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/interact">See how to interact with AI Code Review</Link>
-                    </Button>
-                  </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {["error", "skipped", "interrupted"].includes(item.status) ? (
+                        <span>{item.errorLogs || `${item.status} - No details available`}</span>
+                      ) : (
+                        <span>
+                          {item.status === "completed" ? "Completed" : "Started"}{" "}
+                          {item.createdAt ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) : ""}
+                        </span>
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
-              )}
+                <div className="col-span-2 flex items-center justify-between gap-3">
+                  <div className="text-xs text-muted-foreground">
+                    {item.createdAt ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) : "—"}
+                  </div>
+                  <a
+                    href={item.pr_url || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm underline"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
             </li>
-          )}
-        </ul>
-      )}
+            <Separator />
+          </React.Fragment>
+        );
+          })
+        ) : (
+          <li className="min-h-[70vh] grid place-items-center">
+            {error ? (
+              <span className="text-base font-medium text-foreground">Error: {error}</span>
+            ) : (
+              <div className="text-center max-w-md">
+                <div className="mb-4">
+                  <GitPullRequestIcon className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No PR Analyses Yet</h3>
+                <p className="text-muted-foreground text-sm mb-6">
+                  Your pull request analysis logs will appear here
+                </p>
+                <ul className="text-left text-sm text-muted-foreground space-y-3">
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-500 mt-0.5">•</span>
+                    <span>Once you open a PR in any of the connected repos, analysis triggers automatically</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-500 mt-0.5">•</span>
+                    <span>
+                      To trigger manually, comment{" "}
+                      <code className="bg-neutral-800 text-neutral-200 px-1.5 py-0.5 rounded text-xs font-mono">
+                        @ai-code-review review
+                      </code>{" "}
+                      on any PR
+                    </span>
+                  </li>
+                </ul>
+                <div className="mt-6">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/interact">See how to interact with AI Code Review</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </li>
+        )}
+      </ul>
 
       {/* Pagination controls */}
       <div className="flex items-center justify-between py-2 px-3 text-xs border-t mt-2">

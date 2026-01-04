@@ -183,6 +183,7 @@ export const executeAnalysis = async (
           _id,
           analysis_type: analysisType,
           userId,
+          teamId: teamId && teamId !== "null" ? teamId : undefined,
           repoUrl,
           github_repositoryId: github_repositoryId ? new mongoose.Types.ObjectId(github_repositoryId) : undefined,
           sandboxId: "", // Will be updated once sandbox is created

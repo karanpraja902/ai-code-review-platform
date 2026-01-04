@@ -106,7 +106,7 @@ export const getUserRepositories = async (req: Request, res: Response, next: Nex
       console.error('Error getting user repositories:', error);
       next(new CustomError('Failed to get user repositories', 500));
     }
-  }
+}
 
 export const getUserDashboardInfo = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -581,5 +581,45 @@ export const updateUserSettings = async (req: Request, res: Response, next: Next
     return res.status(200).json({ success: true, message: 'Settings updated', data: nextSettings });
   } catch (error: any) {
     next(new CustomError(error.message || 'Failed to update user settings', 500));
+  }
+};
+
+export const setActiveTeam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { teamId } = req.body;
+    
+    if (!teamId || typeof teamId !== 'string') {
+      return next(new CustomError('Team ID is required', 400));
+    }
+
+    // Verify team exists
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return next(new CustomError('Team not found', 404));
+    }
+
+    // Verify user has access to this team (is owner or member)
+    const TeamMember = mongoose.model('TeamMember');
+    const isOwner = team.ownerId === req.user._id;
+    const isMember = await TeamMember.findOne({ teamId, userId: req.user._id });
+    
+    if (!isOwner && !isMember) {
+      return next(new CustomError('You do not have access to this team', 403));
+    }
+
+    // Update user's active team
+    await User.findByIdAndUpdate(req.user._id, { activeTeamId: teamId });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Active team updated',
+      data: { 
+        teamId, 
+        teamName: team.name,
+        isOwner 
+      }
+    });
+  } catch (error: any) {
+    next(new CustomError(error.message || 'Failed to set active team', 500));
   }
 };

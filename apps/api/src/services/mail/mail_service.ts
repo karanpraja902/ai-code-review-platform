@@ -6,12 +6,14 @@ import {
   WelcomeOptions, 
   PasswordResetOptions, 
   MarketingOptions, 
-  CustomMailOptions 
+  CustomMailOptions,
+  TeamInviteOptions 
 } from './types.js';
 import { 
   analysisCompleteTemplate, 
   analysisErrorTemplate, 
-  welcomeTemplate, 
+  welcomeTemplate,
+  teamInviteTemplate,
 } from './mail_templates/index.js';
 import dotenv from "dotenv";
 
@@ -106,10 +108,16 @@ export class MailService {
     await this.sendEmail(options.to, subject, html, options.from);
   }
 
-  // User management emails
   async welcome(options: WelcomeOptions): Promise<void> {
     const subject = 'Welcome to CodeDetector.ai!';
     const html = welcomeTemplate(options);
+    await this.sendEmail(options.to, subject, html, options.from);
+  }
+
+  // Team invitation email
+  async teamInvite(options: TeamInviteOptions): Promise<void> {
+    const subject = `Invitation to join ${options.teamName}`;
+    const html = teamInviteTemplate(options);
     await this.sendEmail(options.to, subject, html, options.from);
   }
 

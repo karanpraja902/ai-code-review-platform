@@ -1,5 +1,5 @@
 import express, { Router } from "express";
-import { baseAuth, checkAuth, teamAuth } from "../middlewares/checkAuth.js";
+import { baseAuth } from "../middlewares/checkAuth.js";
 import { getRepoTree, getRepoInfo, openIssue, openPullRequest, getBranches, saveGithubIssue, savePatch, getGithubIssuesWithPullRequests, getIssueStates, syncRepositories } from "../controllers/github.controller.js";
 import { getAllUserInstallations } from "../queries/github.queries.js";
 import { updateRepoSettings, getRepoSettings, bulkUpdateRepoSettings } from "../controllers/repository.controller.js";
@@ -8,9 +8,8 @@ const router: Router = express.Router();
 
 router.use(baseAuth)
 
-// Public routes (no auth required)
-router.get("/tree", teamAuth, getRepoTree);
-router.get("/branches", teamAuth, getBranches);
+router.get("/tree", getRepoTree);
+router.get("/branches", getBranches);
 router.post("/info", getRepoInfo);
 router.get("/issues", getGithubIssuesWithPullRequests);
 router.post("/issue-states", getIssueStates);
@@ -26,7 +25,7 @@ router.post("/save-patch", savePatch);
 // Repository settings routes (auth required)
 router.get("/repository/:repoId/settings", getRepoSettings);
 router.put("/repository/:repoId/settings", updateRepoSettings);
-router.put("/repository/settings/bulk", teamAuth, bulkUpdateRepoSettings);
+router.put("/repository/settings/bulk", bulkUpdateRepoSettings);
 
 // Sync repositories route (auth required) - syncs all user installations
 router.post("/sync", syncRepositories);

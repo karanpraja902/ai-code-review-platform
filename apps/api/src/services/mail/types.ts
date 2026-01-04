@@ -56,6 +56,12 @@ export interface CustomMailOptions extends BaseMailOptions {
   textContent?: string;
 }
 
+export interface TeamInviteOptions extends BaseMailOptions {
+  inviterName: string;
+  teamName: string;
+  invitationLink: string;
+}
+
 // Mail service configuration
 export interface MailServiceConfig {
   host: string;

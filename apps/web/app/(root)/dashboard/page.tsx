@@ -8,7 +8,7 @@ import {
 import { getDashboardData } from "./_actions/getDashboardData";
 import DashboardPage from "./_components/DashboardPage";
 import { Loader2Icon } from "lucide-react";
-import { getUserInstallations } from "@/_actions/user-actions";
+import { getTeamInstallations } from "@/_actions/user-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ const Page = async () => {
     queryKey: ["userInstallations"],
     queryFn: async () => {
       try {
-        const data = await getUserInstallations();
+        const data = await getTeamInstallations();
         return Array.isArray(data) ? data : [];
       } catch (e) {
         return [];

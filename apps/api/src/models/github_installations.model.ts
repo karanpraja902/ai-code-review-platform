@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IGithub_Installation extends Document {
   installationId: number;
   userId: string;
+  teamId?: string;
   account: {
     login: string,
     id: number,
@@ -35,6 +36,11 @@ const InstallationSchema = new Schema<IGithub_Installation>({
     index: true
   },
   userId: {
+    type: String,
+    required: false,
+    index: true
+  },
+  teamId: {
     type: String,
     required: false,
     index: true

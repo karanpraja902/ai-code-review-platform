@@ -2,7 +2,7 @@
 import { NextFunction, Request, Response } from "express";
 import { logger } from "../utils/logger.js";
 
-export const checkTeamMemberRole = (requiredRole: 'admin' | 'member' = 'admin') => {
+export const checkTeamMemberRole = (requiredRole: 'owner' | 'admin' | 'member' = 'admin') => {
   return async (req: Request, res: Response, next: NextFunction) => {
     logger.debug(`checkTeamRole middleware execution started for role: ${requiredRole}`);
     
@@ -27,10 +27,20 @@ export const checkTeamMemberRole = (requiredRole: 'admin' | 'member' = 'admin') 
         return res.status(403).json({ message: 'Access denied: No role in team' });
       }
 
-      // Check if user has required role
-      if (requiredRole === 'admin' && userRole !== 'admin') {
-        logger.warn(`checkTeamRole: User ${req.user._id} attempted admin action with role ${userRole} in team ${teamId}`);
-        return res.status(403).json({ message: 'Access denied: Admin role required' });
+      // Role hierarchy: owner > admin > member
+      const roleHierarchy: Record<string, number> = {
+        owner: 3,
+        admin: 2,
+        member: 1,
+      };
+
+      const userRoleLevel = roleHierarchy[userRole] || 0;
+      const requiredRoleLevel = roleHierarchy[requiredRole] || 0;
+
+      // Check if user has required role level or higher
+      if (userRoleLevel < requiredRoleLevel) {
+        logger.warn(`checkTeamRole: User ${req.user._id} attempted ${requiredRole} action with role ${userRole} in team ${teamId}`);
+        return res.status(403).json({ message: `Access denied: ${requiredRole} role or higher required` });
       }
 
       logger.debug(`checkTeamRole: User ${req.user._id} has ${userRole} role in team ${teamId} - access granted`);

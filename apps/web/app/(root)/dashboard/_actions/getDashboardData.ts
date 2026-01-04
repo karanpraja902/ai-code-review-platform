@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 
 export const getDashboardData = async (days: number = 7) => {
   try {
-    const response = await apiGet(`/api/user/dashboard?days=${encodeURIComponent(days)}` , {
+    const response = await apiGet(`/api/team/dashboard?days=${encodeURIComponent(days)}` , {
       cache: "no-store", // Dashboard data should be fresh
     });
 
