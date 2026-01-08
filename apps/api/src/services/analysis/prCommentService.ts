@@ -556,7 +556,7 @@ processedContent = processedContent.replace(
       '<summary>📖 User Guide</summary>',
       '',
       '- Once repos are connected, PR analysis is automatically enabled. You can disable analysis for this repo from [ai-code-review-platform.dev/analysis](https://ai-code-review-platform.dev/analysis)',
-      '- Comment `@ai-code-review review` on any PR to start analysis manually',
+      '- Comment `@ai-code-review` on any PR to start analysis manually',
       '- Comment `@ai-code-review stop` to stop any ongoing analysis',
       '',
       '</details>',
@@ -690,7 +690,7 @@ processedContent = processedContent.replace(
 
       if (showTriggerHint) {
         bodyParts.push('>');
-        bodyParts.push('> To trigger a single review, invoke the `@ai-code-review review` command.');
+        bodyParts.push('> To trigger a single review, invoke the `@ai-code-review` command.');
       }
 
       const footerContent = this.generateUserGuideFooter();

@@ -170,7 +170,7 @@ const HowToInteractCard = () => {
           imageSrc="/@ai-code-review.png"
           points={[
             <>Once repos are connected, PR analysis will automatically enabled</>,
-            <>Comment <Command>@ai-code-review review</Command> on any PR to start analysis manually</>,
+            <>Comment <Command>@ai-code-review</Command> on any PR to start analysis manually</>,
             <>Comment <Command>@ai-code-review stop</Command> to stop any ongoing analysis</>,
           ]}
           isSignedIn={isSignedIn}

@@ -232,7 +232,7 @@ const PrAnalysisList = () => {
                     <span>
                       To trigger manually, comment{" "}
                       <code className="bg-neutral-800 text-neutral-200 px-1.5 py-0.5 rounded text-xs font-mono">
-                        @ai-code-review review
+                        @ai-code-review
                       </code>{" "}
                       on any PR
                     </span>
