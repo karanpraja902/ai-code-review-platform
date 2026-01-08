@@ -191,7 +191,8 @@ export const webhooks = new Webhooks({ secret: process.env.GITHUB_WEBHOOK_SECRET
       // Check for stop command first: @ai-code-review stop or @ai-code-review stop
       const stopTriggerPattern = /@(ai-code-review|ai-code-review)\s+stop\b/i;
       // Check for review trigger: @ai-code-review or @ai-code-review followed by anything (triggers review)
-      const reviewTriggerPattern = /@(ai-code-review|ai-code-review)\b/i;
+const reviewTriggerPattern = /@(ai-code-review|ai-code-review)(?!\s+stop\b)/i;
+
 
       // Handle stop command first
       if (stopTriggerPattern.test(commentBody)) {
