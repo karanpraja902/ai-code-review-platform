@@ -799,6 +799,7 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
           date: commit.commit.committer?.date,
           login: commit.committer?.login
         },
+        parents: commit.parents?.map(p => p.sha) || [],
         url: commit.html_url,
         stats: {
           additions: commit.stats?.additions,
@@ -1005,6 +1006,10 @@ export const PrData = async (payload: any, options?: { skipBotCheck?: boolean })
     const lastIndex = lastStoredSha ? commits.findIndex((c: any) => c.sha === lastStoredSha) : -1;
     const newCommitsOnly = lastIndex >= 0 ? commits.slice(lastIndex + 1) : commits;
 
+    const analyzableCommits = newCommitsOnly.filter((commit: any) => {
+        return !commit.parents || commit.parents.length <= 1;
+    });
+
     // Helper to check if a commit is authored or co-authored by a bot (e.g., AI Code Review)
     const isBotCommit = (commit: any): boolean => {
       const authorLogin = commit?.author?.login || '';
@@ -1038,7 +1043,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
       return true;
     };
 
-    if (newCommitsOnly.length === 0) {
+    if (analyzableCommits.length === 0) {
       logger.info("No new commits detected for PR; skipping review", {
         prNumber: pull_request.number,
         repository: repository.full_name,
@@ -1063,10 +1068,10 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
     }
 
        // If we have at least some human commits, analyze ALL commits (including bot ones)
-    console.log(newCommitsOnly.map(el => el.message))
+    console.log(analyzableCommits.map(el => el.message))
       
 
-    modelAnalysisData.changes.commits = newCommitsOnly.map((commit: any) => {
+    modelAnalysisData.changes.commits = analyzableCommits.map((commit: any) => {
     const filteredFiles = (commit.files || []).filter((file: any) => isAnalyzable(file.filename, file.patch));
     return {
       sha: commit.sha,
@@ -1086,12 +1091,12 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
     // Check if ALL new commits are bot-authored/co-authored - skip review entirely if so
     // Skip this check if triggered by @ai-code-review review command
     if (!skipBotCheck) {
-      const allCommitsAreBot = newCommitsOnly.every((commit: any) => isBotCommit(commit));
+      const allCommitsAreBot = analyzableCommits.every((commit: any) => isBotCommit(commit));
       if (allCommitsAreBot) {
         logger.info("All new commits are bot-authored/co-authored; skipping review", {
           prNumber: pull_request.number,
           repository: repository.full_name,
-          totalNewCommits: newCommitsOnly.length,
+          totalNewCommits: analyzableCommits.length,
         });
 
         // Post skip comment when all commits are from bots
@@ -1122,13 +1127,13 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
  
 
     const filesChangedForAnalysis = Array.from(new Set(
-      (newCommitsOnly || [])
+      (analyzableCommits || [])
         .flatMap((commit: any) => (commit.files || [])
           .filter((file: any) => isAnalyzable(file.filename, file.patch))
           .flatMap((file: any) => [file.filename, file.previousFilename].filter(Boolean)))
     ));
     const ignoredFilesForAnalysis = Array.from(new Set(
-      (newCommitsOnly || [])
+      (analyzableCommits || [])
         .flatMap((commit: any) => (commit.files || [])
           .filter((file: any) => !isAnalyzable(file.filename, file.patch))
           .flatMap((file: any) => [file.filename, file.previousFilename].filter(Boolean)))
@@ -1188,7 +1193,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
       prNumber: pull_request.number, 
       repository: repository.full_name,
       insertedId: insertResult?.insertedId,
-      newCommitsCount: newCommitsOnly.length
+      newCommitsCount: analyzableCommits.length
     });
 
     // Fallback to previous entry id if we didn't insert a new one
@@ -1351,7 +1356,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         try {
           const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
           // Calculate lines of code from NEW commits only (not entire PR)
-          const reviewedLinesOfCode = newCommitsOnly.reduce((total, commit) => {
+          const reviewedLinesOfCode = analyzableCommits.reduce((total, commit) => {
             const commitAdditions = commit.stats?.additions || 0;
             const commitDeletions = commit.stats?.deletions || 0;
             return total + commitAdditions + commitDeletions;
@@ -1391,7 +1396,7 @@ const ext = (filename?.split('.')?.pop() || '').toLowerCase();
         // Initialize parser state for streaming response parsing
         const parserState = createParserState();
         
-        await prCommentService.postAnalysisStartedComment(newCommitsOnly, filesChangedForAnalysis, ignoredFilesForAnalysis);
+        await prCommentService.postAnalysisStartedComment(analyzableCommits, filesChangedForAnalysis, ignoredFilesForAnalysis);
 
         // Define streaming callbacks for PR analysis
         const callbacks: StreamingCallbacks = {
