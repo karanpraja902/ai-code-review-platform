@@ -1449,9 +1449,6 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
       errors: [] as string[]
     };
 
-    // Track newly created repository IDs for team assignment
-    const newlyCreatedRepoIds: number[] = [];
-
     // Process each installation
     for (const installation of installations) {
       try {
@@ -1502,13 +1499,18 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
               repositoryId: repo.id 
             });
 
-            const repoData = {
+            const repoData: any = {
               github_installationId: installation._id,
               repositoryId: repo.id,
               fullName: repo.full_name,
               private: repo.private,
               defaultBranch: repo.default_branch || 'main'
             };
+
+            // Include teamId if provided
+            if (teamId) {
+              repoData.teamId = teamId;
+            }
 
             if (existingRepo) {
               // Check if any fields have actually changed
@@ -1518,16 +1520,27 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
                 existingRepo.defaultBranch !== (repo.default_branch || 'main') ||
                 existingRepo.github_installationId.toString() !== installation._id?.toString();
 
-              if (hasChanges) {
-                // Only update if something actually changed
+              // Check if teamId needs to be added (repo doesn't have one and we have one to assign)
+              const needsTeamId = teamId && !existingRepo.teamId;
+
+              if (hasChanges || needsTeamId) {
+                // Build update object
+                const updateData: any = {
+                  fullName: repo.full_name,
+                  private: repo.private,
+                  defaultBranch: repo.default_branch || 'main',
+                  github_installationId: installation._id
+                };
+
+                // Add teamId if repo doesn't have one and we have one to assign
+                if (needsTeamId) {
+                  updateData.teamId = teamId;
+                  overallSyncResults.addedToTeam++;
+                }
+
                 await Github_Repository.findByIdAndUpdate(
                   existingRepo._id,
-                  {
-                    fullName: repo.full_name,
-                    private: repo.private,
-                    defaultBranch: repo.default_branch || 'main',
-                    github_installationId: installation._id
-                  },
+                  updateData,
                   { new: true }
                 );
                 overallSyncResults.updated++;
@@ -1535,11 +1548,13 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
                   repositoryId: repo.id, 
                   fullName: repo.full_name,
                   installationId: installation.installationId,
+                  addedTeamId: needsTeamId,
                   changes: {
                      fullName: existingRepo.fullName !== repo.full_name,
                      private: existingRepo.private !== repo.private,
                      defaultBranch: existingRepo.defaultBranch !== (repo.default_branch || 'main'),
-                     installationId: existingRepo.github_installationId.toString() !== installation._id?.toString()
+                     installationId: existingRepo.github_installationId.toString() !== installation._id?.toString(),
+                     teamId: needsTeamId
                    }
                 });
               } else {
@@ -1554,11 +1569,14 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
               const newRepo = new Github_Repository(repoData);
               await newRepo.save();
               overallSyncResults.created++;
-              newlyCreatedRepoIds.push(repo.id);
+              if (teamId) {
+                overallSyncResults.addedToTeam++;
+              }
               logger.debug("Created new repository", { 
                 repositoryId: repo.id, 
                 fullName: repo.full_name,
-                installationId: installation.installationId
+                installationId: installation.installationId,
+                teamId: teamId || null
               });
             }
           } catch (repoError) {
@@ -1620,24 +1638,12 @@ export const syncRepositories = async (req: Request, res: Response, next: NextFu
       errors: overallSyncResults.errors.length 
     });
 
-    // If a teamId was provided and new repos were created, add them to the team
-    if (teamId && newlyCreatedRepoIds.length > 0) {
-      try {
-        const result = await Github_Repository.updateMany(
-          { repositoryId: { $in: newlyCreatedRepoIds } },
-          { $set: { teamId } }
-        );
-        overallSyncResults.addedToTeam = result.modifiedCount || newlyCreatedRepoIds.length;
-        logger.info("Added newly created repos to team", { 
-          teamId, 
-          repoCount: overallSyncResults.addedToTeam,
-          repoIds: newlyCreatedRepoIds
-        });
-      } catch (teamError) {
-        const errorMessage = `Failed to add repositories to team ${teamId}: ${teamError instanceof Error ? teamError.message : teamError}`;
-        overallSyncResults.errors.push(errorMessage);
-        logger.error("Error adding repos to team", { teamId, error: errorMessage });
-      }
+    // Log team assignment results if teamId was provided
+    if (teamId) {
+      logger.info("Team assignment completed during sync", { 
+        teamId, 
+        reposAddedToTeam: overallSyncResults.addedToTeam
+      });
     }
 
     res.json({
