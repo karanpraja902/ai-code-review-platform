@@ -1407,7 +1407,7 @@ export const getIssueStates = async (
 export const syncRepositories = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?._id;
-    const { teamId } = req.body as { teamId?: string };
+    const teamId = req.team?.id;
 
     if (!userId) {
       return next(new CustomError("User not authenticated", 401));
