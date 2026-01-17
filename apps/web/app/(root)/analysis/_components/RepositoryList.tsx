@@ -8,8 +8,21 @@ import { FolderGit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-const EmptyRepositoryState = () => {
-  
+const EmptyRepositoryState = ({ isSearch }: { isSearch?: boolean }) => {
+  if (isSearch) {
+    return (
+      <div className="text-center max-w-md mx-auto min-h-[60vh] flex flex-col justify-center">
+        <div className="mb-4">
+          <FolderGit2 className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">No Repository Found</h3>
+        <p className="text-muted-foreground text-sm">
+          We couldn&apos;t find any repositories matching your search.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="text-center max-w-md mx-auto min-h-[60vh] flex flex-col justify-center">
       <div className="mb-4">
@@ -29,11 +42,11 @@ const EmptyRepositoryState = () => {
           <span>You can enable/disable PR analysis for each repo from its settings</span>
         </li>
       </ul>
-     <div className="mt-6">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/interact">See how to interact with AI Code Review</Link>
-                    </Button>
-                  </div>
+      <div className="mt-6">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/interact">See how to interact with AI Code Review</Link>
+        </Button>
+      </div>
     </div>
   );
 };
@@ -73,7 +86,7 @@ const RepositoryList = async ({
         ))
       ) : (
         <li className="h-full grid place-items-center">
-          <EmptyRepositoryState />
+          <EmptyRepositoryState isSearch={!!query} />
         </li>
       )}
     </ul>

@@ -62,6 +62,12 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
   const [newTeamDescription, setNewTeamDescription] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Onboarding dialog
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingTeamName, setOnboardingTeamName] = useState("");
+  const [onboardingTeamDescription, setOnboardingTeamDescription] = useState("");
+  const [completingOnboarding, setCompletingOnboarding] = useState(false);
+
   // Invite dialog
   const [selectedInvite, setSelectedInvite] = useState<PendingInvite | null>(null);
   const [processingInvite, setProcessingInvite] = useState(false);
@@ -104,6 +110,15 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
           }
         } else if (teamsData.data.length > 0) {
           setActiveTeam(teamsData.data[0]);
+        }
+      }
+
+      if (userData.success && userData.user && !userData.user.isOnboarded) {
+        // Only show onboarding if user owns the team (migration safety)
+        const teamData = teamsData.data.find((t: Team) => String(t._id) === String(userData.user.activeTeamId));
+        if (teamData?.isOwner) {
+          setOnboardingOpen(true);
+          setOnboardingTeamName(teamData.name);
         }
       }
 
@@ -274,6 +289,49 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
     }
   };
 
+  const handleOnboardingComplete = async (isSkip = false) => {
+    setCompletingOnboarding(true);
+    try {
+      const token = await getToken();
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+
+      // 1. Update team name if not skipped
+      if (!isSkip && onboardingTeamName.trim() && activeTeam) {
+        await fetch(`${_config.API_BASE_URL}/api/team/update`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            name: onboardingTeamName.trim(),
+            description: onboardingTeamDescription.trim() || undefined,
+          }),
+        });
+      }
+
+      // 2. Mark onboarding as complete
+      const res = await fetch(`${_config.API_BASE_URL}/api/user/complete-onboarding`, {
+        method: "PUT",
+        headers,
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(isSkip ? "Welcome to AI Code Review!" : "Team updated successfully!");
+        setOnboardingOpen(false);
+        fetchTeams();
+      } else {
+        toast.error(data.message || "Failed to complete onboarding");
+      }
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      toast.error("Failed to complete onboarding");
+    } finally {
+      setCompletingOnboarding(false);
+    }
+  };
+
   // Get first letter for team icon
   const getTeamInitial = (name: string) => {
     return name.charAt(0).toUpperCase();
@@ -301,8 +359,8 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
               </div>
               {!collapsed && (
                 <div className="flex flex-col items-start min-w-0">
-                  <span className="font-medium text-sm truncate max-w-[120px]">
-                    {loading ? "Loading..." : (activeTeam?.name || "No Team")}
+                  <span className="font-medium text-sm truncate">
+                    {loading ? "Loading..." : (activeTeam?.name ? (activeTeam.name.length > 13 ? activeTeam.name.slice(0, 13) + "..." : activeTeam.name) : "No Team")}
                   </span>
                   {!loading && (
                     <span className="text-xs text-muted-foreground capitalize">
@@ -346,8 +404,10 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
                       <div className="w-8 h-8 rounded-md bg-amber-500/20 flex items-center justify-center font-semibold text-amber-600">
                         {getTeamInitial(invite.teamName)}
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm">{invite.teamName}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-sm truncate">
+                          {invite.teamName.length > 10 ? invite.teamName.slice(0, 10) + "..." : invite.teamName}
+                        </span>
                         <span className="text-xs text-muted-foreground capitalize">
                           Invited as {invite.role}
                         </span>
@@ -363,14 +423,19 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
                 <DropdownMenuItem
                   key={team._id}
                   onClick={() => handleSwitchTeam(team)}
-                  className="flex items-center justify-between cursor-pointer group"
+                  className={cn(
+                    "flex items-center justify-between cursor-pointer group",
+                    activeTeam?._id === team._id && "bg-muted/60"
+                  )}
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-md bg-primary/20 flex items-center justify-center font-semibold text-primary">
                       {getTeamInitial(team.name)}
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-sm">{team.name}</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium text-sm truncate">
+                        {team.name.length > 10 ? team.name.slice(0, 10) + "..." : team.name}
+                      </span>
                       <span className="text-xs text-muted-foreground capitalize">
                         {team.isOwner ? "Owner" : team.role}
                       </span>
@@ -382,11 +447,11 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
                         <Link
                           href="/team"
                           onClick={(e) => e.stopPropagation()}
-                          className="hidden group-hover:flex h-6 w-6 items-center justify-center rounded hover:bg-muted"
+                          className="flex h-6 w-6 items-center justify-center rounded hover:bg-muted"
                         >
                           <Settings className="h-3.5 w-3.5 text-muted-foreground" />
                         </Link>
-                        <Check className="h-4 w-4 text-primary group-hover:hidden" />
+                        <Check className="h-4 w-4 text-primary" />
                       </>
                     )}
                   </div>
@@ -512,6 +577,62 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
                 <Check className="h-4 w-4 mr-2" />
               )}
               Join Team
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Onboarding Dialog */}
+      <Dialog open={onboardingOpen} onOpenChange={(open) => !completingOnboarding && setOnboardingOpen(open)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-primary">Welcome to AI Code Review!</DialogTitle>
+            <DialogDescription className="text-base">
+              Let&apos;s set up your default team. You can always change this later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-6">
+            <div className="space-y-2">
+              <Label htmlFor="onboardingName" className="text-sm font-semibold">
+                Team Name
+              </Label>
+              <Input
+                id="onboardingName"
+                placeholder="My Awesome team"
+                value={onboardingTeamName}
+                onChange={(e) => setOnboardingTeamName(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="onboardingDesc" className="text-sm font-semibold">
+                Description (optional)
+              </Label>
+              <Textarea
+                id="onboardingDesc"
+                placeholder="What will this team work on?"
+                value={onboardingTeamDescription}
+                onChange={(e) => setOnboardingTeamDescription(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex sm:justify-between items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => handleOnboardingComplete(true)}
+              disabled={completingOnboarding}
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              Skip
+            </Button>
+            <Button
+              onClick={() => handleOnboardingComplete(false)}
+              disabled={completingOnboarding || !onboardingTeamName.trim()}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground h-11 px-8 rounded-lg font-semibold transition-all shadow-md active:scale-95"
+            >
+              {completingOnboarding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>
