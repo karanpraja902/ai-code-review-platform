@@ -623,3 +623,19 @@ export const setActiveTeam = async (req: Request, res: Response, next: NextFunct
     next(new CustomError(error.message || 'Failed to set active team', 500));
   }
 };
+
+export const completeOnboarding = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = await User.findByIdAndUpdate(req.user._id, { isOnboarded: true }, { new: true });
+    if (!user) {
+      return next(new CustomError('User not found', 404));
+    }
+    return res.status(200).json({
+      success: true,
+      message: 'Onboarding completed',
+      user
+    });
+  } catch (error: any) {
+    next(new CustomError(error.message || 'Failed to complete onboarding', 500));
+  }
+};

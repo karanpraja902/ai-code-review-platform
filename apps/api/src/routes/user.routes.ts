@@ -1,6 +1,6 @@
 import express, { Router } from "express";
 import { baseAuth, checkAuth } from "../middlewares/checkAuth.js";
-import { getUser, getUserRepositories, getUserInstallations, getUserDashboardInfo, getUserSettings, updateUserSettings, setActiveTeam } from "../controllers/user.controller.js";
+import { getUser, getUserRepositories, getUserInstallations, getUserDashboardInfo, getUserSettings, updateUserSettings, setActiveTeam, completeOnboarding } from "../controllers/user.controller.js";
 import { requestEarlyAccess } from "../controllers/early_access.controller.js";
 import { requestUpgrade } from "../controllers/upgrade.controller.js";
 
@@ -17,6 +17,7 @@ router.post("/request/upgrade", baseAuth, requestUpgrade);
 router.get("/settings", baseAuth, getUserSettings);
 router.put("/settings", baseAuth, updateUserSettings);
 router.put("/active-team", baseAuth, setActiveTeam);
+router.put("/complete-onboarding", baseAuth, completeOnboarding);
 
 
 export default router

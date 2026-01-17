@@ -16,6 +16,7 @@ export interface IUser extends Document {
   earlyAccess?: boolean;
   earlyAccessRequestedAt?: Date;
   requestedUpgrade?: boolean;
+  isOnboarded?: boolean;
   settings?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +58,10 @@ const userSchema = new Schema<IUser>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Team",
       index: true,
+    },
+    isOnboarded: {
+      type: Boolean,
+      default: false,
     },
     subscriptionPlanId: {
       type: mongoose.Schema.Types.ObjectId,

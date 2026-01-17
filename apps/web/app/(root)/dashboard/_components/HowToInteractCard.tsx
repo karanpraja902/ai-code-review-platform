@@ -193,6 +193,67 @@ const HowToInteractCard = () => {
       </div>
 
       {/* Full-width feature cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mb-4">
+        {/* Custom Context Card */}
+        <Card className="bg-transparent overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3">
+            <ScanTextIcon className="text-muted-foreground h-5 w-5" />
+            <CardTitle className="text-base">Custom Context</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="text-muted-foreground text-sm space-y-2 list-disc list-inside mb-4">
+              <li>Define project-specific rules and guidelines for AI Code Review to follow</li>
+              <li>Provide documentation, coding standards, or architectural patterns</li>
+              <li>Ensure reviews align perfectly with your team&apos;s preferences</li>
+            </ul>
+            <Button variant="outline" asChild size="sm">
+              <Link href="/custom-context">
+                Go to Custom Context
+              </Link>
+            </Button>
+            <div className="rounded-lg overflow-hidden mt-4">
+              <Image
+                src="/review_types.png"
+                alt="Custom Context and Review Types"
+                width={800}
+                height={400}
+                className="w-auto h-auto rounded-lg border"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Settings Card */}
+        <Card className="bg-transparent overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3">
+            <AtSign className="text-muted-foreground h-5 w-5" />
+            <CardTitle className="text-base">Customise your Experience</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="text-muted-foreground text-sm space-y-2 list-disc list-inside mb-4">
+              <li>Adjust comment severity thresholds (Low, Medium, High)</li>
+              <li>Customize PR summary sections: diagrams, impact tables, and more</li>
+              <li>Toggle advanced features like Vibe Check Rap summaries</li>
+            </ul>
+            <Button variant="outline" asChild size="sm">
+              <Link href="/settings">
+                Go to Settings
+              </Link>
+            </Button>
+            <div className="rounded-lg overflow-hidden mt-4">
+              <Image
+                src="/ai-code-review_settings.png"
+                alt="AI Code Review Settings"
+                width={800}
+                height={400}
+                className="w-auto h-auto rounded-lg border"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Full-width feature cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* PR Review Bot Card */}
         <Card className="bg-transparent overflow-hidden">
@@ -213,7 +274,7 @@ const HowToInteractCard = () => {
                 alt="PR Review Bot - Ask questions on PRs"
                 width={600}
                 height={400}
-                className="w-auto m-auto h-auto rounded-lg"
+                className="w-auto m-auto h-auto rounded-lg border"
               />
             </div>
             
@@ -250,7 +311,7 @@ const HowToInteractCard = () => {
                 alt="AI Code Review IDE Extension"
                 width={800}
                 height={400}
-                className="w-auto h-auto rounded-lg"
+                className="w-auto h-auto rounded-lg border"
               />
             </div>
           </CardContent>
