@@ -24,6 +24,20 @@ export function ReviewedLinesChart({ data }: { data: DashboardData }) {
     count: d.count,
   }));
 
+  // Use backend-calculated total lines reviewed
+  const totalLinesReviewed = data.trends?.total_lines_reviewed ?? 0;
+
+  // Format number with k, M abbreviations for large numbers
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return num.toString();
+  };
+
   const singleSeriesConfig = {
     count: {
       label: "Lines",
@@ -38,6 +52,9 @@ export function ReviewedLinesChart({ data }: { data: DashboardData }) {
         <CardDescription>Lines of code reviewed over time</CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 -mt-2">
+          <p className="text-4xl font-bold">{formatNumber(totalLinesReviewed)} <span className="text-sm">Lines</span></p>
+        </div>
         <ChartContainer config={singleSeriesConfig}>
           <AreaChart
             accessibilityLayer

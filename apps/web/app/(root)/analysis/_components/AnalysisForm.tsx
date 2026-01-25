@@ -57,7 +57,7 @@ export function AnalysisForm({
                 type="url"
                 value={formConfig.repoUrl}
                 onChange={(e) => handleInputChange('repoUrl', e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="https://github.com/user/repo"
                 disabled={isRunning}
               />
@@ -74,7 +74,7 @@ export function AnalysisForm({
               <select
                 value={formConfig.model}
                 onChange={(e) => handleInputChange('model', e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isRunning}
               >
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
@@ -94,7 +94,7 @@ export function AnalysisForm({
               value={formConfig.prompt}
               onChange={(e) => handleInputChange('prompt', e.target.value)}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               placeholder="Describe what you want to analyze..."
               disabled={isRunning}
             />

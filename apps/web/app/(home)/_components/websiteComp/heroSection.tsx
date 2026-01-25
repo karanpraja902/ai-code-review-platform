@@ -1,46 +1,62 @@
 "use client";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import HeroTitle from "./HeroTitle";
 import { Button } from "@/components/ui/button";
 import { SignUpButton } from "@clerk/nextjs";
 import { ArrowUpRight } from "lucide-react";
 
 const HeroSection = () => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+
+  useEffect(() => {
+    // Lazy load video after initial render to improve LCP
+    const timer = setTimeout(() => {
+      setShouldLoadVideo(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <section>
       {/* Hero Section */}
       <div className="max-w-[1563px] w-full mx-auto md:px-6 pt-[15%] md:pt-[4%] pb-6 md:border-l md:border-r border-[#333333]">
         <div className="relative z-10 font-geist-sans py-10 flex md:aspect-[1440/700]">
-          {/* <div
-            className="absolute inset-0 z-0 mask-radial-[100%_100%] mask-radial-from-[5%] mask-radial-at-right"
-            style={{
-              backgroundImage: "url('/smoke.png')",
-              backgroundSize: "cover",
-              backgroundPosition: "right center",
-              backgroundRepeat: "no-repeat",
-            }}
-          /> */}
           {/* Image for smaller screens (below lg) */}
           <img
             src="/smoke.png"
             alt="Background smoke effect"
             className="lg:hidden absolute inset-0 z-0 h-full w-full object-cover mask-radial-[100%_100%] mask-radial-from-[5%] mask-radial-at-right"
+            loading="eager"
           />
           
-          {/* Video for larger screens (lg and above) */}
-          <video
-            className="hidden lg:block absolute inset-0 z-0 h-full w-full object-cover mask-radial-[100%_100%] mask-radial-from-[5%] mask-radial-at-right"
-            autoPlay
-            loop
-            muted
-            playsInline>
-            <source src="/landing_page.mp4" type="video/mp4" />
+          {/* Video for larger screens (lg and above) - Lazy loaded */}
+          {shouldLoadVideo && (
+            <video
+              ref={videoRef}
+              className="hidden lg:block absolute inset-0 z-0 h-full w-full object-cover mask-radial-[100%_100%] mask-radial-from-[5%] mask-radial-at-right"
+              autoPlay
+              loop
+              muted
+              playsInline
+              poster="/smoke.png">
+              <source src="/landing_page.mp4" type="video/mp4" />
+              <img
+                src="/smoke.png"
+                alt="Background smoke effect"
+                className="w-full h-full object-cover"
+              />
+            </video>
+          )}
+          {!shouldLoadVideo && (
             <img
               src="/smoke.png"
               alt="Background smoke effect"
-              className="w-full h-full object-cover"
+              className="hidden lg:block absolute inset-0 z-0 h-full w-full object-cover mask-radial-[100%_100%] mask-radial-from-[5%] mask-radial-at-right"
+              loading="eager"
             />
-          </video>
+          )}
           <div className="relative z-10 flex-2 px-4 md:pr-0 flex flex-col justify-between">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-tight font-inter font-medium text-white mb-6">
               <HeroTitle />

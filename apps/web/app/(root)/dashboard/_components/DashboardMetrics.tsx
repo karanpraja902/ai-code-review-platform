@@ -15,8 +15,19 @@ export const DashboardMetrics = ({ data }: DashboardMetricsProps) => {
     count: d.count,
   }));
 
-  // Calculate total PR reviews
-  const totalPRReviews = prTrendData.reduce((sum, d) => sum + d.count, 0);
+  // Use backend-calculated total PR reviews
+  const totalPRReviews = data.trends?.total_pr_reviews ?? 0;
+
+  // Format number with k, M abbreviations for large numbers
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return num.toString();
+  };
 
 
   const prCommentsAvgTrendData = (data.trends?.daily_pr_comments_avg ?? []).map((d) => ({
@@ -29,16 +40,8 @@ export const DashboardMetrics = ({ data }: DashboardMetricsProps) => {
     count: d.count,
   }));
 
-  // Debug: Log the raw data
-  console.log("Raw merge time data:", data.trends?.daily_pr_merge_time_avg);
-  console.log("Processed merge time data:", prMergeTimeAvgTrendData);
-
-  // Calculate average merge time
-  const avgMergeTimeHours = prMergeTimeAvgTrendData.length > 0
-    ? prMergeTimeAvgTrendData.reduce((sum, d) => sum + d.count, 0) / prMergeTimeAvgTrendData.length
-    : 0;
-  
-  console.log("Average merge time (hours):", avgMergeTimeHours);
+  // Use backend-calculated average merge time
+  const avgMergeTimeHours = data.trends?.avg_merge_time_hours ?? 0;
   
   // Format merge time as days, hours, minutes, or seconds
   const formatMergeTime = (hours: number) => {
@@ -64,10 +67,8 @@ export const DashboardMetrics = ({ data }: DashboardMetricsProps) => {
     return `${remainingHours}h`;
   };
 
-  // Calculate average comments
-  const avgComments = prCommentsAvgTrendData.length > 0
-    ? prCommentsAvgTrendData.reduce((sum, d) => sum + d.count, 0) / prCommentsAvgTrendData.length
-    : 0;
+  // Use backend-calculated average comments
+  const avgComments = data.trends?.avg_comments_per_pr ?? 0;
 
   const singleSeriesConfig = {
     count: {
@@ -86,7 +87,7 @@ export const DashboardMetrics = ({ data }: DashboardMetricsProps) => {
         </CardHeader>
         <CardContent>
           <div className="mb-4 -mt-2">
-            <p className="text-4xl font-bold">{totalPRReviews} <span className="text-sm">PR</span></p>
+            <p className="text-4xl font-bold">{formatNumber(totalPRReviews)} <span className="text-sm">PR</span></p>
           </div>
           <ChartContainer config={singleSeriesConfig}>
             <AreaChart

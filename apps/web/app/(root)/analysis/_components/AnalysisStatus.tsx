@@ -56,10 +56,10 @@ export function AnalysisStatus({ isRunning, outputCount }: AnalysisStatusProps) 
       {/* Progress Bar for Running State */}
       {isRunning && (
         <div className="mt-3">
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
             <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
           </div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             Processing analysis...
           </div>
         </div>
