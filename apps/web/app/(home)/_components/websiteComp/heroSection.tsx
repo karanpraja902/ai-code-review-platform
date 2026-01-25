@@ -10,12 +10,32 @@ const HeroSection = () => {
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
 
   useEffect(() => {
-    // Lazy load video after initial render to improve LCP
-    const timer = setTimeout(() => {
-      setShouldLoadVideo(true);
-    }, 100);
+    // Only load video on large screens (lg breakpoint: 1024px)
+    const mediaQueryList = window.matchMedia('(min-width: 1024px)');
+    
+    // Handler for media query changes
+    const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        // Large screen - delay video load slightly to improve initial LCP
+        const timer = setTimeout(() => {
+          setShouldLoadVideo(true);
+        }, 100);
+        return () => clearTimeout(timer);
+      } else {
+        // Small screen - don't load video
+        setShouldLoadVideo(false);
+      }
+    };
 
-    return () => clearTimeout(timer);
+    // Set initial state based on current viewport
+    handleMediaChange(mediaQueryList);
+
+    // Listen for viewport changes
+    mediaQueryList.addEventListener('change', handleMediaChange);
+
+    return () => {
+      mediaQueryList.removeEventListener('change', handleMediaChange);
+    };
   }, []);
 
   return (
