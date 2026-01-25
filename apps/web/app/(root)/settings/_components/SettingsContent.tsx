@@ -10,8 +10,13 @@ import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { _config } from "@/lib/_config";
 import { toast } from "sonner";
+import type { SettingsData } from "../_actions/getSettingsData";
 
-const SettingsContent: React.FC = () => {
+interface SettingsContentProps {
+  initialData: SettingsData;
+}
+
+const SettingsContent: React.FC<SettingsContentProps> = ({ initialData }) => {
   const { getToken } = useAuth();
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -19,8 +24,8 @@ const SettingsContent: React.FC = () => {
   const [prModel, setPrModel] = useState<string>("");
   const [repoModelName, setRepoModelName] = useState<string>("");
   const [prModelName, setPrModelName] = useState<string>("");
-  const [availableRepoModels, setAvailableRepoModels] = useState<Array<{ _id: string; name: string; provider: string; input_context_limit?: number }>>([]);
-  const [availablePrModels, setAvailablePrModels] = useState<Array<{ _id: string; name: string; provider: string; input_context_limit?: number }>>([]);
+  // const [availableRepoModels, setAvailableRepoModels] = useState<Array<{ _id: string; name: string; provider: string; input_context_limit?: number }>>(initialData.availableRepoModels);
+  const [availablePrModels, setAvailablePrModels] = useState<Array<{ _id: string; name: string; provider: string; input_context_limit?: number }>>(initialData.availablePrModels);
 
   // Helper function to format context limit (200000 → 200k, 1000000 → 1M)
   const formatContextLimit = (limit?: number): string => {
@@ -44,68 +49,34 @@ const SettingsContent: React.FC = () => {
   });
 
   useEffect(() => {
-    const initSettings = async () => {
-      try {
-        const token = await getToken();
-        const headers: Record<string, string> = {
-          Authorization: token ? `Bearer ${token}` : "",
-          "Content-Type": "application/json",
-        };
-
-        // Fetch team settings and available models in parallel
-        const [settingsRes, repoModelsRes, prModelsRes] = await Promise.all([
-          fetch(`${_config.API_BASE_URL}/api/team/settings`, { headers }),
-          fetch(`${_config.API_BASE_URL}/api/ai/models?mode=full_repo_analysis`, { headers }),
-          fetch(`${_config.API_BASE_URL}/api/ai/models?mode=pr_analysis`, { headers }),
-        ]);
-
-        // Process settings
-        if (settingsRes.ok) {
-          const settingsJson = await settingsRes.json();
-          const s = (settingsJson?.data || {}) as any;
-          
-          // Extract model IDs and names from settings
-          const repoModelId = typeof s.defaultModelRepo === "string" ? s.defaultModelRepo : "";
-          const prModelId = typeof s.defaultModelPr === "string" ? s.defaultModelPr : "";
-          const repoModelNameVal = typeof s.defaultModelRepoName === "string" ? s.defaultModelRepoName : "";
-          const prModelNameVal = typeof s.defaultModelPrName === "string" ? s.defaultModelPrName : "";
-          
-          // Extract commentSeverity (default to 1 = MED)
-          const savedSeverity = typeof s.commentSeverity === "number" ? s.commentSeverity : 1;
-          
-          // Extract prSummarySettings (default to all enabled)
-          const savedPrSummarySettings = s.prSummarySettings || {};
-          
-          setRepoModel(repoModelId);
-          setPrModel(prModelId);
-          setRepoModelName(repoModelNameVal);
-          setPrModelName(prModelNameVal);
-          setSeverityThreshold(savedSeverity);
-          setPrSummarySettings({
-            enabled: savedPrSummarySettings.enabled ?? true,
-            sequenceDiagram: savedPrSummarySettings.sequenceDiagram ?? true,
-            issueTables: savedPrSummarySettings.issueTables ?? true,
-            impactAsessment: savedPrSummarySettings.impactAsessment ?? true,
-            vibeCheckRap: savedPrSummarySettings.vibeCheckRap ?? true,
-          });
-        }
-
-        // Process available models
-        if (repoModelsRes.ok) {
-          const repoModelsJson = await repoModelsRes.json();
-          const repoModels = Array.isArray(repoModelsJson?.data) ? repoModelsJson.data : [];
-          setAvailableRepoModels(repoModels);
-        }
-
-        if (prModelsRes.ok) {
-          const prModelsJson = await prModelsRes.json();
-          const prModels = Array.isArray(prModelsJson?.data) ? prModelsJson.data : [];
-          setAvailablePrModels(prModels);
-        }
-      } catch (_) {}
-    };
-    initSettings();
-  }, [getToken]);
+    // Initialize from server-provided data
+    const s = initialData.settings as any;
+    
+    // Extract model IDs and names from settings
+    const repoModelId = typeof s.defaultModelRepo === "string" ? s.defaultModelRepo : "";
+    const prModelId = typeof s.defaultModelPr === "string" ? s.defaultModelPr : "";
+    const repoModelNameVal = typeof s.defaultModelRepoName === "string" ? s.defaultModelRepoName : "";
+    const prModelNameVal = typeof s.defaultModelPrName === "string" ? s.defaultModelPrName : "";
+    
+    // Extract commentSeverity (default to 1 = MED)
+    const savedSeverity = typeof s.commentSeverity === "number" ? s.commentSeverity : 1;
+    
+    // Extract prSummarySettings (default to all enabled)
+    const savedPrSummarySettings = s.prSummarySettings || {};
+    
+    setRepoModel(repoModelId);
+    setPrModel(prModelId);
+    setRepoModelName(repoModelNameVal);
+    setPrModelName(prModelNameVal);
+    setSeverityThreshold(savedSeverity);
+    setPrSummarySettings({
+      enabled: savedPrSummarySettings.enabled ?? true,
+      sequenceDiagram: savedPrSummarySettings.sequenceDiagram ?? true,
+      issueTables: savedPrSummarySettings.issueTables ?? true,
+      impactAsessment: savedPrSummarySettings.impactAsessment ?? true,
+      vibeCheckRap: savedPrSummarySettings.vibeCheckRap ?? true,
+    });
+  }, [initialData]);
 
   const fetchAvailablePrModels = async () => {
     try {

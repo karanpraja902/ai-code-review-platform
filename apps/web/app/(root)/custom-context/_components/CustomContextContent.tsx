@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -10,26 +11,6 @@ import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { _config } from "@/lib/_config";
 import { toast } from "sonner";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   Search,
   ChevronLeft,
@@ -42,16 +23,23 @@ import {
   Code,
   Accessibility,
   CheckCircle,
-  ChevronsUpDown,
-  Check,
-  X,
   Trash2,
   Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
 import { getRepository } from "../../analysis/_actions/getRepository";
-import { Badge } from "@/components/ui/badge";
+
+// Dynamic imports for heavy components
+const Sheet = dynamic(() => import("@/components/ui/sheet").then(mod => ({ default: mod.Sheet })));
+const SheetContent = dynamic(() => import("@/components/ui/sheet").then(mod => ({ default: mod.SheetContent })));
+const SheetHeader = dynamic(() => import("@/components/ui/sheet").then(mod => ({ default: mod.SheetHeader })));
+const SheetTitle = dynamic(() => import("@/components/ui/sheet").then(mod => ({ default: mod.SheetTitle })));
+const SheetDescription = dynamic(() => import("@/components/ui/sheet").then(mod => ({ default: mod.SheetDescription })));
+
+const RepoMultiSelect = dynamic(() => import("./RepoMultiSelect").then(mod => ({ default: mod.RepoMultiSelect })), {
+  loading: () => <div className="h-10 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />,
+});
 
 export type CustomContextContentProps = Record<string, never>;
 
@@ -96,7 +84,6 @@ const reviewTypes: { key: ReviewTypeKey; label: string; description: string; ico
   { key: "bestPracticesReviews", label: "Best Practices Reviews", description: "Ensure adherence to industry best practices and standards", icon: CheckCircle, color: "text-emerald-500", defaultEnabled: false },
   { key: "styleReviews", label: "Style Reviews", description: "Check for code formatting, naming conventions, and style consistency", icon: Palette, color: "text-purple-500", defaultEnabled: false },
   { key: "documentationReviews", label: "Documentation Reviews", description: "Check for adequate comments, JSDoc, and documentation", icon: FileText, color: "text-green-500", defaultEnabled: false },
-  // { key: "testingReviews", label: "Testing Reviews", description: "Evaluate test coverage and testing practices", icon: TestTube, color: "text-cyan-500", defaultEnabled: false },
   { key: "accessibilityReviews", label: "Accessibility Reviews", description: "Check for accessibility compliance (WCAG, ARIA, etc.)", icon: Accessibility, color: "text-orange-500", defaultEnabled: false },
 ];
 
@@ -116,134 +103,10 @@ const defaultRule: CustomRule = {
   performanceReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'performanceReviews')!),
   codeQualityReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'codeQualityReviews')!),
   documentationReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'documentationReviews')!),
-  // testingReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'testingReviews')!),
   accessibilityReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'accessibilityReviews')!),
   bestPracticesReviews: createDefaultReviewConfig(reviewTypes.find(r => r.key === 'bestPracticesReviews')!),
   isActive: true,
   isDefault: false,
-};
-
-// Multi-select dropdown component
-interface RepoMultiSelectProps {
-  availableRepos: Repository[];
-  selectedRepos: string[];
-  onSelectionChange: (repos: string[]) => void;
-  loading?: boolean;
-  onOpen?: () => void;
-}
-
-const RepoMultiSelect: React.FC<RepoMultiSelectProps> = ({
-  availableRepos,
-  selectedRepos,
-  onSelectionChange,
-  loading,
-  onOpen,
-}) => {
-  const [open, setOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (isOpen && onOpen) {
-      onOpen();
-    }
-  };
-
-  const handleToggle = (repoId: string) => {
-    if (selectedRepos.includes(repoId)) {
-      onSelectionChange(selectedRepos.filter((id) => id !== repoId));
-    } else {
-      onSelectionChange([...selectedRepos, repoId]);
-    }
-  };
-
-  const handleRemove = (repoId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelectionChange(selectedRepos.filter((id) => id !== repoId));
-  };
-
-
-  const filteredRepos = availableRepos.filter((repo) =>
-    repo.fullName.toLowerCase().includes(searchValue.toLowerCase())
-  );
-
-  return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between min-h-[42px] h-auto"
-        >
-          <div className="flex flex-wrap gap-1 flex-1">
-            {selectedRepos.length === 0 ? (
-              <span className="text-muted-foreground">all</span>
-            ) : (
-              selectedRepos.slice(0, 2).map((repoId) => {
-                const repoName = availableRepos.find((r) => r._id === repoId)?.fullName;
-                return (
-                  <Badge
-                    key={repoId}
-                    variant="secondary"
-                    className="text-xs"
-                    onClick={(e) => handleRemove(repoId, e)}
-                  >
-                    {repoName || repoId}
-                    <X className="ml-1 h-3 w-3 cursor-pointer" />
-                  </Badge>
-                );
-              })
-            )}
-            {selectedRepos.length > 2 && (
-              <Badge variant="secondary" className="text-xs">
-                +{selectedRepos.length - 2} more
-              </Badge>
-            )}
-          </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Search repositories..."
-            value={searchValue}
-            onValueChange={setSearchValue}
-          />
-          <CommandList>
-            {loading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                Loading repositories...
-              </div>
-            ) : filteredRepos.length === 0 ? (
-              <CommandEmpty>No repositories found.</CommandEmpty>
-            ) : (
-              <CommandGroup>
-                {filteredRepos.map((repo) => (
-                  <CommandItem
-                    key={repo._id}
-                    value={repo._id}
-                    onSelect={() => handleToggle(repo._id)}
-                    className="cursor-pointer"
-                  >
-                    <Check
-                      className={`mr-2 h-4 w-4 ${
-                        selectedRepos.includes(repo._id)
-                          ? "opacity-100"
-                          : "opacity-0"
-                      }`}
-                    />
-                    {repo.fullName}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
 };
 
 const CustomContextContent: React.FC<CustomContextContentProps> = () => {

@@ -1376,6 +1376,24 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
         const repoFullNames = repositories.map(repo => repo.fullName);
         const daily_pr_merge_time_avg = await buildDailyAvgMergeTime(repoFullNames);
 
+        // Calculate daily trends
+        const daily_pr_reviews = buildDailyCounts(prAnalyses);
+        const daily_pr_comments_avg = buildDailyAvgCommentsForUniquePRs(prAnalyses);
+        const daily_reviewed_lines_of_code = buildDailyReviewedLinesOfCode(prAnalyses);
+
+        // Calculate summary metrics (totals/averages across the entire period)
+        const total_pr_reviews = daily_pr_reviews.reduce((sum, d) => sum + d.count, 0);
+        
+        const avg_merge_time_hours = daily_pr_merge_time_avg.length > 0
+            ? daily_pr_merge_time_avg.reduce((sum, d) => sum + d.count, 0) / daily_pr_merge_time_avg.length
+            : 0;
+        
+        const avg_comments_per_pr = daily_pr_comments_avg.length > 0
+            ? daily_pr_comments_avg.reduce((sum, d) => sum + d.count, 0) / daily_pr_comments_avg.length
+            : 0;
+        
+        const total_lines_reviewed = daily_reviewed_lines_of_code.reduce((sum, d) => sum + d.count, 0);
+
         const dashboardData = {
             total_repo_added,
             full_repo_review: {
@@ -1397,11 +1415,16 @@ export const getTeamDashboardInfo = async (req: Request, res: Response, next: Ne
             },
             trends: {
                 daily_full_repo_reviews: buildDailyCounts(fullRepoAnalyses),
-                daily_pr_reviews: buildDailyCounts(prAnalyses),
-                daily_pr_comments_avg: buildDailyAvgCommentsForUniquePRs(prAnalyses),
-                daily_reviewed_lines_of_code: buildDailyReviewedLinesOfCode(prAnalyses),
+                daily_pr_reviews,
+                daily_pr_comments_avg,
+                daily_reviewed_lines_of_code,
                 daily_pr_merge_time_avg,
-                range_days: days
+                range_days: days,
+                // Summary metrics
+                total_pr_reviews,
+                avg_merge_time_hours,
+                avg_comments_per_pr,
+                total_lines_reviewed
             }
         };
 

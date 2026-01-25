@@ -23,6 +23,11 @@ export interface DashboardData {
     daily_reviewed_lines_of_code?: Array<{ date: string; count: number }>;
     daily_pr_merge_time_avg?: Array<{ date: string; count: number }>;
     range_days: number;
+    // Summary metrics calculated on backend
+    total_pr_reviews?: number;
+    avg_merge_time_hours?: number;
+    avg_comments_per_pr?: number;
+    total_lines_reviewed?: number;
   };
 }
 

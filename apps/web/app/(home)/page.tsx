@@ -1,5 +1,5 @@
 import MainWebsite from "./_components/websiteComp/mainWebsite";
 
-export default async function Home() {
+export default function Home() {
   return <MainWebsite />;
 }

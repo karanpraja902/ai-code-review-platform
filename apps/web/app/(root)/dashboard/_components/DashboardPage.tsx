@@ -1,17 +1,38 @@
 "use client";
 
 import React, { useState } from "react";
-import { DashboardMetrics } from "@/app/(root)/dashboard/_components/DashboardMetrics";
-import { RecentActivity } from "@/app/(root)/dashboard/_components/RecentActivity";
-import { GitHubIssuesChart } from "@/app/(root)/dashboard/_components/GitHubIssuesChart";
-import { PullRequestsChart } from "@/app/(root)/dashboard/_components/PullRequestsChart";
-import { ActivityOverviewChart } from "@/app/(root)/dashboard/_components/ActivityOverviewChart";
+import dynamic from "next/dynamic";
 import NoInstallationOnboarding from "@/app/(root)/dashboard/_components/NoInstallationOnboarding";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getDashboardData } from "../_actions/getDashboardData";
 import { getTeamInstallations } from "@/_actions/user-actions";
-import { FullRepoReviewChart } from "./FullRepoReviewChart";
-import { ReviewedLinesChart } from "./ReviewedLinesChart";
+import { 
+  DashboardMetricsSkeleton, 
+  ChartSkeleton, 
+  RecentActivitySkeleton 
+} from "./LoadingSkeletons";
+
+// Dynamic imports for heavy chart components to reduce initial bundle size
+const DashboardMetrics = dynamic(
+  () => import("@/app/(root)/dashboard/_components/DashboardMetrics").then(mod => ({ default: mod.DashboardMetrics })),
+  { loading: () => <DashboardMetricsSkeleton />, ssr: false }
+);
+
+const RecentActivity = dynamic(
+  () => import("@/app/(root)/dashboard/_components/RecentActivity").then(mod => ({ default: mod.RecentActivity })),
+  { loading: () => <RecentActivitySkeleton />, ssr: false }
+);
+
+const ReviewedLinesChart = dynamic(
+  () => import("./ReviewedLinesChart").then(mod => ({ default: mod.ReviewedLinesChart })),
+  { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+// Keep these for future use when uncommented
+// const GitHubIssuesChart = dynamic(() => import("./GitHubIssuesChart").then(mod => ({ default: mod.GitHubIssuesChart })), { loading: () => <ChartSkeleton /> });
+// const PullRequestsChart = dynamic(() => import("./PullRequestsChart").then(mod => ({ default: mod.PullRequestsChart })), { loading: () => <ChartSkeleton /> });
+// const ActivityOverviewChart = dynamic(() => import("./ActivityOverviewChart").then(mod => ({ default: mod.ActivityOverviewChart })), { loading: () => <ChartSkeleton /> });
+// const FullRepoReviewChart = dynamic(() => import("./FullRepoReviewChart").then(mod => ({ default: mod.FullRepoReviewChart })), { loading: () => <ChartSkeleton /> });
 
 const DashboardPage = () => {
   const [days, setDays] = useState<number>(7);
