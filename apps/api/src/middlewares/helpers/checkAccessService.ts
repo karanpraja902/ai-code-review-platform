@@ -107,10 +107,12 @@ export class FeatureAccessChecker {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
+    // Only count analyses that were actually run (exclude skipped analyses)
     const currentCount = await Analysis.countDocuments({
       userId,
       analysis_type: 'pr_analysis',
       createdAt: { $gte: startOfDay, $lte: endOfDay },
+      status: { $ne: 'skipped' }, // Exclude skipped analyses from the count
     });
 
     const remaining = Math.max(0, maxPerDay - currentCount);
