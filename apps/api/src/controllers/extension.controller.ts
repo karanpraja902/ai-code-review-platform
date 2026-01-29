@@ -13,12 +13,15 @@ import { Sandbox } from '@e2b/code-interpreter';
 
 export const createExtensionReview = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { repository, branches, changes, feedback } = req.body;
+      const { repository, branches, changes, feedback, analysis_type } = req.body;
 
       if (!repository || !branches || !changes) {
         res.status(400).json({ message: 'Missing required fields' });
         return;
       }
+
+      // Determine analysis type (default to extension_analysis)
+      const effectiveAnalysisType = analysis_type || 'extension_analysis';
 
       // Decompress large fields in each file change if they were compressed
       // Note: changes is an object with { summary, commits, files, fullDiff }
@@ -105,7 +108,7 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
       const analysisId = new mongoose.Types.ObjectId();
       const analysisRecord = new Analysis({
         _id: analysisId,
-        analysis_type: 'extension_analysis',
+        analysis_type: effectiveAnalysisType,
         userId,
         repoUrl: repository.url,
         github_repositoryId: githubRepoId ? new mongoose.Types.ObjectId(githubRepoId) : undefined,
@@ -203,7 +206,7 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
         branches.head.ref, // branch
         userId, // userId
         prompt,
-        "extension_analysis", // analysisType
+        effectiveAnalysisType, // analysisType
         callbacks,
         {
           extension_data_id: extensionData._id,
