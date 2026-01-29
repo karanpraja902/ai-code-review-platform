@@ -7,6 +7,7 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/security(.*)",
   "/interact(.*)",
+  "/cli(.*)",
   "/_betterstack/(.*)",
 ]);
 const isEarlyAccessRoute = createRouteMatcher(["/early-access(.*)"]);
@@ -50,38 +51,25 @@ export default clerkMiddleware(async (auth, req) => {
       const user = await fetchUserData(token);
 
       if (user) {
-        const pathname = req.nextUrl.pathname;
-
         // If user has early access, redirect them away from /early-access route
         if (user.earlyAccess && isEarlyAccessRoute(req)) {
           return NextResponse.redirect(new URL("/dashboard", req.url));
         }
 
-        // If user doesn't have early access, only allow / and /early-access routes
+        // If user doesn't have early access, only allow public routes and early-access routes
         if (!user.earlyAccess) {
-          // Allow home route (/), early access route, and sign-in/sign-up routes
-          const isAllowedRoute =
-            pathname === "/" ||
-            isEarlyAccessRoute(req) ||
-            pathname.startsWith("/sign-in") ||
-            pathname.startsWith("/sign-up") ||
-            pathname.startsWith("/security");
-
-          if (!isAllowedRoute) {
-            return NextResponse.redirect(new URL("/early-access", req.url));
-          }
-
-          // If user is on home route and doesn't have early access, allow them to stay
-          if (pathname === "/") {
+          if (isPublicRoute(req) || isEarlyAccessRoute(req)) {
             return NextResponse.next();
           }
+
+          return NextResponse.redirect(new URL("/early-access", req.url));
         }
       }
     }
   }
 
+  // Handle authenticated users on public routes or callbacks
   if (isAuthenticated && isPublicRoute(req)) {
-    const pathname = req.nextUrl.pathname;
     const searchParams = req.nextUrl.searchParams;
     const isExtensionAuth = searchParams.get("source") === "extension";
     const isCliAuth = searchParams.get("source") === "cli";
@@ -107,24 +95,13 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.redirect(callbackUrl);
     }
 
-    // Allow access to security and interact pages without redirecting
-    if (pathname.startsWith("/security") || pathname.startsWith("/interact")) {
-      return NextResponse.next();
-    }
+    // If it's a public route and user is authenticated, allow them to view it (don't redirect to dashboard)
+    return NextResponse.next();
+  }
 
-    // Don't redirect from home route if user doesn't have early access
-    if (pathname === "/") {
-      const token = await getToken();
-      if (token) {
-        const user = await fetchUserData(token);
-        if (user && !user.earlyAccess) {
-          return NextResponse.next();
-        }
-      }
-    }
-
-    // Redirect to personal dashboard
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  // Authenticated users on private routes (that passed auth.protect and early access check)
+  if (isAuthenticated && !isPublicRoute(req) && !isEarlyAccessRoute(req)) {
+    return NextResponse.next();
   }
 });
 

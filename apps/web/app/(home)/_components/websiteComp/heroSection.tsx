@@ -41,7 +41,7 @@ const HeroSection = () => {
   return (
     <section>
       {/* Hero Section */}
-      <div className="max-w-[1563px] w-full mx-auto md:px-6 pt-[15%] md:pt-[4%] pb-6 md:border-l md:border-r border-[#333333]">
+      <div className="max-w-[1563px] w-full mx-auto md:px-6 pt-[10%] md:pt-[2%] pb-6 md:border-l md:border-r border-[#333333]">
         <div className="relative z-10 font-geist-sans py-10 flex md:aspect-[1440/700]">
           {/* Image for smaller screens (below lg) */}
           <img

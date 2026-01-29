@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import NavbarWeb from "../ui/navbarWeb";
+import AnnouncementBar from "../ui/AnnouncementBar";
 import HeroSection from "./heroSection";
 
 // Lazy load below-the-fold components to improve initial load time
@@ -33,7 +34,8 @@ const MainWebsite = () => {
   return (
     <main className="min-h-screen bg-[#010010] px-2 sm:px-5">
       {/* Navbar - Fixed at top */}
-      <NavbarWeb />
+      <AnnouncementBar />
+      <NavbarWeb hasAnnouncement={true} />
       <HeroSection />
       <OverviewSection />
       <FeaturesSection />
