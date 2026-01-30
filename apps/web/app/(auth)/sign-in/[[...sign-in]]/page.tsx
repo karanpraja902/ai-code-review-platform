@@ -23,6 +23,8 @@ export default async function SignInPage({
     callbackUrl = `/extension-auth-callback${scheme ? `?scheme=${scheme}` : ''}`;
   } else if (isCliAuth && port) {
     callbackUrl = `/cli-auth-callback?port=${port}`;
+  } else {
+    callbackUrl = "/dashboard";
   }
 
   return (
