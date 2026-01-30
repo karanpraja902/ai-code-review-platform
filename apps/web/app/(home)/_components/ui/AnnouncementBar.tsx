@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { MoveRight } from "lucide-react";
 import { motion } from "motion/react";
 
 const AnnouncementBar = () => {
@@ -16,11 +16,20 @@ const AnnouncementBar = () => {
           href="/cli"
           className="flex items-center gap-2 text-xs sm:text-sm font-medium text-white/90 hover:text-white transition-colors group"
         >
-          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold uppercase tracking-wider">
+          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/30 border border-white/20 text-[10px] font-bold uppercase tracking-wider">
             New
           </span>
-          <span>We have launched ai-code-review cli</span>
-          <ArrowRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+          <span className="font-bold">We have launched ai-code-review cli</span>
+          <motion.span
+            animate={{ x: [0, 6, 0] }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <MoveRight className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
+          </motion.span>
         </Link>
       </motion.div>
     </div>
