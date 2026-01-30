@@ -33,13 +33,15 @@ export default function CliPage() {
           
           {/* Exact Grid Background from Image */}
           <div 
-            className="absolute inset-0 z-0 opacity-[0.05]" 
+            className="absolute inset-0 z-0 opacity-[0.15]" 
             style={{ 
               backgroundImage: `
                 linear-gradient(to right, var(--primary) 1px, transparent 1px),
                 linear-gradient(to bottom, var(--primary) 1px, transparent 1px)
               `,
-              backgroundSize: '32px 32px' 
+              backgroundSize: '22px 22px',
+              maskImage: 'radial-gradient(ellipse at center, black 20%, transparent 60%)',
+              WebkitMaskImage: 'radial-gradient(ellipse at center, black 20%, transparent 60%)'
             }}
           />
           
