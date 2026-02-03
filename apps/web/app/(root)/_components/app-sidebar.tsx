@@ -13,6 +13,7 @@ import {
   FileText,
   AtSign,
   Trophy,
+  Unplug,
 } from "lucide-react";
 
 import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
@@ -62,6 +63,11 @@ const items = [
     title: "Leaderboard",
     url: "/leaderboard",
     icon: Trophy,
+  },
+  {
+    title: "Integrations",
+    url: "/integrations",
+    icon: Unplug,
   },
   {
     title: "Settings",
