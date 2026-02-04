@@ -448,6 +448,34 @@ export class BitbucketPRCommentService {
     }
   }
 
+  getNonSummaryCommentsPosted(): number {
+    return this.nonSummaryCommentsPosted;
+  }
+
+  async postNoIssuesFoundComment(): Promise<boolean> {
+    try {
+      const footerContent = this.generateUserGuideFooter();
+      const linksSection = '\n\n---\nFollow us: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)';
+      
+      const body = [
+        '✅ **No issues found**',
+        '',
+        'You\'re good to merge this PR! Great job!',
+        '',
+        footerContent,
+        linksSection
+      ].join('\n');
+
+      await this.makeBitbucketRequest('POST', `/pullrequests/${this.context.pullRequestId}/comments`, {
+        content: { raw: body }
+      });
+      return true;
+    } catch (error) {
+      logger.error(`[BB-PR-${this.context.pullRequestId}] Failed to post no issues found comment`, error);
+      return false;
+    }
+  }
+
   private createCommentHash(content: string): string {
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
