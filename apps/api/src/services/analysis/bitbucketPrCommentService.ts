@@ -432,7 +432,7 @@ export class BitbucketPRCommentService {
       '>',
       `> **Severity**: \`${severityLabel}\` · [Change](https://ai-code-review-platform.dev/settings) · **Custom Rules**: [Define](https://ai-code-review-platform.dev/custom-context) · **PR Summary**: [Config](https://ai-code-review-platform.dev/settings)`,
       '>',
-      '> **Tips**: Comment `@ai-code-review` to run manually · `@ai-code-review stop` to cancel · [Documentation](https://docs.ai-code-review-platform.dev)',
+      '> **Tips**: [See how to interact with AI Code Review](https://ai-code-review-platform.dev/interact)',
     ].join('\n');
   }
 
