@@ -6,8 +6,12 @@ import { logger } from './utils/logger.js';
 const PORT = process.env.PORT || 3000;
 const app = createApp();
 
-connectDB();
-
-app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-});
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+    });
+  })
+  .catch(() => {
+    process.exit(1);
+  });
