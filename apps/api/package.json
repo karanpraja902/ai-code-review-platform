@@ -1,7 +1,7 @@
 {
   "name": "ai-code-review-api",
   "version": "1.0.0",
-  "description": "",
+  "description": "API service for AI Code Review Platform repository and pull request analysis.",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -10,8 +10,12 @@
     "start": "node dist/server.js",
     "lint": "eslint . --ext .ts"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "ai-code-review",
+    "code-review",
+    "pull-request-analysis"
+  ],
+  "author": "Karan Prajapat <karanpraja902@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "@clerk/express": "^1.7.13",

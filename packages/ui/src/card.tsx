@@ -14,7 +14,7 @@ export function Card({
   return (
     <a
       className={className}
-      href={`${href}?utm_source=project&utm_medium=basic&utm_campaign=project"`}
+      href={href}
       rel="noopener noreferrer"
       target="_blank"
     >
