@@ -1,7 +1,7 @@
 import React from "react";
 import FooterSection from "../_components/ui/footer";
 import NavbarWeb from "../_components/ui/navbarWeb";
-import ParallaxAI Code Review from "../_components/ui/parallax-ai-code-review";
+import ParallaxAiCodeReview from "../_components/ui/parallax-ai-code-review";
 import SecurityTOC from "./toc";
 import { Shield, Server, Lock, Eye } from "lucide-react";
 
@@ -242,7 +242,7 @@ AWS Compliance website
       </div>
 
       <FooterSection />
-      <ParallaxAI Code Review />
+      <ParallaxAiCodeReview />
     </main>
   );
 }

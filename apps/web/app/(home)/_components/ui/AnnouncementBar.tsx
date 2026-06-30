@@ -19,7 +19,7 @@ const AnnouncementBar = () => {
           <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/30 border border-white/20 text-[10px] font-bold uppercase tracking-wider">
             New
           </span>
-          <span className="font-bold">We have launched ai-code-review cli</span>
+          <span className="font-bold">We have launched AI code review CLI</span>
           <motion.span
             animate={{ x: [0, 6, 0] }}
             transition={{

@@ -16,7 +16,7 @@ import {
   Unplug,
 } from "lucide-react";
 
-import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
+import AiCodeReviewLogo from "@/components/shared/ai-code-review-logo";
 import { TeamSwitcher } from "./TeamSwitcher";
 import {
   Sidebar,
@@ -94,7 +94,7 @@ const AppSidebar = () => {
           >
             <SidebarMenuButton asChild>
               <Link href={"/dashboard"} className="flex items-center gap-1">
-                <AI Code ReviewLogo />
+                <AiCodeReviewLogo />
 
                 <span
                   className={cn(

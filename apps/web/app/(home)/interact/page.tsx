@@ -1,7 +1,7 @@
 import React from "react";
 import FooterSection from "../_components/ui/footer";
 import NavbarWeb from "../_components/ui/navbarWeb";
-import ParallaxAI Code Review from "../_components/ui/parallax-ai-code-review";
+import ParallaxAiCodeReview from "../_components/ui/parallax-ai-code-review";
 import HowToInteractCard from "../../(root)/dashboard/_components/HowToInteractCard";
 
 export default function InteractPage() {
@@ -47,7 +47,7 @@ export default function InteractPage() {
       </div>
 
       <FooterSection />
-      <ParallaxAI Code Review />
+      <ParallaxAiCodeReview />
     </main>
   );
 }

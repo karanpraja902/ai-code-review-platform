@@ -12,8 +12,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "AI Code Review Platform",
-  description: "AI Code Review Platform",
+  title: "AI Code Review Platform Docs",
+  description:
+    "Documentation for the AI Code Review Platform repository and pull request analysis workflows.",
 };
 
 export default function RootLayout({

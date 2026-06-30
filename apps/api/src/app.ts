@@ -45,7 +45,7 @@ export function createApp(): Application {
         "https://ai-code-review-prod.vercel.app",
         "https://ai-code-review.vercel.app",
         "https://ai-code-review-platform.dev",
-        "https://www.ai-code-review-platform.dev",
+        "https://ai-code-review-platform.dev",
       ], // Specific origin instead of '*'
       credentials: true,
     })

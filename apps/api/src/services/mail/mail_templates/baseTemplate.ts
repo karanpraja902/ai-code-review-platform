@@ -4,11 +4,11 @@ export const baseTemplate = (content: string) => `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Code Review.ai</title>
+  <title>AI Code Review Platform</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-    
+
     <!-- Header -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
       <tr>
@@ -18,7 +18,7 @@ export const baseTemplate = (content: string) => `
               <span style="font-size: 24px; font-weight: bold; color: #667eea;">&lt;/&gt;</span>
             </div>
             <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
-              AI Code Review.ai
+              AI Code Review Platform
             </h1>
           </div>
           <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px;">
@@ -48,7 +48,7 @@ export const baseTemplate = (content: string) => `
                   <div style="width: 24px; height: 24px; background-color: #667eea; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
                     <span style="font-size: 14px; font-weight: bold; color: #ffffff;">&lt;/&gt;</span>
                   </div>
-                  <span style="font-size: 18px; font-weight: 600; color: #1a202c;">AI Code Review.ai</span>
+                  <span style="font-size: 18px; font-weight: 600; color: #1a202c;">AI Code Review Platform</span>
                 </div>
                 <p style="margin: 0; font-size: 14px; color: #64748b; line-height: 1.5;">
                   Secure, intelligent code analysis<br>
@@ -57,37 +57,37 @@ export const baseTemplate = (content: string) => `
               </td>
               <td style="text-align: right; vertical-align: top; width: 40%;">
                 <div style="margin-bottom: 16px;">
-                  <a href="https://ai-code-review-platform" style="display: inline-block; padding: 10px 20px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
+                  <a href="https://ai-code-review-platform.dev" style="display: inline-block; padding: 10px 20px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
                     Visit Dashboard
                   </a>
                 </div>
                 <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                  <a href="https://github.com/ai-code-review-platform" style="color: #64748b; text-decoration: none;">
+                  <a href="https://github.com/karanpraja902/ai-code-review-platform" style="color: #64748b; text-decoration: none;">
                     <span style="font-size: 14px;">GitHub</span>
                   </a>
-                  <a href="https://twitter.com/ai-code-review_ai" style="color: #64748b; text-decoration: none;">
+                  <a href="https://twitter.com/ai_code_review" style="color: #64748b; text-decoration: none;">
                     <span style="font-size: 14px;">Twitter</span>
                   </a>
-                  <a href="https://ai-code-review-platform/docs" style="color: #64748b; text-decoration: none;">
+                  <a href="https://ai-code-review-platform.dev/docs" style="color: #64748b; text-decoration: none;">
                     <span style="font-size: 14px;">Docs</span>
                   </a>
                 </div>
               </td>
             </tr>
           </table>
-          
+
           <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-          
+
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
             <tr>
               <td style="text-align: center;">
                 <p style="margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
-                  <a href="https://ai-code-review-platform/privacy" style="color: #94a3b8; text-decoration: underline;">Privacy Policy</a> | 
-                  <a href="https://ai-code-review-platform/terms" style="color: #94a3b8; text-decoration: underline;">Terms of Service</a> | 
-                  <a href="https://ai-code-review-platform/unsubscribe" style="color: #94a3b8; text-decoration: underline;">Unsubscribe</a>
+                  <a href="https://ai-code-review-platform.dev/privacy" style="color: #94a3b8; text-decoration: underline;">Privacy Policy</a> |
+                  <a href="https://ai-code-review-platform.dev/terms" style="color: #94a3b8; text-decoration: underline;">Terms of Service</a> |
+                  <a href="https://ai-code-review-platform.dev/unsubscribe" style="color: #94a3b8; text-decoration: underline;">Unsubscribe</a>
                 </p>
                 <p style="margin: 12px 0 0 0; font-size: 12px; color: #94a3b8;">
-                  © 2024 AI Code Review.ai. All rights reserved.
+                  © 2024 AI Code Review Platform. All rights reserved.
                 </p>
               </td>
             </tr>

@@ -446,15 +446,15 @@ export const handleStopAnalysis = async (payload: {
           check_name: 'AI Code Review',
         });
 
-        const ai-code-reviewCheck = checkRuns.data.check_runs.find(
+        const aiCodeReviewCheck = checkRuns.data.check_runs.find(
           (run) => run.status === 'in_progress' || run.status === 'queued'
         );
 
-        if (ai-code-reviewCheck) {
+        if (aiCodeReviewCheck) {
           await octokit.checks.update({
             owner,
             repo,
-            check_run_id: ai-code-reviewCheck.id,
+            check_run_id: aiCodeReviewCheck.id,
             status: 'completed',
             completed_at: new Date().toISOString(),
             conclusion: 'cancelled',
@@ -464,7 +464,7 @@ export const handleStopAnalysis = async (payload: {
               text: `The review was interrupted. To restart, comment \`@ai-code-review review\`.`,
             },
           });
-          logger.info('Updated AI Code Review check run to cancelled', { checkRunId: ai-code-reviewCheck.id, prNumber });
+          logger.info('Updated AI Code Review check run to cancelled', { checkRunId: aiCodeReviewCheck.id, prNumber });
         } else {
           // Fallback to commit status if no check run found
           logger.debug('No in-progress AI Code Review check run found, trying commit status fallback', { prNumber });

@@ -1,6 +1,6 @@
 {
   "name": "ai-code-review-platform",
-  "description": "AI Code Review Platform platform monorepo for AI-powered repository and pull request analysis.",
+  "description": "AI Code Review Platform monorepo for AI-powered repository and pull request analysis.",
   "author": "Karan Prajapat <karanpraja902@gmail.com>",
   "repository": {
     "type": "git",

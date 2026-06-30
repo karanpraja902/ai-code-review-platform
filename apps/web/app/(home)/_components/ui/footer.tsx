@@ -1,5 +1,5 @@
 import Link from "next/link";
-import ParallaxAI Code Review from "./parallax-ai-code-review";
+import ParallaxAiCodeReview from "./parallax-ai-code-review";
 
 const links = [
   {

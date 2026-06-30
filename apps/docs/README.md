@@ -1,6 +1,6 @@
 # AI Code Review Platform Docs
 
-This app contains the documentation surface for the AI Code Review Platform platform.
+This app contains the documentation surface for the AI Code Review Platform.
 
 Run it locally from the repository root:
 

@@ -25,7 +25,7 @@ const FooterSection = dynamic(() => import("../ui/footer"), {
   loading: () => <div className="min-h-[200px]" />,
 });
 
-const ParallaxAI Code Review = dynamic(() => import("../ui/parallax-ai-code-review"), {
+const ParallaxAiCodeReview = dynamic(() => import("../ui/parallax-ai-code-review"), {
   ssr: false,
   loading: () => null,
 });
@@ -42,7 +42,7 @@ const MainWebsite = () => {
       <SecuritySection /> 
       <IntegratedModels />
       <FooterSection />
-      <ParallaxAI Code Review />
+      <ParallaxAiCodeReview />
     </main>
   );
 };

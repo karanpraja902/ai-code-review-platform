@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import React from "react";
 
-const AI Code ReviewLogo = ({ className }: { className?: string }) => {
+const AiCodeReviewLogo = ({ className }: { className?: string }) => {
   return (
     <Image
       src="/ai-code-review.png"
@@ -15,4 +15,4 @@ const AI Code ReviewLogo = ({ className }: { className?: string }) => {
   );
 };
 
-export default AI Code ReviewLogo;
+export default AiCodeReviewLogo;

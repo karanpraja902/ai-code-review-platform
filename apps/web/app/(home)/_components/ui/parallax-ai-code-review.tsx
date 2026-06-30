@@ -1,6 +1,6 @@
 "use client";
 
-const ParallaxAI Code Review = () => {
+const ParallaxAiCodeReview = () => {
   // const containerRef = useRef<HTMLDivElement>(null);
   // const textRef = useRef<HTMLDivElement>(null);
 
@@ -77,4 +77,4 @@ const ParallaxAI Code Review = () => {
   );
 };
 
-export default ParallaxAI Code Review;
+export default ParallaxAiCodeReview;

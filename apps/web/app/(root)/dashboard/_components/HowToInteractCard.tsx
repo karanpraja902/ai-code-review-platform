@@ -50,7 +50,7 @@ const HowToCard = ({
 }) => {
   // Determine the actual href based on sign-in status
   const actualHref = href && !isSignedIn && !isExternal ? "/sign-in" : href;
-  
+
   return (
     <Card className="bg-transparent relative overflow-hidden">
       <CardHeader className="flex flex-row items-center gap-3">
@@ -134,7 +134,7 @@ const HowToInteractCard = () => {
   }, [getToken, isSignedIn]);
 
   // Determine GitHub app URL or sign-in redirect
-  const githubAppUrl = isSignedIn 
+  const githubAppUrl = isSignedIn
     ? `https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME || "ai-code-review"}/installations/select_target`
     : "/sign-in";
 
@@ -172,8 +172,8 @@ const HowToInteractCard = () => {
                     size="sm"
                     className="cursor-pointer"
                   >
-                    <a 
-                      href={isSignedIn ? `${_config.API_BASE_URL}/api/bitbucket/oauth/connect?userId=${userId}` : "/sign-in"} 
+                    <a
+                      href={isSignedIn ? `${_config.API_BASE_URL}/api/bitbucket/oauth/connect?userId=${userId}` : "/sign-in"}
                       target={isSignedIn ? "_self" : "_self"}
                     >
                       <IconBrandBitbucket className="mr-2 h-4 w-4 text-blue-500" />
@@ -293,7 +293,7 @@ const HowToInteractCard = () => {
         <CardHeader className="flex flex-row items-center gap-3">
             <AtSign className="text-muted-foreground h-5 w-5" />
             <CardTitle className="text-base">Ask Questions on PRs</CardTitle>
-          
+
           </CardHeader>
           <CardContent className="pt-0">
             <ul className="text-muted-foreground text-sm space-y-2 list-disc list-inside mb-4">
@@ -310,7 +310,7 @@ const HowToInteractCard = () => {
                 className="w-auto m-auto h-auto rounded-lg border"
               />
             </div>
-            
+
           </CardContent>
         </Card>
 
@@ -320,7 +320,7 @@ const HowToInteractCard = () => {
                         <PlayIcon className="text-muted-foreground h-5 w-5" />
 
             <CardTitle className="text-base">AI Code Review IDE Extension</CardTitle>
-         
+
           </CardHeader>
           <CardContent className="pt-0">
             <ul className="text-muted-foreground text-sm space-y-2 list-disc list-inside mb-4">
@@ -328,11 +328,11 @@ const HowToInteractCard = () => {
               <li>Get suggestions and improvements in real-time</li>
               <li>Available for VS Code, Cursor, Antigravity and more</li>
             </ul>
-            
+
             <Button variant="outline" asChild size="sm">
-              <a 
-                href="https://open-vsx.org/extension/AI Code Review/ai-code-review" 
-                target="_blank" 
+              <a
+                href="https://open-vsx.org/extension/karanpraja902/ai-code-review"
+                target="_blank"
                 rel="noopener noreferrer"
               >
                 Install IDE Extension

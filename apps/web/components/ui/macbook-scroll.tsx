@@ -23,7 +23,7 @@ import { IconWorld } from "@tabler/icons-react";
 import { IconCommand } from "@tabler/icons-react";
 import { IconCaretLeftFilled } from "@tabler/icons-react";
 import { IconCaretDownFilled } from "@tabler/icons-react";
-import AI Code ReviewLogo from "../shared/ai-code-review-logo";
+import AiCodeReviewLogo from "../shared/ai-code-review-logo";
 import Image from "next/image";
 
 export const MacbookScroll = ({
@@ -203,7 +203,7 @@ export const Lid = ({
           }}
           className="absolute inset-0 flex items-center justify-center rounded-lg bg-[#010101]">
           <span className="text-white">
-            <AI Code ReviewLogo />
+            <AiCodeReviewLogo />
           </span>
         </div>
       </div>

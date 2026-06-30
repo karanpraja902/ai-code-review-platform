@@ -6,7 +6,7 @@ export default function Home() {
       <section className={styles.main}>
         <h1>AI Code Review Platform Docs</h1>
         <p>
-          Documentation for the AI Code Review Platform platform, including repository
+          Documentation for the AI Code Review Platform, including repository
           integrations, pull request analysis, sandbox execution, and team
           workflows.
         </p>

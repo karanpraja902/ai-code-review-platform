@@ -2,14 +2,14 @@
 
 import NavbarWeb from "../_components/ui/navbarWeb";
 import FooterSection from "../_components/ui/footer";
-import ParallaxAI Code Review from "../_components/ui/parallax-ai-code-review";
+import ParallaxAiCodeReview from "../_components/ui/parallax-ai-code-review";
 import { Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function CliClient() {
   const [copied, setCopied] = useState(false);
-  const command = "npm i -g @ai-code-reviewai_dev/ai-code-review";
+  const command = "npm i -g @karanpraja902/ai-code-review";
 
   const handleCopy = async () => {
     if (typeof window !== "undefined" && navigator.clipboard) {
@@ -125,7 +125,7 @@ export default function CliClient() {
       </div>
       
       <FooterSection />
-      <ParallaxAI Code Review />
+      <ParallaxAiCodeReview />
     </main>
   );
 }

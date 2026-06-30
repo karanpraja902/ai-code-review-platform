@@ -1,4 +1,4 @@
-# AI Code Review Platform Platform
+# AI Code Review Platform
 
 AI Code Review Platform is a monorepo for an AI-powered code review platform. It connects to GitHub and Bitbucket repositories, runs repository and pull request analysis in isolated sandboxes, streams analysis output, and posts actionable review feedback back to developers.
 

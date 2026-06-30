@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { SignInButton, SignedOut, SignedIn } from "@clerk/nextjs";
-import AI Code ReviewLogo from "@/components/shared/ai-code-review-logo";
+import AiCodeReviewLogo from "@/components/shared/ai-code-review-logo";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight } from "lucide-react";
 
@@ -14,7 +14,7 @@ export default function Navbar({ hasAnnouncement = false }: { hasAnnouncement?: 
         <Link
           href="/"
           className="flex items-center gap-2 text-xl font-semibold text-white">
-          <AI Code ReviewLogo />
+          <AiCodeReviewLogo />
           <span className="not-sr-only">AI CODE REVIEW</span>
         </Link>
 

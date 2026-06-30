@@ -2,7 +2,7 @@
 import { Webhooks } from '@octokit/webhooks';
 import { logger } from '../utils/logger.js';
 import { getInstallationOctokit } from '../lib/githubApp.js';
-import { respondToAI Code ReviewCommentReply, isAI Code ReviewBotAuthor, isAI Code ReviewMentioned, isLikelyAI Code ReviewComment, isLikelyReplyToAI Code ReviewConversation } from '../services/analysis/commentReplyService.js';
+import { respondToAiCodeReviewCommentReply, isAiCodeReviewBotAuthor, isAiCodeReviewMentioned, isLikelyAiCodeReviewComment, isLikelyReplyToAiCodeReviewConversation } from '../services/analysis/commentReplyService.js';
 import { commentOnIssueOpened, create_github_installation, delete_github_installation, PrData, handlePrMerged, handleStopAnalysis, handleRepositoryCreated } from '../queries/github.queries.js';
   // Set up GitHub webhooks
 export const webhooks = new Webhooks({ secret: process.env.GITHUB_WEBHOOK_SECRET! });
@@ -346,9 +346,9 @@ export const webhooks = new Webhooks({ secret: process.env.GITHUB_WEBHOOK_SECRET
       const parentAuthorLogin = parentComment?.user?.login;
 
       // Ensure the reply targets AI Code Review: prefer strict author login, else allow explicit @mention in the reply body
-      const replyMentionsAI Code Review = isAI Code ReviewMentioned(comment.body || '');
-      const targetsAI Code Review = isAI Code ReviewBotAuthor(parentAuthorLogin) || replyMentionsAI Code Review;
-      if (!targetsAI Code Review) {
+      const replyMentionsAiCodeReview = isAiCodeReviewMentioned(comment.body || '');
+      const targetsAiCodeReview = isAiCodeReviewBotAuthor(parentAuthorLogin) || replyMentionsAiCodeReview;
+      if (!targetsAiCodeReview) {
         logger.debug('Reply not targeting AI Code Review (no bot author or @mention in reply); ignoring.', {
           parentAuthorLogin,
           parentCommentId: inReplyToId,
@@ -367,7 +367,7 @@ export const webhooks = new Webhooks({ secret: process.env.GITHUB_WEBHOOK_SECRET
         userReplyCommentId: comment.id,
       });
 
-      await respondToAI Code ReviewCommentReply({
+      await respondToAiCodeReviewCommentReply({
         installationId,
         owner,
         repo,

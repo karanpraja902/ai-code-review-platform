@@ -203,7 +203,7 @@ Start chatting and watch the workflow build itself. Code, tests, issues, reviews
                   <div className="mb-6 w-full flex justify-center">
                     <Image
                       src="/@ai-code-review.png"
-                      alt="ai-code-review card"
+                      alt="AI code review card"
                       width={308}
                       height={308}
                       className="rounded-md"
@@ -223,14 +223,14 @@ Start chatting and watch the workflow build itself. Code, tests, issues, reviews
               <CardHeading
                 icon={MapIcon}
                 title="AI Code Review IDE Extension"
-                description="Say hello to AI Code Review’s in your IDE."
+                description="Say hello to AI Code Review in your IDE."
 
               />
             </CardHeader>
                   <div className="mb-6 w-full flex justify-center">
                     <Image
                       src="/ai-code-review_extension.jpeg"
-                      alt="ai-code-review card"
+                      alt="AI code review card"
                       width={1100}
                       height={700}
                       className="rounded-md border-2"

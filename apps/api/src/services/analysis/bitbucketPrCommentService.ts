@@ -386,8 +386,8 @@ export class BitbucketPRCommentService {
       const footerContent = this.generateUserGuideFooter();
       const linksSection = '\n\n---\nFollow us: [AI Code Review](https://ai-code-review-platform.dev) · [X](https://x.com/ai-code-reviewai_dev) · [LinkedIn](https://www.linkedin.com/company/ai-code-review)';
       
-      const ai-code-reviewMarker = '<!-- ai-code-review-summary -->';
-      const ai-code-reviewSummary = `\n\n---\n\n${ai-code-reviewMarker}\n${processed}\n${footerContent}${linksSection}`;
+      const aiCodeReviewMarker = '<!-- ai-code-review-summary -->';
+      const aiCodeReviewSummary = `\n\n---\n\n${aiCodeReviewMarker}\n${processed}\n${footerContent}${linksSection}`;
 
       // Fetch the current PR to get its description
       const prData = await this.makeBitbucketRequest('GET', `/pullrequests/${this.context.pullRequestId}`);
@@ -395,20 +395,20 @@ export class BitbucketPRCommentService {
       
       // Check if we already have a AI Code Review summary in the description
       let updatedDescription: string;
-      if (currentDescription.includes(ai-code-reviewMarker)) {
+      if (currentDescription.includes(aiCodeReviewMarker)) {
         // Replace existing AI Code Review summary
-        const markerIndex = currentDescription.indexOf(ai-code-reviewMarker);
+        const markerIndex = currentDescription.indexOf(aiCodeReviewMarker);
         // Find the start of the AI Code Review section (look for the --- separator before the marker)
         let sectionStart = currentDescription.lastIndexOf('\n---\n', markerIndex);
         if (sectionStart === -1) {
           sectionStart = markerIndex;
         }
         
-        updatedDescription = currentDescription.substring(0, sectionStart) + ai-code-reviewSummary;
+        updatedDescription = currentDescription.substring(0, sectionStart) + aiCodeReviewSummary;
         logger.debug(`[BB-PR-${this.context.pullRequestId}] Replacing existing AI Code Review summary in PR description`);
       } else {
         // Append new AI Code Review summary to existing description
-        updatedDescription = currentDescription + ai-code-reviewSummary;
+        updatedDescription = currentDescription + aiCodeReviewSummary;
         logger.debug(`[BB-PR-${this.context.pullRequestId}] Appending AI Code Review summary to PR description`);
       }
 

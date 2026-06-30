@@ -17,14 +17,14 @@ export const teamInviteTemplate = (options: TeamInviteOptions) => {
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px;">
-    
+
     <!-- Logo -->
     <div style="text-align: center; margin-bottom: 32px;">
-      <img 
-        src="https://avatars.githubusercontent.com/u/234070194?s=400&u=c0a5026e03f1f5134ff14462283a3665fc403412&v=4" 
-        alt="AI Code Review" 
-        width="80" 
-        height="80" 
+      <img
+        src="https://avatars.githubusercontent.com/u/234070194?s=400&u=c0a5026e03f1f5134ff14462283a3665fc403412&v=4"
+        alt="AI Code Review"
+        width="80"
+        height="80"
         style="border-radius: 12px; display: inline-block;"
       />
     </div>

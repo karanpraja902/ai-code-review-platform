@@ -3,13 +3,13 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger.js';
 import { Bitbucket_Workspace } from '../models/bitbucket_workspace.model.js';
 import crypto from 'crypto';
-import { 
-  BitbucketPrData, 
-  handleBitbucketStopAnalysis, 
+import {
+  BitbucketPrData,
+  handleBitbucketStopAnalysis,
   handleBitbucketPrMerged,
   handleBitbucketRepositoryCreated
 } from '../queries/bitbucket.queries.js';
-import { respondToBitbucketAI Code ReviewCommentReply } from '../services/analysis/commentReplyService.js';
+import { respondToBitbucketAiCodeReviewCommentReply } from '../services/analysis/commentReplyService.js';
 import { getBitbucketAccessToken } from '../utils/bitbucketTokenManager.js';
 
 /**
@@ -25,7 +25,7 @@ export function verifyBitbucketSignature(
     const hmac = crypto.createHmac('sha256', secret);
     hmac.update(payload);
     const expectedSignature = 'sha256=' + hmac.digest('hex');
-    
+
     // Use timing-safe comparison to prevent timing attacks
     return crypto.timingSafeEqual(
       Buffer.from(signature),
@@ -56,19 +56,19 @@ export const handleBitbucketWebhook = async (
     const eventType = req.headers['x-event-key'] as string;
     const prId = req.body?.pullrequest?.id;
     const webhookUuid = `${prId}-${eventType}`;
-    
+
     // Deduplicate webhooks
     const now = Date.now();
     const lastProcessed = processedWebhooks.get(webhookUuid);
-    
+
     if (lastProcessed && (now - lastProcessed) < WEBHOOK_CACHE_TTL) {
       logger.debug('Duplicate webhook, skipping', { webhookUuid, eventType });
       return res.status(200).json({ success: true });
     }
-    
+
     processedWebhooks.set(webhookUuid, now);
-    
-    logger.info('Processing Bitbucket webhook', { 
+
+    logger.info('Processing Bitbucket webhook', {
       eventType,
       prId,
       hasSignature: !!signature
@@ -77,39 +77,39 @@ export const handleBitbucketWebhook = async (
     // Verify signature if present
     if (signature) {
       const payload = JSON.stringify(req.body);
-      
+
       // Find workspace by checking all workspaces (we'll optimize this later)
       // In production, you might want to include workspace slug in webhook URL
-      const workspaces = await Bitbucket_Workspace.find({ 
-        webhookSecret: { $exists: true, $ne: null } 
+      const workspaces = await Bitbucket_Workspace.find({
+        webhookSecret: { $exists: true, $ne: null }
       });
-      
+
       let verified = false;
       let matchedWorkspace = null;
-      
+
       for (const workspace of workspaces) {
-        if (workspace.webhookSecret && 
+        if (workspace.webhookSecret &&
             verifyBitbucketSignature(payload, signature, workspace.webhookSecret)) {
           verified = true;
           matchedWorkspace = workspace;
           break;
         }
       }
-      
+
       if (!verified) {
-        logger.warn('Invalid webhook signature - processing anyway for debugging', { 
+        logger.warn('Invalid webhook signature - processing anyway for debugging', {
           eventType,
           signature: signature.substring(0, 20) + '...',
           workspaceCount: workspaces.length
         });
         // TODO: Re-enable strict signature verification in production
-        // return res.status(401).json({ 
-        //   success: false, 
-        //   error: 'Invalid signature' 
+        // return res.status(401).json({
+        //   success: false,
+        //   error: 'Invalid signature'
         // });
       } else {
-        logger.info('Webhook signature verified', { 
-          workspaceSlug: matchedWorkspace?.workspaceSlug 
+        logger.info('Webhook signature verified', {
+          workspaceSlug: matchedWorkspace?.workspaceSlug
         });
       }
     } else {
@@ -121,19 +121,19 @@ export const handleBitbucketWebhook = async (
       case 'pullrequest:created':
         await handlePullRequestCreated(req.body);
         break;
-        
+
       case 'repo:push':
         await detectNewCommit(req.body);
         break;
-        
+
       case 'pullrequest:fulfilled':
         await handlePullRequestMerged(req.body);
         break;
-        
+
       case 'pullrequest:approved':
         await handlePullRequestApproved(req.body);
         break;
-        
+
       case 'pullrequest:comment_created':
         await handlePullRequestCommentCreated(req.body);
         break;
@@ -141,7 +141,7 @@ export const handleBitbucketWebhook = async (
       case 'repo:created':
         await handleBitbucketRepositoryCreated(req.body);
         break;
-        
+
       default:
         logger.debug('Unhandled Bitbucket webhook event', { eventType });
     }
@@ -149,10 +149,10 @@ export const handleBitbucketWebhook = async (
     // Always respond with 200 to acknowledge receipt
     res.status(200).json({ success: true });
   } catch (error) {
-    logger.error('Error handling Bitbucket webhook', { 
-      error: error instanceof Error ? error.message : error 
+    logger.error('Error handling Bitbucket webhook', {
+      error: error instanceof Error ? error.message : error
     });
-    
+
     // Still return 200 to prevent Bitbucket from retrying
     res.status(200).json({ success: false });
   }
@@ -165,17 +165,17 @@ async function handlePullRequestCreated(payload: any) {
   try {
     const pr = payload.pullrequest;
     const repository = payload.repository;
-    
+
     logger.info('Processing PR created event', {
       prId: pr.id,
       prTitle: pr.title,
       repoFullName: repository.full_name
     });
-    
+
 
     // Process PR data (same as GitHub)
     await BitbucketPrData(payload);
-    
+
   } catch (error) {
     logger.error('Error handling PR created event', { error });
   }
@@ -188,7 +188,7 @@ async function detectNewCommit(payload: any) {
   try {
     const repository = payload.repository;
     const push = payload.push;
-    
+
     if (!push || !push.changes) return;
 
     logger.info('Processing repo:push event', {
@@ -210,7 +210,7 @@ async function detectNewCommit(payload: any) {
         // Search for open PRs with this source branch
         const q = `source.branch.name="${branchName}" AND state="OPEN"`;
         const searchUrl = `https://api.bitbucket.org/2.0/repositories/${workspaceSlug}/${repoSlug}/pullrequests?q=${encodeURIComponent(q)}`;
-        
+
         const response = await fetch(searchUrl, {
           headers: { 'Authorization': `Bearer ${tokenResult.accessToken}` }
         });
@@ -218,7 +218,7 @@ async function detectNewCommit(payload: any) {
         if (response.ok) {
           const data: any = await response.json();
           const openPrs = data.values || [];
-          
+
           if (openPrs.length > 0) {
             logger.info(`Found ${openPrs.length} open PRs for pushed branch ${branchName}`, {
                prIds: openPrs.map((p: any) => p.id)
@@ -247,15 +247,15 @@ async function handlePullRequestMerged(payload: any) {
   try {
     const pr = payload.pullrequest;
     const repository = payload.repository;
-    
+
     logger.info('Processing PR merged event', {
       prId: pr.id,
       prTitle: pr.title,
       repoFullName: repository.full_name
     });
-    
+
     await handleBitbucketPrMerged(payload);
-    
+
   } catch (error) {
     logger.error('Error handling PR merged event', { error });
   }
@@ -268,15 +268,15 @@ async function handlePullRequestApproved(payload: any) {
   try {
     const pr = payload.pullrequest;
     const repository = payload.repository;
-    
+
     logger.info('Processing PR approved event', {
       prId: pr.id,
       prTitle: pr.title,
       repoFullName: repository.full_name
     });
-    
+
     // TODO: Update PR approval status
-    
+
   } catch (error) {
     logger.error('Error handling PR approved event', { error });
   }
@@ -290,13 +290,13 @@ async function handlePullRequestCommentCreated(payload: any) {
     const pr = payload.pullrequest;
     const comment = payload.comment;
     const repository = payload.repository;
-    
+
     logger.info('Processing PR comment created event', {
       prId: pr.id,
       commentId: comment.id,
       repoFullName: repository.full_name
     });
-    
+
     // Check if comment mentions @ai-code-review or similar
     const commentText = comment.content?.raw || '';
     const workspaceSlug = repository.workspace.slug;
@@ -310,18 +310,18 @@ async function handlePullRequestCommentCreated(payload: any) {
            userLogin: comment.user?.nickname
        });
        return;
-    } 
+    }
 
     if (/@(ai-code-review|ai-code-review)(?!\s+stop\b)/i.test(commentText)) {
        logger.info('AI Code Review mentioned in PR comment - triggering analysis', {
          prId: pr.id,
          commentText: commentText.slice(0, 50)
        });
-       
+
        await BitbucketPrData(payload, { skipBotCheck: true });
        return;
     }
-    
+
     // Handle threaded replies
     if (comment.parent && comment.parent.id) {
        const tokenResult = await getBitbucketAccessToken(workspaceSlug);
@@ -334,34 +334,34 @@ async function handlePullRequestCommentCreated(payload: any) {
                 const parentBody = parentData.content?.raw || '';
                 const parentAuthor = parentData.user?.nickname || parentData.user?.display_name;
 
-              
-                const isAI Code ReviewMsg = parentBody.toLowerCase().includes('ai-code-review') || 
-                                    parentBody.includes('```suggestion') || 
-                                    parentBody.includes('**File**:') || 
+
+                const isAiCodeReviewMsg = parentBody.toLowerCase().includes('ai-code-review') ||
+                                    parentBody.includes('```suggestion') ||
+                                    parentBody.includes('**File**:') ||
                                     parentBody.includes('Copy this prompt') ||
                                     parentBody.includes('Suggested Fix') ||
-                                    parentBody.includes('Confidence:') || 
+                                    parentBody.includes('Confidence:') ||
                                     parentBody.includes('Prompt for AI');
 
                 // Log parent body for debugging heuristic failures
                 logger.debug('Checking if parent comment is AI Code Review message', {
                    prId: pr.id,
-                   parentCommentId: comment.parent.id, 
-                   isAI Code ReviewMsg,
+                   parentCommentId: comment.parent.id,
+                   isAiCodeReviewMsg,
                    parentBodyPreview: parentBody.slice(0, 100)
                 });
 
-                const tagsAI Code Review = /@(ai-code-review|ai-code-review)/i.test(commentText) || isAI Code ReviewMsg;
+                const tagsAiCodeReview = /@(ai-code-review|ai-code-review)/i.test(commentText) || isAiCodeReviewMsg;
 
-                if (!tagsAI Code Review) {
-                     logger.debug('Bitbucket reply ignored (not targeting AI Code Review)', { 
+                if (!tagsAiCodeReview) {
+                     logger.debug('Bitbucket reply ignored (not targeting AI Code Review)', {
                          prId: pr.id,
                          commentId: comment.id,
                          parentAuthor,
-                         isAI Code ReviewMsg
+                         isAiCodeReviewMsg
                      });
                 } else {
-                     await respondToBitbucketAI Code ReviewCommentReply({
+                     await respondToBitbucketAiCodeReviewCommentReply({
                         workspaceSlug,
                         repoSlug,
                         prId: pr.id,
@@ -371,13 +371,13 @@ async function handlePullRequestCommentCreated(payload: any) {
                         parentCommentId: comment.parent.id,
                         parentCommentBody: parentBody,
                         parentPath: parentData.inline?.path,
-                        parentLine: parentData.inline?.to || parentData.inline?.from 
+                        parentLine: parentData.inline?.to || parentData.inline?.from
                     });
                 }
             }
        }
     }
-    
+
   } catch (error) {
     logger.error('Error handling PR comment created event', { error });
   }

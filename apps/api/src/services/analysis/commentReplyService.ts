@@ -4,7 +4,7 @@ import Feedback from '../../models/feedback.model.js';
 import { generateWithGemini } from '../../utils/gemini.helper.js';
 import { getBitbucketAccessToken } from '../../utils/bitbucketTokenManager.js';
 
-export interface AI Code ReviewSuggestionContext {
+export interface AiCodeReviewSuggestionContext {
   filePath?: string;
   lineStart?: number;
   lineEnd?: number;
@@ -19,39 +19,39 @@ export interface AI Code ReviewSuggestionContext {
 /**
  * Heuristically determine if a comment body is a AI Code Review Platform suggestion/comment
  */
-export function isLikelyAI Code ReviewComment(body: string, authorLogin?: string): boolean {
+export function isLikelyAiCodeReviewComment(body: string, authorLogin?: string): boolean {
   // Prefer strict author login matching to identify AI Code Review comments
-  if (isAI Code ReviewBotAuthor(authorLogin)) return true;
+  if (isAiCodeReviewBotAuthor(authorLogin)) return true;
   if (!body) return false;
   const lowered = body.toLowerCase();
   // Fallback heuristics (kept for legacy comments)
   const hasSuggestionFence = lowered.includes('```suggestion');
   const hasProblemSection = /###\s*problem/i.test(body);
   const hasMetadata = /\*\*File\*\*: `[^`]+`/i.test(body);
-  const mentionsAI Code Review = lowered.includes('ai-code-review ai') || lowered.includes('ai-code-review');
+  const mentionsAiCodeReview = lowered.includes('ai-code-review ai') || lowered.includes('ai-code-review');
   logger.debug('AI Code Review comment detection markers (fallback)', {
     hasSuggestionFence,
     hasProblemSection,
     hasMetadata,
-    mentionsAI Code Review,
+    mentionsAiCodeReview,
     authorLogin,
   });
-  return hasSuggestionFence || hasProblemSection || hasMetadata || mentionsAI Code Review;
+  return hasSuggestionFence || hasProblemSection || hasMetadata || mentionsAiCodeReview;
 }
 
-export function isAI Code ReviewBotAuthor(authorLogin?: string): boolean {
+export function isAiCodeReviewBotAuthor(authorLogin?: string): boolean {
   if (!authorLogin) return false;
   const login = authorLogin.toLowerCase();
-  const configured = (process.env.AI CODE REVIEW_BOT_LOGIN || '').toLowerCase().trim();
-  const candidates = [configured, 'ai-code-review[bot]', 'ai-code-review-platform[bot]'].filter(Boolean);
+  const configured = (process.env.AI_CODE_REVIEW_BOT_LOGIN || '').toLowerCase().trim();
+  const candidates = [configured, 'ai-code-review[bot]', 'ai-code-reviews-ai[bot]'].filter(Boolean);
   const match = candidates.includes(login);
   logger.debug('AI Code Review bot author check', { authorLogin, match, configured });
   return match;
 }
 
-export function isAI Code ReviewMentioned(body?: string): boolean {
+export function isAiCodeReviewMentioned(body?: string): boolean {
   if (!body) return false;
-  const match = /@(ai-code-review-platform|ai-code-review|ai-code-review)\b/i.test(body);
+  const match = /@(ai-code-reviews-ai|ai-code-review|ai-code-review)\b/i.test(body);
   logger.debug('AI Code Review mention check', { mentioned: match, preview: body.slice(0, 120) });
   return match;
 }
@@ -62,18 +62,18 @@ export function isAI Code ReviewMentioned(body?: string): boolean {
  * - Mentions the bot (e.g., @ai-code-review, @ai-code-review) or the word "ai-code-review ai".
  * - Contains a blockquote (>) referencing typical AI Code Review markers or suggestion fences.
  */
-export function isLikelyReplyToAI Code ReviewConversation(body: string): boolean {
+export function isLikelyReplyToAiCodeReviewConversation(body: string): boolean {
   if (!body) return false;
   const lowered = body.toLowerCase();
   const hasBotMention = /@ai-code-review[-_]ai|@.*\[bot\]/i.test(body);
-  const mentionsAI Code Review = lowered.includes('@ai-code-review');
-  const quotesAI Code Review = />\s*.*(ai-code-review|```suggestion|###\s*problem)/i.test(body);
+  const mentionsAiCodeReview = lowered.includes('@ai-code-review');
+  const quotesAiCodeReview = />\s*.*(ai-code-review|```suggestion|###\s*problem)/i.test(body);
   logger.debug('Issue comment reply intent detection', {
     hasBotMention,
-    mentionsAI Code Review,
-    quotesAI Code Review,
+    mentionsAiCodeReview,
+    quotesAiCodeReview,
   });
-  return hasBotMention || mentionsAI Code Review || quotesAI Code Review;
+  return hasBotMention || mentionsAiCodeReview || quotesAiCodeReview;
 }
 
 /**
@@ -165,7 +165,7 @@ export async function saveFeedbackToDatabase(params: {
 /**
  * Extracts suggestion metadata from a AI Code Review comment
  */
-export function extractSuggestionFromComment(content: string): AI Code ReviewSuggestionContext | null {
+export function extractSuggestionFromComment(content: string): AiCodeReviewSuggestionContext | null {
   try {
     if (!content || typeof content !== 'string') return null;
     // Extract file path
@@ -188,7 +188,7 @@ export function extractSuggestionFromComment(content: string): AI Code ReviewSug
     const suggestionMatch = content.match(/```suggestion\s*\n([\s\S]*?)\n```/);
     const suggestionCode = suggestionMatch ? suggestionMatch[1].trim() : undefined;
 
-    const result: AI Code ReviewSuggestionContext = {
+    const result: AiCodeReviewSuggestionContext = {
       filePath,
       lineStart,
       lineEnd,
@@ -215,23 +215,23 @@ export function extractSuggestionFromComment(content: string): AI Code ReviewSug
 function buildGeminiPrompt(params: {
   repoFullName: string;
   prNumber?: number;
-  ai-code-reviewCommentBody: string;
-  ai-code-reviewMeta?: AI Code ReviewSuggestionContext | null;
+  aiCodeReviewCommentBody: string;
+  aiCodeReviewMeta?: AiCodeReviewSuggestionContext | null;
   userReplyBody: string;
   replyAuthorLogin?: string;
   parentPath?: string;
   parentLine?: number;
   diffHunk?: string;
 }): string {
-  const { repoFullName, prNumber, ai-code-reviewCommentBody, ai-code-reviewMeta, userReplyBody, replyAuthorLogin, parentPath, parentLine, diffHunk } = params;
+  const { repoFullName, prNumber, aiCodeReviewCommentBody, aiCodeReviewMeta, userReplyBody, replyAuthorLogin, parentPath, parentLine, diffHunk } = params;
 
-  const extractedContext = ai-code-reviewMeta
-    ? `${ai-code-reviewMeta.filePath ? `File: ${ai-code-reviewMeta.filePath}\n` : ''}` +
-      `${typeof ai-code-reviewMeta.lineStart === 'number' ? `Line_Start: ${ai-code-reviewMeta.lineStart}\n` : ''}` +
-      `${typeof ai-code-reviewMeta.lineEnd === 'number' ? `Line_End: ${ai-code-reviewMeta.lineEnd}\n` : ''}` +
-      `${ai-code-reviewMeta.severity ? `Severity: ${ai-code-reviewMeta.severity}\n` : ''}` +
-      `${ai-code-reviewMeta.issueType ? `Issue_Type: ${ai-code-reviewMeta.issueType}\n` : ''}` +
-      `${ai-code-reviewMeta.suggestionCode ? `Suggestion:\n\`\`\`\n${ai-code-reviewMeta.suggestionCode}\n\`\`\`\n` : ''}`
+  const extractedContext = aiCodeReviewMeta
+    ? `${aiCodeReviewMeta.filePath ? `File: ${aiCodeReviewMeta.filePath}\n` : ''}` +
+      `${typeof aiCodeReviewMeta.lineStart === 'number' ? `Line_Start: ${aiCodeReviewMeta.lineStart}\n` : ''}` +
+      `${typeof aiCodeReviewMeta.lineEnd === 'number' ? `Line_End: ${aiCodeReviewMeta.lineEnd}\n` : ''}` +
+      `${aiCodeReviewMeta.severity ? `Severity: ${aiCodeReviewMeta.severity}\n` : ''}` +
+      `${aiCodeReviewMeta.issueType ? `Issue_Type: ${aiCodeReviewMeta.issueType}\n` : ''}` +
+      `${aiCodeReviewMeta.suggestionCode ? `Suggestion:\n\`\`\`\n${aiCodeReviewMeta.suggestionCode}\n\`\`\`\n` : ''}`
     : '';
 
   const reviewLocation = (parentPath || typeof parentLine === 'number')
@@ -250,7 +250,7 @@ You may include concise code suggestions if helpful. Keep the response focused a
 Repository: ${repoFullName}${prNumber ? ` | PR #${prNumber}` : ''}
 
 --- AI Code Review Original Comment ---
-${ai-code-reviewCommentBody}
+${aiCodeReviewCommentBody}
 
 ${extractedContext ? `--- Extracted Context ---\n${extractedContext}\n` : ''}${reviewLocation ? `--- Review Location ---\n${reviewLocation}\n` : ''}${diffSection}
 --- User Reply ---
@@ -289,9 +289,9 @@ If a code fix helps, present it inside a collapsible dropdown:
   logger.debug('Built Gemini prompt summary', {
     repoFullName,
     prNumber,
-    hasMeta: !!ai-code-reviewMeta,
+    hasMeta: !!aiCodeReviewMeta,
     promptLength: prompt.length,
-    hasSuggestionCode: !!ai-code-reviewMeta?.suggestionCode,
+    hasSuggestionCode: !!aiCodeReviewMeta?.suggestionCode,
     hasDiffHunk: !!diffHunk,
   });
   return prompt;
@@ -316,7 +316,7 @@ export async function generateReplyWithGemini(prompt: string, model?: string): P
   }
 }
 
-export async function respondToAI Code ReviewCommentReply(opts: {
+export async function respondToAiCodeReviewCommentReply(opts: {
   installationId: number;
   owner: string;
   repo: string;
@@ -344,12 +344,12 @@ export async function respondToAI Code ReviewCommentReply(opts: {
       parentCommentId: opts.parentCommentId,
       commentType: 'review',
     });
-    const ai-code-reviewMeta = extractSuggestionFromComment(opts.parentCommentBody);
+    const aiCodeReviewMeta = extractSuggestionFromComment(opts.parentCommentBody);
     const prompt = buildGeminiPrompt({
       repoFullName: `${opts.owner}/${opts.repo}`,
       prNumber: opts.prNumber,
-      ai-code-reviewCommentBody: opts.parentCommentBody,
-      ai-code-reviewMeta,
+      aiCodeReviewCommentBody: opts.parentCommentBody,
+      aiCodeReviewMeta,
       userReplyBody: opts.userReplyBody,
       replyAuthorLogin: opts.replyAuthorLogin,
       parentPath: opts.parentPath,
@@ -456,7 +456,7 @@ export async function respondToAI Code ReviewCommentReply(opts: {
   }
 }
 
-export async function respondToBitbucketAI Code ReviewCommentReply(opts: {
+export async function respondToBitbucketAiCodeReviewCommentReply(opts: {
   workspaceSlug: string;
   repoSlug: string;
   prId: number;
@@ -479,14 +479,14 @@ export async function respondToBitbucketAI Code ReviewCommentReply(opts: {
       parentCommentId,
     });
 
-    const ai-code-reviewMeta = extractSuggestionFromComment(parentCommentBody);
+    const aiCodeReviewMeta = extractSuggestionFromComment(parentCommentBody);
     const repoFullName = `${workspaceSlug}/${repoSlug}`;
     
     const prompt = buildGeminiPrompt({
       repoFullName,
       prNumber: prId,
-      ai-code-reviewCommentBody: parentCommentBody,
-      ai-code-reviewMeta,
+      aiCodeReviewCommentBody: parentCommentBody,
+      aiCodeReviewMeta,
       userReplyBody,
       replyAuthorLogin,
       parentPath,

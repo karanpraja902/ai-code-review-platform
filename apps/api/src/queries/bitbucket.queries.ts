@@ -56,7 +56,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
 
       const repoUrl = repository.links.html.href;
       const prUrl = pullrequest.links.html.href;
-      
+
       return createSkippedAnalysisHelper({
         userId: workspace.userId,
         teamId: bitbucketRepo.teamId,
@@ -73,7 +73,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
     // Early check: Is PR author a bot? Skip automatic review if so.
     const prAuthorLogin = pullrequest?.author?.nickname || pullrequest?.author?.display_name || '';
     const prAuthorType = pullrequest?.author?.type || '';
-    
+
     if (shouldSkipBotAuthor(prAuthorLogin, prAuthorType, skipBotCheck)) {
       logger.info("PR author is a bot; skipping automatic review", {
         author: prAuthorLogin,
@@ -88,10 +88,10 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
     }
 
     // Get workspace for user/team lookup
-    const workspace = await Bitbucket_Workspace.findOne({ 
-      workspaceSlug: repository.workspace.slug 
+    const workspace = await Bitbucket_Workspace.findOne({
+      workspaceSlug: repository.workspace.slug
     });
-    
+
     if (!workspace) {
       logger.error("Workspace not found for Bitbucket PR", {
         workspaceSlug: repository.workspace.slug,
@@ -135,15 +135,15 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
         }
       }
     } catch (limitErr) {
-      logger.warn("Failed to perform PR analysis daily limit check", { 
-        error: limitErr instanceof Error ? limitErr.message : limitErr 
+      logger.warn("Failed to perform PR analysis daily limit check", {
+        error: limitErr instanceof Error ? limitErr.message : limitErr
       });
     }
 
 
     // Get valid access token (automatically refreshes if expired)
     const tokenResult = await getBitbucketAccessToken(repository.workspace.slug);
-    
+
     if (!tokenResult.success) {
       logger.error("Failed to get valid Bitbucket access token", {
         workspaceSlug: repository.workspace.slug,
@@ -215,7 +215,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
 
             if (commitDiffstatResponse.ok) {
               const commitDiffstatData: any = await commitDiffstatResponse.json();
-              
+
               // Fetch the full diff for this commit to get patches
               const commitDiffUrl = `https://api.bitbucket.org/2.0/repositories/${repository.full_name}/diff/${commit.sha}`;
               const commitDiffResponse = await fetch(commitDiffUrl, {
@@ -258,7 +258,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
           }
         }));
 
-       
+
         commits = commitsList;
       } else {
         logger.error('Failed to fetch commits from Bitbucket', {
@@ -319,8 +319,8 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
       }
 
     } catch (apiError) {
-      logger.error('Error fetching additional Bitbucket PR data:', { 
-        error: apiError instanceof Error ? apiError.message : apiError 
+      logger.error('Error fetching additional Bitbucket PR data:', {
+        error: apiError instanceof Error ? apiError.message : apiError
       });
     }
 
@@ -332,8 +332,8 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
     });
 
     // Get teamId from repository
-    const bitbucketRepoForTeam = await Github_Repository.findOne({ 
-      fullName: repository.full_name 
+    const bitbucketRepoForTeam = await Github_Repository.findOne({
+      fullName: repository.full_name
     });
     const teamIdForPrData = bitbucketRepoForTeam?.teamId || undefined;
 
@@ -342,7 +342,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
     const latestCommitSha = getLatestCommitSha(commits, pullrequest.source.commit.hash);
 
     const reviewedLinesOfCode = filesChanged.reduce((sum: number, f: any) => sum + f.changes, 0);
-  
+
 
     // Format data to match GitHub PR structure
     const modelAnalysisData: any = {
@@ -424,14 +424,14 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
 
       // Analysis hints
       context: {
-        complexity: Math.min(100, (filesChanged.length * 3) + 
+        complexity: Math.min(100, (filesChanged.length * 3) +
           Math.floor((filesChanged.reduce((sum, f) => sum + f.changes, 0)) / 20)),
         riskLevel: filesChanged.length > 15 ? 'high' : filesChanged.length > 8 ? 'medium' : 'low',
         hasTests: filesChanged.some(f => f.filename.includes('test') || f.filename.includes('spec')),
         hasDocChanges: filesChanged.some(f => f.filename.includes('README') || f.filename.includes('.md')),
-        hasDependencyChanges: filesChanged.some(f => 
+        hasDependencyChanges: filesChanged.some(f =>
           f.filename.includes('package.json') || f.filename.includes('requirements.txt')),
-        primaryLanguages: [...new Set(filesChanged.map(f => 
+        primaryLanguages: [...new Set(filesChanged.map(f =>
           f.filename.split('.').pop()).filter(Boolean))].slice(0, 5)
       },
 
@@ -441,7 +441,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
 
     // Store PR data in database
     const prCollection = mongoose.connection.db?.collection('pull_request_datas');
-    
+
     // Check if we already have data for this PR
     const latestStored = await prCollection?.find({
       $or: [
@@ -458,7 +458,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
 
     // Determine new commits
     const newCommitsOnly = getNewCommitsSinceLastReview(commits, lastStoredSha);
-    
+
     logger.debug("Bitbucket commit analysis", {
       totalCommits: commits.length,
       lastStoredSha,
@@ -532,10 +532,10 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
         pr_title: pullrequest.title,
         reviewedLinesOfCode: reviewedLinesOfCode
       });
-      
-      logger.info('Created Analysis record for Bitbucket PR', { 
-        analysisId: preAnalysisId, 
-        reviewedLinesOfCode 
+
+      logger.info('Created Analysis record for Bitbucket PR', {
+        analysisId: preAnalysisId,
+        reviewedLinesOfCode
       });
 
       // Initialize parser state
@@ -543,7 +543,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
 
       // Initialize PR comment service
       const [workspaceSlug, repoSlug] = repository.full_name.split('/');
-      
+
       // Get settings
       const userSettings = user.settings as any;
       const severityThreshold = typeof userSettings?.commentSeverity === 'number' ? userSettings.commentSeverity : 1;
@@ -568,10 +568,10 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
 
       // Post "In Progress" status check
       await updateBitbucketCommitStatus({
-         accessToken: currentAccessToken, 
-         repoFullName: repository.full_name, 
-         commitSha: pullrequest.source.commit.hash, 
-         state: 'INPROGRESS', 
+         accessToken: currentAccessToken,
+         repoFullName: repository.full_name,
+         commitSha: pullrequest.source.commit.hash,
+         state: 'INPROGRESS',
          description: 'Review started...'
       });
 
@@ -580,7 +580,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
           logger.debug(`Bitbucket PR analysis stdout: ${data.slice(0, 200)}`, { prId: pullrequest.id, data });
           const { prComments, state } = parseStreamingResponse(data, parserState);
           Object.assign(parserState, state);
-          
+
           if (prComments.length > 0) {
              await prCommentService.postComments(prComments);
           }
@@ -594,9 +594,9 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
            }
         },
         onProgress: async (message: string) => {
-          logger.debug('Bitbucket PR analysis progress', { 
+          logger.debug('Bitbucket PR analysis progress', {
             prId: pullrequest.id,
-            message 
+            message
           });
         }
       };
@@ -631,29 +631,29 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
           if (finalComments.length > 0) {
               await prCommentService.postComments(finalComments);
           }
-          
+
           if (!result.success) {
              await prCommentService.postSkippedComment(`Analysis failed with error: ${result.error}`);
              await updateBitbucketCommitStatus({
-                 accessToken: currentAccessToken, 
-                 repoFullName: repository.full_name, 
-                 commitSha: pullrequest.source.commit.hash, 
-                 state: 'FAILED', 
+                 accessToken: currentAccessToken,
+                 repoFullName: repository.full_name,
+                 commitSha: pullrequest.source.commit.hash,
+                 state: 'FAILED',
                  description: 'Analysis failed'
               });
           } else {
              // Success
-             
+
              // Check if no actionable comments were posted
              if (prCommentService.getNonSummaryCommentsPosted() === 0) {
                  await prCommentService.postNoIssuesFoundComment();
              }
 
              await updateBitbucketCommitStatus({
-                 accessToken: currentAccessToken, 
-                 repoFullName: repository.full_name, 
-                 commitSha: pullrequest.source.commit.hash, 
-                 state: 'SUCCESSFUL', 
+                 accessToken: currentAccessToken,
+                 repoFullName: repository.full_name,
+                 commitSha: pullrequest.source.commit.hash,
+                 state: 'SUCCESSFUL',
                  description: 'Review completed'
               });
           }
@@ -664,10 +664,10 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
         });
         await prCommentService.postSkippedComment(`Analysis failed with error: ${error.message}`);
         await updateBitbucketCommitStatus({
-             accessToken: currentAccessToken, 
-             repoFullName: repository.full_name, 
-             commitSha: pullrequest.source.commit.hash, 
-             state: 'FAILED', 
+             accessToken: currentAccessToken,
+             repoFullName: repository.full_name,
+             commitSha: pullrequest.source.commit.hash,
+             state: 'FAILED',
              description: 'execution error'
           });
       });
@@ -690,26 +690,26 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
  */
 function parseDiffToFilePatches(fullDiff: string): Record<string, string> {
   const filePatchesMap: Record<string, string> = {};
-  
+
   if (!fullDiff) return filePatchesMap;
 
   // Split diff by file headers (diff --git a/... b/...)
   const fileBlocks = fullDiff.split(/(?=diff --git)/);
-  
+
   for (const block of fileBlocks) {
     if (!block.trim()) continue;
-    
+
     // Extract filename from the diff header
     // Format: diff --git a/filename b/filename
     const fileMatch = block.match(/diff --git a\/(.+?) b\/(.+)/);
     if (!fileMatch) continue;
-    
+
     const filename = fileMatch[2]; // Use the 'b/' filename (new file)
-    
+
     // The entire block is the patch for this file
     filePatchesMap[filename] = block.trim();
   }
-  
+
   return filePatchesMap;
 }
 
@@ -719,7 +719,7 @@ function parseDiffToFilePatches(fullDiff: string): Record<string, string> {
 export const handleBitbucketPrMerged = async (payload: any) => {
     try {
         const { pullrequest, repository } = payload;
-        
+
         // Check if merged
         // Bitbucket 'pullrequest:fulfilled' implies merged usually, but check state
         if (pullrequest.state !== 'MERGED') {
@@ -807,7 +807,7 @@ export const handleBitbucketStopAnalysis = async (params: {
              const message = interruptedCount > 0
                 ? `🛑 Analysis stopped. ${interruptedCount} processes interrupted.`
                 : `ℹ️ No running analysis found to stop.`;
-            
+
             await fetch(`https://api.bitbucket.org/2.0/repositories/${workspaceSlug}/${repoSlug}/pullrequests/${prId}/comments`, {
                 method: 'POST',
                 headers: {
@@ -832,15 +832,15 @@ export const handleBitbucketStopAnalysis = async (params: {
 export const handleBitbucketRepositoryCreated = async (payload: any) => {
     try {
         const { repository } = payload;
-        
+
         if (!repository) return;
-        
+
         const workspaceUuid = repository.workspace?.uuid;
         const workspaceSlug = repository.workspace?.slug;
 
         // Find workspace
-        const workspace = await Bitbucket_Workspace.findOne({ 
-             $or: [ { workspaceUuid }, { workspaceSlug } ] 
+        const workspace = await Bitbucket_Workspace.findOne({
+             $or: [ { workspaceUuid }, { workspaceSlug } ]
         });
 
         if (!workspace) {
@@ -853,7 +853,7 @@ export const handleBitbucketRepositoryCreated = async (payload: any) => {
             source: 'bitbucket',
             repositoryId: repository.uuid // Bitbucket repo ID
         });
-        
+
         if (existingRepo) {
              logger.info('Bitbucket repository already exists, skipping', { fullName: repository.full_name });
              return;
@@ -865,13 +865,13 @@ export const handleBitbucketRepositoryCreated = async (payload: any) => {
             fullName: repository.full_name,
             private: repository.is_private,
             defaultBranch: repository.mainbranch?.name || 'main',
-            github_installationId: workspace._id, 
+            github_installationId: workspace._id,
             teamId: workspace.teamId,
-            
+
             trackGithubIssues: false,
             trackGithubPullRequests: true
         });
-        
+
         logger.info('Successfully added new Bitbucket repository to DB', { fullName: repository.full_name });
 
     } catch (error) {
@@ -893,13 +893,13 @@ export const updateBitbucketCommitStatus = async (params: {
   url?: string;
 }) => {
   try {
-    const { 
-        accessToken, 
-        repoFullName, 
-        commitSha, 
-        state, 
-        key = 'ai-code-review-review', 
-        name = 'AI Code Review Review', 
+    const {
+        accessToken,
+        repoFullName,
+        commitSha,
+        state,
+        key = 'ai-code-review-review',
+        name = 'AI Code Review Review',
         description = 'AI Code Review',
         url = 'https://ai-code-review-platform.dev'
     } = params;

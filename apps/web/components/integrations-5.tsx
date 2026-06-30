@@ -60,8 +60,8 @@ export default function IntegrationsSection() {
               Choose your AI model
             </h2>
             <p className="text-white/60">
-              Powered by the world's most advanced AI models. AI Code Review Platform integrates 
-              with leading language models to deliver intelligent, context-aware 
+              Powered by the world's most advanced AI models. AI Code Review Platform integrates
+              with leading language models to deliver intelligent, context-aware
               responses and capabilities.
             </p>
 

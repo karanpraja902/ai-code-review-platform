@@ -18,7 +18,7 @@ services:
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
       
       # Database Configuration
-      - AI CODE REVIEW_DB=${AI CODE REVIEW_DB}
+      - AI_CODE_REVIEW_DB=${AI_CODE_REVIEW_DB}
       
       # Application Configuration
       - PORT=${PORT:-3001}
@@ -129,7 +129,7 @@ services:
   #   environment:
   #     - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}
   #     - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-password}
-  #     - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-ai-code-review_ai}
+  #     - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-ai_code_review}
   #   volumes:
   #     - mongodb_data:/data/db
   #   restart: unless-stopped

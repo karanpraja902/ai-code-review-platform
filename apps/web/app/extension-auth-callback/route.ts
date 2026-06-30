@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const scheme = request.nextUrl.searchParams.get('scheme') || 'vscode';
 
     // Redirect back to the specific IDE with the token
-    const callbackUrl = `${scheme}://ai-code-review.ai-code-review/auth-callback?token=${encodeURIComponent(token)}`;
+    const callbackUrl = `${scheme}://karanpraja902.ai-code-review/auth-callback?token=${encodeURIComponent(token)}`;
     
     // Return HTML that auto-redirects and shows a success message
     return new NextResponse(
