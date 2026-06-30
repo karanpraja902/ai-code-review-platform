@@ -31,6 +31,6 @@
   },
   "packageManager": "pnpm@8.15.2",
   "engines": {
-    "node": ">=18"
+    "node": "24.x"
   }
 }

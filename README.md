@@ -37,6 +37,25 @@ Run type checks:
 pnpm check-types
 ```
 
+## Vercel Deployment
+
+The Vercel project deploys the `web` workspace from the monorepo root. The
+root `vercel.json` pins the install/build commands to pnpm 8 so Vercel uses the
+checked-in lockfile format.
+
+Required frontend environment variables:
+
+```sh
+NEXT_PUBLIC_API_BASE_URL=
+NEXT_PUBLIC_GITHUB_APP_NAME=ai-code-review
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+EXTENSION_JWT_SECRET=
+```
+
+The Express API in `apps/api` is a separate service and needs its own host. Set
+`NEXT_PUBLIC_API_BASE_URL` to that deployed API URL.
+
 ## Repository
 
 - GitHub: https://github.com/karanpraja902/ai-code-review-platform
