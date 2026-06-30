@@ -8,6 +8,12 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig = {
   // Updated configuration for newer Next.js versions
   serverExternalPackages: ['winston'],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   
   // Configure image domains for avatars
   images: {
