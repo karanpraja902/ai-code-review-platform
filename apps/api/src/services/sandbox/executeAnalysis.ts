@@ -28,6 +28,9 @@ export interface AnalysisResult {
   error?: string;
 }
 
+const shellQuote = (value: unknown): string =>
+  `'${String(value).replace(/'/g, `'"'"'`)}'`;
+
 export const executeAnalysis = async (
   github_repositoryId: string | null,
   repoUrl: string,
@@ -356,23 +359,34 @@ export const executeAnalysis = async (
     // console.log("📊 Data parameter being passed to sandbox:", JSON.stringify(data, null, 2));
 
     // Properly format the data parameter for shell command
-    const dataParam = data ? JSON.stringify(data) : "{}";
+    const { auth_token: sandboxAuthToken, ...commandData } = data || {};
+    const dataParam = JSON.stringify(commandData);
     console.log("🔧 Formatted data parameter length:", dataParam.length);
 
-    // Build command based on provider
+    // Build a shell-safe command. Provider credentials are delivered through
+    // the E2B environment, never interpolated into the command/process list.
     const repoIdArg = github_repositoryId ? github_repositoryId : "null";
     const teamIdArg = teamId && teamId !== "null" ? teamId : "null";
-    let analysisCommand: string;
+    const cliArgs = [
+      shellQuote(repoUrlForAnalysis),
+      "--user-id", shellQuote(userId),
+      "--github-repository-id", shellQuote(repoIdArg),
+      "--team-id", shellQuote(teamIdArg),
+      "--analysis-id", shellQuote(_id.toString()),
+      "--model", shellQuote(model),
+      "--provider", shellQuote(provider),
+      "--mode", shellQuote(analysisType),
+      "--data", shellQuote(dataParam),
+    ];
+    if (branch) {
+      cliArgs.push("--branch", shellQuote(branch));
+    }
+    cliArgs.push("--prompt", shellQuote(prompt));
+    const pythonCommand = `cd /workspace && stdbuf -oL -eL python -u main.py ${cliArgs.join(" ")}`;
+    let analysisCommand = pythonCommand;
     if (provider === "vertex") {
-      // Vertex provider: use Google credentials
-      analysisCommand = `if [ -n "$GOOGLE_CREDENTIALS_JSON_BASE64" ]; then echo "$GOOGLE_CREDENTIALS_JSON_BASE64" | base64 -d > /workspace/google-credentials.json; export GOOGLE_APPLICATION_CREDENTIALS=/workspace/google-credentials.json; fi; cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${repoIdArg} --team-id ${teamIdArg} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${"$GOOGLE_APPLICATION_CREDENTIALS"} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
-    } else if (provider === "bedrock") {
-      // Bedrock provider: use AWS Bedrock API key (no --provider flag for bedrock)
-      analysisCommand = `cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${repoIdArg} --team-id ${teamIdArg} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${process.env.AWS_BEDROCK_API_KEY} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
-    } else if (provider === "google") {
-      // Google provider: use Google API key
-      analysisCommand = `cd /workspace && stdbuf -oL -eL python -u main.py "${repoUrlForAnalysis}" --user-id "${userId}" --github-repository-id ${repoIdArg} --team-id ${teamIdArg} --analysis-id "${_id.toString()}" --model "${model}" --provider "${provider}" --mode ${analysisType} --api-key ${process.env.GOOGLE_API_KEY} --data '${dataParam.replace(/'/g, "'\"'\"'")}'`;
-    } else {
+      analysisCommand = `if [ -n "$GOOGLE_CREDENTIALS_JSON_BASE64" ]; then printf '%s' "$GOOGLE_CREDENTIALS_JSON_BASE64" | base64 -d > /workspace/google-credentials.json; export GOOGLE_APPLICATION_CREDENTIALS=/workspace/google-credentials.json; fi; ${pythonCommand}`;
+    } else if (!["bedrock", "google"].includes(provider)) {
       return {
         success: false,
         exitCode: -1,
@@ -389,6 +403,9 @@ export const executeAnalysis = async (
     // Start the analysis command in the background with streaming
     const command = await sandbox.commands.run(analysisCommand, {
       background: true,
+      envs: sandboxAuthToken
+        ? { SANDBOX_AUTH_TOKEN: String(sandboxAuthToken) }
+        : undefined,
       onStdout: async (data) => {
         const redact = (input: string) => {
           let s = input;

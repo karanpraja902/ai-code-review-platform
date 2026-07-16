@@ -28,3 +28,21 @@ export const getPrData = async (req: Request, res: Response, next: NextFunction)
     next(new CustomError(error.message || "Failed to fetch PR data", 500));
   }
 }
+
+export const getExtensionData = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params as { id: string };
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return next(new CustomError("Invalid extension data ID", 400));
+    }
+    const data = await mongoose.connection.db
+      ?.collection("extension_datas")
+      .findOne({ _id: new mongoose.Types.ObjectId(id) });
+    if (!data) {
+      return next(new CustomError("Extension data not found", 404));
+    }
+    return res.status(200).json({ success: true, data });
+  } catch (error: any) {
+    next(new CustomError(error.message || "Failed to fetch extension data", 500));
+  }
+};

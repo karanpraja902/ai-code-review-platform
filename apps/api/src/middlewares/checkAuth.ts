@@ -759,10 +759,8 @@ export const checkSandboxAuth = async (
       return res.status(401).json({ message: "Authentication required" });
     }
     const auth_token = sandboxAuth.auth_token;
-    logger.debug("Auth token extracted", { auth_token });
-
     const token = req.headers["x-sandbox-auth"];
-    logger.debug("Token validation", { token, auth_token });
+    logger.debug("Validating sandbox authentication token");
     if (!token || token !== auth_token) {
       logger.error("Authentication failed: Invalid sandbox auth token.");
       return res.status(401).json({ message: "Unauthorized" });

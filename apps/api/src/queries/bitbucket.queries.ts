@@ -601,8 +601,13 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
         }
       };
 
-      // const sandbox_token = await user.getSandboxToken();
-      // do not need sandbox token for bitbucket
+      const sandboxToken = await mongoose.connection.db
+        ?.collection('auth_tokens')
+        .findOne({ type: 'sandbox' });
+      if (!sandboxToken?.auth_token) {
+        logger.error('Unable to find sandbox authentication token');
+        return;
+      }
 
       executeAnalysis(
         bitbucketRepoForTeam._id as string,
@@ -615,7 +620,7 @@ export const BitbucketPrData = async (payload: any, options?: { skipBotCheck?: b
         callbacks,
         {
           pr_data_id: prDataInsertedId,
-          auth_token: null, // Bitbucket doesn't use sandbox auth token
+          auth_token: sandboxToken.auth_token,
           base_url: process.env.API_BASE_URL || process.env.FRONTEND_URL || "http://localhost:3001",
           pr_number: pullrequest.id,
           pr_url: prUrl,

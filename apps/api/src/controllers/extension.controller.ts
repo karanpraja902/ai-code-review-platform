@@ -100,6 +100,13 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
 
       await extensionData.save();
 
+      const sandboxToken = await mongoose.connection.db
+        ?.collection('auth_tokens')
+        .findOne({ type: 'sandbox' });
+      if (!sandboxToken?.auth_token) {
+        throw new Error('Sandbox authentication token is not configured');
+      }
+
       // Find repository by fullName
       const githubRepo: IGithub_Repository | null = await Github_Repository.findOne({ fullName: repository.fullName });
       const githubRepoId = githubRepo?._id?.toString() ?? null;
@@ -211,6 +218,8 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
         callbacks,
         {
           extension_data_id: extensionData._id,
+          auth_token: sandboxToken.auth_token,
+          base_url: process.env.API_BASE_URL || "http://localhost:3001",
           repo_url: repository.url,
           reviewedLinesOfCode, // Pass lines of code reviewed
         },
