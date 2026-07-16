@@ -31,6 +31,35 @@ const connectDB = async () => {
                 );
             }
         }
+
+        // Authentication assigns every new user to the active free plan. A
+        // fresh database must contain that plan before the first request, or
+        // user creation and all authenticated dashboard routes fail.
+        const subscriptionPlans = mongoose.connection.db?.collection("subscription_plans");
+        if (subscriptionPlans) {
+            await subscriptionPlans.updateOne(
+                { name: "free" },
+                {
+                    $setOnInsert: {
+                        displayName: "Free",
+                        description: "Free plan for individual developers",
+                        price: { monthly: 0, yearly: 0 },
+                        features: {
+                            maxTeams: 1,
+                            maxTeamMembers: 1,
+                            maxPrAnalysisPerDay: 5,
+                            maxFullRepoAnalysisPerDay: 2,
+                            prioritySupport: false,
+                            organizationSupport: false,
+                        },
+                        isActive: true,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    },
+                },
+                { upsert: true },
+            );
+        }
         console.log("MongoDB connected");
     } catch (error) {
         console.error("MongoDB connection error:", error);
