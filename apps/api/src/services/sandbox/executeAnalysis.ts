@@ -382,7 +382,7 @@ export const executeAnalysis = async (
       cliArgs.push("--branch", shellQuote(branch));
     }
     cliArgs.push("--prompt", shellQuote(prompt));
-    const pythonCommand = `cd /workspace && stdbuf -oL -eL python -u main.py ${cliArgs.join(" ")}`;
+    const pythonCommand = `cd /workspace && stdbuf -oL -eL /opt/ai-code-review-venv/bin/python -u main.py ${cliArgs.join(" ")}`;
     let analysisCommand = pythonCommand;
     if (provider === "vertex") {
       analysisCommand = `if [ -n "$GOOGLE_CREDENTIALS_JSON_BASE64" ]; then printf '%s' "$GOOGLE_CREDENTIALS_JSON_BASE64" | base64 -d > /workspace/google-credentials.json; export GOOGLE_APPLICATION_CREDENTIALS=/workspace/google-credentials.json; fi; ${pythonCommand}`;

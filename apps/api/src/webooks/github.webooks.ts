@@ -5,7 +5,11 @@ import { getInstallationOctokit } from '../lib/githubApp.js';
 import { respondToAiCodeReviewCommentReply, isAiCodeReviewBotAuthor, isAiCodeReviewMentioned, isLikelyAiCodeReviewComment, isLikelyReplyToAiCodeReviewConversation } from '../services/analysis/commentReplyService.js';
 import { commentOnIssueOpened, create_github_installation, delete_github_installation, PrData, handlePrMerged, handleStopAnalysis, handleRepositoryCreated } from '../queries/github.queries.js';
   // Set up GitHub webhooks
-export const webhooks = new Webhooks({ secret: process.env.GITHUB_WEBHOOK_SECRET! });
+export const webhooks = new Webhooks({
+  // A non-production fallback lets extension/sandbox routes start locally.
+  // No real GitHub signature can validate until the integration is configured.
+  secret: process.env.GITHUB_WEBHOOK_SECRET || 'github-webhooks-disabled-locally',
+});
   
   // Handle installation created event
   webhooks.on('installation.created', async ({ payload }) => {

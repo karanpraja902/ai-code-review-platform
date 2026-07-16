@@ -50,8 +50,6 @@ export function createApp(): Application {
       credentials: true,
     })
   );
-  app.use(clerkMiddleware());
-
   // We need express.json() for non-webhook routes, but webhooks need raw body
   app.use((req, res, next) => {
     if (req.path === "/api/webhooks") {
@@ -84,13 +82,19 @@ export function createApp(): Application {
   });
   app.use(webhookMiddleware);
 
+  // E2B callbacks use their own rotating sandbox token and must not depend on
+  // an end-user Clerk session. Keep this route outside Clerk middleware.
+  app.use("/api/sandbox", SandboxRoutes);
+
+  // User-facing API routes require Clerk authentication context.
+  app.use(clerkMiddleware());
+
   // API Routes
   app.use("/api/github", GithubRoutes);
   app.use("/api/bitbucket", BitbucketRoutes);  // NEW: Bitbucket routes
   app.use("/api/user", UserRoutes);
   app.use("/api/analysis", AnalysisRoutes);
   app.use("/api/team", TeamRoutes);
-  app.use("/api/sandbox", SandboxRoutes);
   app.use("/api/subscription", SubscriptionRoutes);
   app.use("/api/ai", AiRoutes);
   app.use("/api/extension", ExtensionRoutes);

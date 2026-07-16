@@ -6,22 +6,46 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Initialize GitHub App
-export const octokitApp = new App({
-  appId: process.env.GITHUB_APP_ID!,
-  privateKey: Buffer.from(process.env.GITHUB_PRIVATE_KEY_BASE64!, 'base64').toString('utf8'),
-  webhooks: {
-    secret: process.env.GITHUB_WEBHOOK_SECRET!
+const githubConfig = () => {
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKeyBase64 = process.env.GITHUB_PRIVATE_KEY_BASE64;
+  const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+  if (!appId || !privateKeyBase64 || !webhookSecret) {
+    throw new Error(
+      'GitHub App integration is not configured. Set GITHUB_APP_ID, GITHUB_PRIVATE_KEY_BASE64, and GITHUB_WEBHOOK_SECRET.',
+    );
   }
-});
+  return {
+    appId,
+    privateKey: Buffer.from(privateKeyBase64, 'base64').toString('utf8'),
+    webhookSecret,
+  };
+};
+
+// GitHub is optional for local extension/sandbox development. Routes that
+// actually use GitHub still fail with an explicit configuration error.
+const initialGitHubConfig = process.env.GITHUB_APP_ID
+  && process.env.GITHUB_PRIVATE_KEY_BASE64
+  && process.env.GITHUB_WEBHOOK_SECRET
+  ? githubConfig()
+  : null;
+
+export const octokitApp = initialGitHubConfig
+  ? new App({
+      appId: initialGitHubConfig.appId,
+      privateKey: initialGitHubConfig.privateKey,
+      webhooks: { secret: initialGitHubConfig.webhookSecret },
+    })
+  : null;
 
 // Create authenticated Octokit instance for an installation
 export const getInstallationOctokit = (installationId: number): Octokit => {
+  const config = githubConfig();
   return new Octokit({
     authStrategy: createAppAuth,
     auth: {
-      appId: process.env.GITHUB_APP_ID!,
-      privateKey: Buffer.from(process.env.GITHUB_PRIVATE_KEY_BASE64!, 'base64').toString('utf8'),
+      appId: config.appId,
+      privateKey: config.privateKey,
       installationId
     }
   });
@@ -30,9 +54,10 @@ export const getInstallationOctokit = (installationId: number): Octokit => {
 // Generate installation access token for private repo access
 export const generateInstallationToken = async (installationId: number): Promise<string> => {
   try {
+    const config = githubConfig();
     const auth = createAppAuth({
-      appId: process.env.GITHUB_APP_ID!,
-      privateKey: Buffer.from(process.env.GITHUB_PRIVATE_KEY_BASE64!, 'base64').toString('utf8'),
+      appId: config.appId,
+      privateKey: config.privateKey,
       installationId: installationId
     });
     

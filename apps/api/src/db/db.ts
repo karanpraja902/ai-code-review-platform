@@ -1,10 +1,9 @@
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
 
-const MONGODB_URI = process.env.AI_CODE_REVIEW_DB;
-
 const connectDB = async () => {
     try {
+        const MONGODB_URI = process.env.AI_CODE_REVIEW_DB;
         if (!MONGODB_URI) {
             throw new Error("AI_CODE_REVIEW_DB environment variable is not set");
         }
