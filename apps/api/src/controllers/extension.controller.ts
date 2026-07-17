@@ -11,6 +11,10 @@ import { gunzipSync } from 'zlib';
 import { initAnalysisCommentCounter, incrementAnalysisCommentCounter } from '../utils/analysisStreamStore.js';
 import { Sandbox } from '@e2b/code-interpreter';
 
+/** Express 5 permits repeated route parameters, which are represented as arrays. */
+const getSingleRouteParam = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? '' : value ?? '';
+
 export const createExtensionReview = async (req: Request, res: Response): Promise<void> => {
     try {
       const { repository, branches, changes, feedback, analysis_type } = req.body;
@@ -247,7 +251,7 @@ export const createExtensionReview = async (req: Request, res: Response): Promis
  */
 export const getExtensionComments = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { dataId } = req.params;
+    const dataId = getSingleRouteParam(req.params.dataId);
     // @ts-ignore
     const userId = req.user?._id?.toString();
 
@@ -316,7 +320,7 @@ export const getExtensionComments = async (req: Request, res: Response): Promise
  */
 export const getAllExtensionComments = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { dataId } = req.params;
+    const dataId = getSingleRouteParam(req.params.dataId);
     // @ts-ignore
     const userId = req.user?._id?.toString();
 
@@ -365,7 +369,7 @@ export const getAllExtensionComments = async (req: Request, res: Response): Prom
  */
 export const getAnalysisStatus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { dataId } = req.params;
+    const dataId = getSingleRouteParam(req.params.dataId);
     // @ts-ignore
     const userId = req.user?._id?.toString();
 
@@ -440,7 +444,7 @@ function extractTitle(content: string): string {
  */
 export const stopExtensionAnalysis = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { dataId } = req.params;
+    const dataId = getSingleRouteParam(req.params.dataId);
     // @ts-ignore
     const userId = req.user?._id?.toString();
 
