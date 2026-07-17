@@ -5,12 +5,7 @@ import React from "react";
 
 const ConnectGithubCard = () => {
   return (
-    <Card className="relative mx-auto mb-8 w-full overflow-hidden p-5">
-      {/* Decorative right-side background image */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-0 bottom-0 h-40 w-[100%] bg-[url('/@ai-code-review.png')] bg-contain bg-right bg-no-repeat opacity-70 dark:opacity-60"
-      />
+    <Card className="mx-auto mb-8 w-full p-5">
       <div>
         <h2 className="text-xl font-bold">Connect GitHub to get started</h2>
         <span className="text-muted-foreground text-sm">

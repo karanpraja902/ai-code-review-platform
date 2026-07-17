@@ -200,7 +200,6 @@ const HowToInteractCard = () => {
           title="Run Analyses"
           // description="Trigger full repo reviews or PR checks to surface issues and suggestions."
           icon={AtSign}
-          imageSrc="/@ai-code-review.png"
           points={[
             <>Once repos are connected, PR analysis will automatically enabled</>,
             <>Comment <Command>@ai-code-review</Command> on any PR to start analysis manually</>,

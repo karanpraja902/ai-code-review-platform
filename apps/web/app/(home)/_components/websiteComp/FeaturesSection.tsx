@@ -200,15 +200,6 @@ Start chatting and watch the workflow build itself. Code, tests, issues, reviews
 
               />
             </CardHeader>
-                  <div className="mb-6 w-full flex justify-center">
-                    <Image
-                      src="/@ai-code-review.png"
-                      alt="AI code review card"
-                      width={308}
-                      height={308}
-                      className="rounded-md"
-                    />
-                  </div>
                 {/* <h3 className="text-white text-2xl md:text-3xl font-semibold">
                   More signal. Less noise.
                 </h3>
